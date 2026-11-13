@@ -161,15 +161,26 @@ def _kind(kind_id: str, kind: str, prevalence: Prevalence, rule_id: str, reach: 
 
 
 def _ladder(
-    ladder_id: str, name: str, rungs: list[str], *, sensing: bool, known_to_all: int | None = None
+    ladder_id: str,
+    name: str,
+    rungs: list[str],
+    *,
+    sensing: bool,
+    known_to_all: int | None = None,
+    lifespans: list[int] | None = None,
 ) -> PowerLadder:
     # Rungs sit two tiers apart, so a wounded or weakened character can fall between them (A8).
     # Everyone has heard of every rung (G18, C6) unless the ladder says how many they know.
+    # `lifespans` is how long each rung lives, on a ladder that lengthens life (W6, G19):
+    # ranks that only measure skill or standing lengthen none.
     return PowerLadder(
         id=ladder_id,
         name=name,
         axis=PowerAxis.MIGHT,
-        rungs=[Rung(name=rung, tier=2 * (i + 1)) for i, rung in enumerate(rungs)],
+        rungs=[
+            Rung(name=rung, tier=2 * (i + 1), lifespan_years=lifespans[i] if lifespans else 0)
+            for i, rung in enumerate(rungs)
+        ],
         sensing=sensing,
         known_to_all=len(rungs) if known_to_all is None else known_to_all,
     )
@@ -206,6 +217,8 @@ _REALMS = _ladder(
     sensing=True,
     # "From Qi Condensation to Nascent Soul and beyond": what lies past it is for few to know.
     known_to_all=4,
+    # Each realm reached is a longer life: who never breaks through dies of old age.
+    lifespans=[120, 250, 500, 1000, 2000],
 )
 _QI_RULE = _rule("qi-exists", "Qi cultivation is real, and the strong climb the realms.")
 _QI = _kind(

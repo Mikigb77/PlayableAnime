@@ -1061,6 +1061,7 @@ _LIFE_WORDS = {
         LifeKind.CHILD: ("Had a child: {who}", "Had a child"),
         LifeKind.FRIENDS: ("Became close friends with {who}", "Made a close friend"),
         LifeKind.FELL_OUT: ("Fell out with {who}", "Fell out with someone close to them"),
+        LifeKind.DIED: ("Lost their partner: {who}", "Lost their partner"),
     },
     ES: {
         LifeKind.PAIRED: ("Encontró pareja: {who}", "Encontró pareja"),
@@ -1069,6 +1070,7 @@ _LIFE_WORDS = {
         LifeKind.CHILD: ("Tuvo una criatura: {who}", "Tuvo una criatura"),
         LifeKind.FRIENDS: ("Trabó una gran amistad con {who}", "Trabó una gran amistad"),
         LifeKind.FELL_OUT: ("Se enemistó con {who}", "Se enemistó con alguien de su entorno"),
+        LifeKind.DIED: ("Perdió a su pareja: {who}", "Perdió a su pareja"),
     },
     CA: {
         LifeKind.PAIRED: ("Va trobar parella: {who}", "Va trobar parella"),
@@ -1077,8 +1079,11 @@ _LIFE_WORDS = {
         LifeKind.CHILD: ("Va tenir una criatura: {who}", "Va tenir una criatura"),
         LifeKind.FRIENDS: ("Va fer una gran amistat amb {who}", "Va fer una gran amistat"),
         LifeKind.FELL_OUT: ("Es va enemistar amb {who}", "Es va enemistar amb algú del seu entorn"),
+        LifeKind.DIED: ("Va perdre la seva parella: {who}", "Va perdre la seva parella"),
     },
 }
+# A death of old age, under the one who died: under the partner they left it is the loss above.
+_OLD_AGE_WORDS = {EN: "Died of old age", ES: "Murió de vejez", CA: "Va morir de vellesa"}
 # How many of them a person's entry shows, the latest.
 _LIFE_LINES = 6
 # W6: how many lines of what the years did to it a faction's or a place's entry carries.
@@ -1643,6 +1648,9 @@ class _Knowledge:
         lines = []
         for event in lives_mod.of(self.state, c.id):
             if self.player_id not in event.known_by:
+                continue
+            if lives_mod.died(event) == c.id:
+                lines.append(f"{self._on(_OLD_AGE_WORDS[self.language], event.world_s)}.")
                 continue
             who_id = event.child_id if event.kind is LifeKind.CHILD else event.other(c.id)
             who = self.state.characters.get(who_id or "")

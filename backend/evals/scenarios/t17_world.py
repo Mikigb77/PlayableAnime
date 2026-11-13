@@ -19,7 +19,7 @@ from engine.contracts import ActionKind, Intent, SceneEnd, StateDelta
 from engine.invariants import check_state
 from engine.state import FactionStatus, SceneFrame, WorldChange, WorldChangeKind, WorldState
 from engine.visibility import memory_view
-from engine.world import telling
+from engine.world import lives, telling
 from evals import worlds
 from evals.judge import Rubric
 from evals.runner import Eval
@@ -41,6 +41,13 @@ AT_THE_FORD = "Tomas comes down the river road to the toll bridge at Willow Ford
 
 def changes(state: WorldState) -> list[WorldChange]:
     return sorted(state.changes.values(), key=lambda c: (c.world_s, c.id))
+
+
+def killed(state: WorldState) -> list[str]:
+    """Who is dead by anything but old age, which takes whom it takes over ten years (W6)."""
+    return sorted(
+        c.id for c in state.characters.values() if not c.alive and not lives.of_old_age(c)
+    )
 
 
 def lines_of(state: WorldState, faction_id: str) -> list[str]:
@@ -112,12 +119,13 @@ def on_record(state: WorldState) -> str:
         "years most such wars are fought out, some more than once, and some never are: nothing "
         "is made to happen. Evenly matched, either side may win, a loser is weakened and loses "
         "land or falls, and both may fall. Where one side has a commander nothing the other "
-        "has can stand against, that side wins whenever it comes to it, with no throw. Nobody "
-        "is killed off screen. Far away the farmer hears none of it, and Memory holds none of "
-        "it. When he comes to a town that changed hands, the scene is handed what became of "
-        "the war, marked as having touched this place. A scene that says none of it leaves it "
-        "news, whatever its answer lists, and once a scene told it, naming whom it came to, he "
-        "knows, and Memory tells it with its day"
+        "has can stand against, that side wins whenever it comes to it, with no throw. The war "
+        "kills nobody off screen: whoever died in those years died of old age. Far away the "
+        "farmer hears none of it, and Memory holds none of it. When he comes to a town that "
+        "changed hands, the scene is handed what became of the war, marked as having touched "
+        "this place. A scene that says none of it leaves it news, whatever its answer lists, "
+        "and once a scene told it, naming whom it came to, he knows, and Memory tells it with "
+        "its day"
     ),
 )
 async def world_moves(ev: Eval) -> None:
@@ -157,9 +165,9 @@ async def world_moves(ev: Eval) -> None:
             live=False,
         )
         ev.check(
-            "nobody is killed off screen",
-            all(c.alive for c in state.characters.values()),
-            f"{seed}",
+            "the war kills nobody off screen: whoever died, died of old age",
+            killed(state) == [],
+            f"{seed}: {killed(state)}",
             live=False,
         )
     ev.metric("what ten years brought an even war", dict(kinds))
@@ -217,8 +225,8 @@ async def world_moves(ev: Eval) -> None:
         ev.check(
             "what the League held is the Crown's, occupied, and its people live on",
             all(state.places[p].controller_id == CROWN for p in ("ford", "eastmark"))
-            and all(c.alive for c in state.characters.values()),
-            f"{seed}",
+            and killed(state) == [],
+            f"{seed}: {killed(state)}",
         )
 
         story.change(at_the_ford)

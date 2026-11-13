@@ -1023,6 +1023,10 @@ def test_the_drafter_is_asked_for_the_whole_ladder_and_the_rungs_everyone_knows(
     assert "up to the rung its strongest beings stand on" in SYSTEM
     assert "known_to_all says how many of its rungs, counted from the lowest" in SYSTEM
     assert "or a ladder's higher rungs" in SYSTEM
+    # W6, G19: whether climbing it lengthens life, and how long each rung then lives.
+    assert "lengthens_life says whether a higher rung means a longer life" in SYSTEM
+    assert "then every rung gives lifespan_years" in SYSTEM
+    assert "Ranks that only measure skill or standing lengthen no life." in SYSTEM
 
 
 def test_the_drafter_is_asked_for_talents_only_from_the_players_own_words():

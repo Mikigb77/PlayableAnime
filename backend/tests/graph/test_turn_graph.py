@@ -26,7 +26,13 @@ from engine.invariants import InvariantError
 from engine.pipeline import TimePassage
 from engine.resolve.powers import growth
 from engine.samples import cultivation_world, grounded_world
-from engine.state.cast import Character, CharacterStatus, Faction, FactionStatus
+from engine.state.cast import (
+    Character,
+    CharacterStatus,
+    DeathCertainty,
+    Faction,
+    FactionStatus,
+)
 from engine.state.records import (
     Goal,
     GoalStatus,
@@ -1427,6 +1433,89 @@ def test_a_scene_with_someone_is_where_the_player_character_hears_of_their_years
     fake.script(Node.NARRATOR, Reply(json=SCENE | {"told_news": ["life-1"]}))
     _, again = play(make_client(), turn_input(after))
     assert not {"last_seen", "news"} & zhao_in_the_brief().keys()
+    assert not [i for i in again.issues if i.code == "life_heard"]
+
+
+def test_a_scene_where_someone_lived_tells_that_old_age_took_them_by_naming_them(
+    fake, make_client, log_lines
+):
+    """W6, C6: Old Wei, who kept the well, died of old age two years ago while Lin was away,
+    and nobody told him. The scene at the well is handed who is gone. A scene that names
+    nobody leaves it news, whatever its answer lists; once a scene says by name that he
+    died, the record has it heard and Memory has him dead."""
+    start = cultivation_world()
+    start.world_s = 3 * YEAR
+    start.characters["wei"] = Character(
+        id="wei",
+        name="Old Wei",
+        age=84,
+        location_id="well",
+        status=CharacterStatus.DEAD,
+        death_certainty=DeathCertainty.CONFIRMED,
+        status_history=[
+            StatusChange(
+                status="dead", from_status="alive", turn=1, world_s=YEAR, note="Died of old age."
+            )
+        ],
+        known_by=["lin"],
+        met_by=["lin"],
+    )
+    start.lives["life-1"] = LifeEvent(
+        id="life-1", kind=LifeKind.DIED, subject_ids=["wei"], world_s=YEAR, known_by=["wei"]
+    )
+
+    def gone():
+        brief = fake.calls(Node.NARRATOR)[-1].prompt.messages[-1].text
+        if "## WIDER WORLD\n" not in brief:
+            return None
+        moved = json.loads(brief.split("## WIDER WORLD\n", 1)[1].split("\n\n## ", 1)[0])
+        return moved.get("gone")
+
+    def wei_in_memory(state) -> str:
+        return next(p for p in memory_view(state).people if p.id == "wei").status
+
+    handed = [
+        {
+            "id": "life-1",
+            "who": {"id": "wei", "name": "Old Wei"},
+            "what": "died of old age",
+            "when": "2 years ago",
+            "aged": 84,
+        }
+    ]
+    # A scene that names nobody, though its answer lists the news as told.
+    fake.script(Node.INTERPRET, Reply(json=STONE))
+    fake.script(Node.NARRATOR, Reply(json=SCENE | {"told_news": ["life-1"]}))
+    _, result = play(make_client(), turn_input(start))
+
+    assert gone() == handed
+    silent = result.state
+    assert silent.lives["life-1"].known_by == ["wei"] and wei_in_memory(silent) == "alive"
+    assert not [i for i in result.issues if i.code == "life_heard"]
+
+    # The next scene is handed it again, and tells it.
+    telling = SCENE | {
+        "narration": "A new marker stands by the well. Old Wei, it reads, two winters gone.",
+        "told_news": ["life-1", "life-9"],
+    }
+    fake.script(Node.INTERPRET, Reply(json=STONE))
+    fake.script(Node.NARRATOR, Reply(json=telling))
+    _, result = play(make_client(), turn_input(silent))
+
+    assert gone() == handed
+    after = result.state
+    assert after.lives["life-1"].known_by == ["wei", "lin"]
+    assert after.characters["wei"].status_history[-1].known_by == ["lin"]
+    assert wei_in_memory(after) == "dead"
+    assert [(i.code, i.subject) for i in result.issues if i.code == "life_heard"] == [
+        ("life_heard", "life-1")
+    ]
+
+    # The scene after that has nothing left to tell.
+    fake.script(Node.INTERPRET, Reply(json=STONE))
+    fake.script(Node.NARRATOR, Reply(json=SCENE | {"told_news": ["life-1"]}))
+    _, again = play(make_client(), turn_input(after))
+    assert gone() is None
     assert not [i for i in again.issues if i.code == "life_heard"]
 
 

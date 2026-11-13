@@ -150,6 +150,15 @@ The first version's state, checked against the code in WS18.
       place they are in are the story's to tell. Far away it is news: the scene in a place it
       touched, or that word has reached, is handed it, and Memory shows it once a scene told
       it or the character heard the talk of it (W6, W7, W2, C6).
+- [x] Old age takes people over the years: anyone on record with an age may die of it while
+      the story is elsewhere, the likelier the older, so a month takes nobody and a hundred
+      years every mortal. How long someone lives is their people's lifespan, or their rung's
+      where climbing the world's ladder lengthens life, so whoever broke through outlives
+      those who never did. The player character is never taken. Living near, they know as it
+      happens. Far away it is news: the scene where the dead lived, or with their family or
+      the partner they left in it, is handed who is gone, nobody who died walks into a scene,
+      and Memory has them dead, with the day, once a scene said by name who died (W6, W10,
+      G19, C6).
 - [x] Voice dictation of actions and premises, with a transcript the player edits before sending
       (V1 to V7)
 - [x] Basic safety: content rating per story, model safety settings, report and block (F6 to F8)

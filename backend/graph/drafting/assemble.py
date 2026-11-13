@@ -120,6 +120,7 @@ from graph.drafting.schema import (
     MembershipP,
     NpcP,
     PowerP,
+    RungP,
     TalentP,
     TemperamentP,
     TimeP,
@@ -307,6 +308,21 @@ class _Ladders:
     def find(self, raw: str) -> PowerLadder | None:
         ladder_id = self.ids.get(raw)
         return self.by_id.get(ladder_id) if ladder_id else None
+
+
+def _rung_lifespans(lengthens: bool | None, rungs: list[RungP]) -> list[int | None]:
+    """W6, G19. How long each rung of a drafted ladder lives, for the world's dice
+    (`engine.world.old_age`). A ladder that lengthens no life gives 0 on every rung. One that
+    does gives each rung its years, never fewer than the rung below. Where the draft doesn't
+    say, the rungs tell: any lifespan among them means it does. A ladder said to lengthen
+    life with no years on any rung, or one the draft says nothing of, is left unsaid (None),
+    and the dice then take nobody who stands on it."""
+    given = [_clamp(r.lifespan_years, 0, 1_000_000, 0) for r in rungs]
+    if lengthens is False:
+        return [0] * len(rungs)
+    if not any(given):
+        return [None] * len(rungs)
+    return [max(given[: i + 1]) for i in range(len(rungs))]
 
 
 def _rung_index(ladder: PowerLadder, rung: str) -> int | None:
@@ -611,6 +627,7 @@ class _Assembler:
             if not rungs:
                 continue
             ladder_id = self.ladders.ids.add(proposed.id, proposed.name)
+            lifespans = _rung_lifespans(proposed.lengthens_life, rungs)
             # G18: rungs map to tiers two apart, lowest first, so a weakened or wounded character
             # can stand between two rungs (A8).
             self.ladders.by_id[ladder_id] = PowerLadder(
@@ -622,6 +639,7 @@ class _Assembler:
                         name=_name(r.name),
                         tier=min(TIER_MAX, 2 * (i + 1)),
                         description=_text(r.description, 300),
+                        lifespan_years=lifespans[i],
                     )
                     for i, r in enumerate(rungs)
                 ],

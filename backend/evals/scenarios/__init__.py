@@ -5,6 +5,7 @@ from evals.scenarios import (  # noqa: F401  (registers them)
     t15,
     t17,
     t17_lives,
+    t17_old_age,
     t17_play,
     t17_powers,
     t17_romance,
