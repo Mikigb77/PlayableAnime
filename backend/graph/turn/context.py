@@ -36,7 +36,9 @@ from engine.invariants import ancestry
 from engine.labels import ago_label, in_label, moment, passage_label, span_label
 from engine.limits import is_adult
 from engine.resolve import bouts
+from engine.resolve.checks import rule_reason
 from engine.resolve.powers import growth
+from engine.state.bible import PowerLadder
 from engine.state.cast import (
     Character,
     CharacterStatus,
@@ -887,6 +889,26 @@ def _known_view(state: WorldState) -> dict[str, Any]:
     return {"people": people, "places": places, "factions": factions}
 
 
+# G18, G7. Said on a ladder the story can reach past (`engine.path.top_problem`), for the
+# narrator alone: beings from above its top can come into a scene with no climb to stop
+# beside. It stays the same from turn to turn, so it costs the cache nothing.
+_OPEN_ABOVE = (
+    "Open: nobody on record stands above {top}. Only if beings stronger than {top} come into "
+    "the story, or someone finds what lies beyond it, the scene gives the rung above a name "
+    "and update.rungs lists it, with whoever this update brings in who stands on it."
+)
+
+
+def _narrator_world(state: WorldState) -> dict[str, Any]:
+    """WORLD as the narrator reads it: the bible, and on each ladder the story can reach past,
+    that it is open above its highest rung."""
+    view = _world_view(state)
+    for shown, ladder in zip(view.get("ladders", ()), state.bible.ladders, strict=True):
+        if path_mod.top_problem(state, ladder) is None:
+            shown["above"] = _OPEN_ABOVE.format(top=ladder.rungs[-1].name)
+    return view
+
+
 def _world_view(state: WorldState, include: set[str] | None = None) -> dict[str, Any]:
     """The world bible without its hidden answers. The settings a model can't assume are always
     shown, defaults included: how strict physics is (A9), whether the dead can come back (C1) and
@@ -1272,7 +1294,7 @@ def narration_brief(
     stable: list[tuple[str, Any]] = [
         ("STYLE", style),
         ("CONTENT", content),
-        ("WORLD", _world_view(before)),
+        ("WORLD", _narrator_world(before)),
     ]
     scene = _scene_view(before)
     sections: list[tuple[str, Any]] = [
@@ -1533,9 +1555,9 @@ def wronged_view(step: StepResolution, state: WorldState) -> list[dict[str, Any]
     return wronged
 
 
-# G18, G7. Said beside a climb that stopped on a ladder's highest rung, where the story can
-# reach past it (`engine.path.top_problem`): the one moment the narrator has to know that it
-# can. The rung is the scene's to name and the engine's to accept (`engine.apply`).
+# G18, G7. Said beside a step that stopped on a ladder's highest rung, where the story can
+# reach past it (`engine.path.top_problem`): the moment the narrator has to know that it can.
+# The rung is the scene's to name and the engine's to accept (`engine.apply`).
 _BEYOND_TELL = (
     "How far {ladder} goes is open: nobody on record stands above {top}. This step still "
     "fails. If the scene shows that something lies above {top} and gives that rung a name, "
@@ -1543,13 +1565,26 @@ _BEYOND_TELL = (
 )
 
 
+def _stopped_at_top(reason: str, state: WorldState, ladder: PowerLadder) -> bool:
+    """Whether a step was ruled out because the ladder ends at its highest rung: a climb from
+    it (`growth.no_rung_above`), or anything an open rule that holds the ladder there stopped
+    (`engine.path.ceilings`), which is how a model that reads the player's words files a
+    reach past the top when the world has such a rule."""
+    if reason == growth.no_rung_above(ladder):
+        return True
+    return any(
+        not rule.fixed and reason == rule_reason(rule.text)
+        for rule in path_mod.ceilings(state, ladder)
+    )
+
+
 def _beyond(step: StepResolution, state: WorldState) -> str | None:
-    """G18, G7. What the narrator is told beside a climb that stopped at the top of a ladder
+    """G18, G7. What the narrator is told beside a step that stopped at the top of a ladder
     the story can pass, or None for any other step."""
     if step.outcome_class is not OutcomeClass.RULED_OUT:
         return None
     for ladder in state.bible.ladders:
-        if step.reason != growth.no_rung_above(ladder):
+        if not _stopped_at_top(step.reason, state, ladder):
             continue
         if path_mod.top_problem(state, ladder) is None:
             return _BEYOND_TELL.format(ladder=ladder.name, top=ladder.rungs[-1].name)

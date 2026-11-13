@@ -50,7 +50,7 @@ from engine.contracts.intent import GrowthKind
 from engine.invariants import is_real_name
 from engine.limits import normalize
 from engine.resolve.powers.sensing import position, shown_rung
-from engine.state.bible import PowerLadder, RuleTopic
+from engine.state.bible import PowerLadder, RuleTopic, WorldRule
 from engine.state.cast import Character, Prominence
 from engine.state.records import FactKind
 from engine.state.sheet import RungHeard
@@ -311,13 +311,27 @@ def above_tier(ladder: PowerLadder) -> int | None:
     return min(TIER_MAX, top + step)
 
 
+def ceilings(state: WorldState, ladder: PowerLadder) -> list[WorldRule]:
+    """G7. The world's rules that hold the ladder at its highest rung: those on how far a
+    power goes that name that rung, such as "nobody is known to have passed the S rank". A
+    fixed one ends the ladder for good. An open one is what a discovery breaks: it holds
+    until the story tells of a rung above, and is struck from the world's rules then
+    (`engine.apply`), since from then on the ladder itself says how far it goes."""
+    top = ladder.rungs[-1].name
+    return [
+        rule
+        for rule in state.bible.rules
+        if rule.topic is RuleTopic.LIMITS and named(rule.text, top)
+    ]
+
+
 def top_problem(state: WorldState, ladder: PowerLadder) -> str | None:
     """G18, G7. Why nothing can be put above the ladder's highest rung right now, whatever it
     is called, or None where the story can reach past it.
 
     - No rule that never changes holds the ladder there (G7): a fixed rule on how far a power
-      goes that names the highest rung, such as "nobody ever passes the S rank". An open
-      rule is what a discovery breaks, so it stops nothing.
+      goes that names the highest rung, such as "nobody ever passes the S rank" (`ceilings`).
+      An open one is what a discovery breaks, so it stops nothing here.
     - The scale has room above the highest rung (`above_tier`).
     - The player character has been told of the highest rung (`top_told`). While rungs they
       haven't heard of lie above what they know, the world has more to tell before the story
@@ -326,9 +340,8 @@ def top_problem(state: WorldState, ladder: PowerLadder) -> str | None:
       broke through to it, by their own work or the world's years. So however the story goes,
       a ladder grows no faster than someone earns its last rung."""
     top = ladder.rungs[-1]
-    for rule in state.bible.rules:
-        if rule.fixed and rule.topic is RuleTopic.LIMITS and named(rule.text, top.name):
-            return f"a rule that never changes holds the ladder at {top.name} (G7)"
+    if any(rule.fixed for rule in ceilings(state, ladder)):
+        return f"a rule that never changes holds the ladder at {top.name} (G7)"
     if above_tier(ladder) is None:
         return f"nothing stands above {top.name}: the scale ends there"
     if not top_told(state, ladder):
