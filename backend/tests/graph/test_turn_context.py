@@ -601,6 +601,11 @@ def test_the_narrator_is_told_the_heading_the_player_reads_over_the_scene():
     assert "never say the heading's words again" in prompts.NARRATOR_SYSTEM
     assert "- Keep to the clock (W10)." in prompts.NARRATOR_SYSTEM
     assert "never skip ahead" in prompts.NARRATOR_SYSTEM
+    # What the engine has done is told as done at whatever hour it is (on the real model,
+    # 2026-11-13, a wedding the record held at one in the morning was put off to sunrise).
+    assert "never put it off to a morning the clock doesn't reach" in " ".join(
+        prompts.NARRATOR_SYSTEM.split()
+    )
 
 
 def test_the_brief_follows_the_rating_and_the_players_preferences():

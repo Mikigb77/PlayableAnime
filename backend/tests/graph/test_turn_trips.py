@@ -92,6 +92,41 @@ def test_a_trip_takes_the_maps_time_and_the_scene_ends_there(fake, make_client):
     assert json.loads(section(brief, "TIME"))["world_seconds_passed"] == WALK
 
 
+# A week of work on the farm as the real model once read "the next week" (2026-11-13): the
+# right length, and no mark that the player timed it.
+A_WEEK_OF_WORK = {
+    "summary": "Tomas works the farm for a week.",
+    "steps": [
+        {
+            "text": "work the farm for a week",
+            "verb": "work",
+            "kind": "work",
+            "proposed_duration_s": 7 * DAY,
+        }
+    ],
+}
+
+
+def test_a_week_the_player_asked_for_is_a_week_in_the_storys_own_language(fake, make_client):
+    """W10, S10: the player's own words say how long, so the time stands whether or not the
+    reading marked it. Held to what work lasts, the week stopped at eighteen hours."""
+    from engine.context import Language, StorySettings
+
+    def worked(action: str, language: Language) -> int:
+        fake.script(Node.INTERPRET, Reply(json=A_WEEK_OF_WORK))
+        fake.script(Node.NARRATOR, Reply(json=scene(None, present=("tomas",))))
+        settings = StorySettings(language=language)
+        turn = turn_input(valley(), action=action, settings=settings)
+        result = play(make_client(), turn)[1]
+        return result.state.world_s - turn.state.world_s
+
+    assert worked("Trabajo en la granja toda la próxima semana", Language.ES) == 7 * DAY
+    assert worked("Treballo a la granja tota la setmana vinent", Language.CA) == 7 * DAY
+    assert worked("I work the farm all of next week", Language.EN) == 7 * DAY
+    # Words that give no time leave the model's own guess held to what work lasts.
+    assert worked("Trabajo en la granja", Language.ES) == 18 * HOUR
+
+
 BARN = "The miller's barn burned down in the night."
 
 

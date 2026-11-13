@@ -73,6 +73,10 @@ The first version's state, checked against the code in WS18.
       narrator the wording the last scenes repeated, to say another way (R9)
 - [x] Whereabouts that stay clear: every scene records the place it ends in, places know whether
       they are outdoors, indoors, underground or underwater, and a way out is told, never guessed (R8)
+- [x] The time the player asks for is the time that passes: "the next week" is a week on the
+      story's clock in English, Spanish or Catalan, whether or not the model that reads the
+      action marked it as timed, and what the engine has done is told as done at whatever hour
+      it is, never put off to a later one (W10).
 - [x] Outcomes worked out from the facts: logic first, rolls only for real doubt, and clever
       workarounds reasoned through by cause and effect (A2, A9)
 - [x] Odds from who the character is: their attributes, skills, gifts and flaws weighed against

@@ -19,7 +19,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 from engine import injuries, limits, naming, possessions
-from engine.context import ImageSetting, TurnContext
+from engine.context import ImageSetting, Language, TurnContext
 from engine.contracts import (
     ActionKind,
     DirectorPlan,
@@ -43,7 +43,7 @@ from engine.resolve.powers import growth, sensing
 from engine.state.cast import CharacterStatus
 from engine.state.records import GoalStatus, LeadStatus, RollRecord, StepResult, Transfer
 from engine.state.world import WorldState
-from engine.timekeeping import DURATION_BOUNDS, parse_clock
+from engine.timekeeping import DURATION_BOUNDS, names_a_span, parse_clock
 from engine.world.geography import scene_ids
 from graph.turn.outputs import NarratorOutput
 from graph.turn.types import Issue
@@ -84,7 +84,9 @@ class CheckedIntent:
     overflow: list[str]  # the text of steps past MAX_STEPS, which the scene hands back (R6)
 
 
-def check_intent(intent: Intent, state: WorldState, action: str) -> CheckedIntent:
+def check_intent(
+    intent: Intent, state: WorldState, action: str, language: Language = Language.EN
+) -> CheckedIntent:
     """The intent with references the state can't resolve turned back into words.
 
     The actor is always the player character: the player plays their own character and can't
@@ -94,7 +96,9 @@ def check_intent(intent: Intent, state: WorldState, action: str) -> CheckedInten
     leans on an injury the record doesn't hold is left out (N6, `engine.injuries`). Hiding or
     showing strength is a step of its own (G20, `_shows_apart`). A step whose reading left out
     who it is aimed at finds them where the player's words point (V3, W1, `_aimed`). A stretch
-    the player timed for longer than its kind can last is a time skip (W10).
+    the player timed for longer than its kind can last is a time skip (W10): the reading marks
+    it `timed`, and the player's own words count beside that mark when they name a span of
+    time, in English or in the story's `language` (`timekeeping.names_a_span`).
     """
     issues: list[Issue] = []
     intent = intent.model_copy(deep=True)
@@ -117,11 +121,14 @@ def check_intent(intent: Intent, state: WorldState, action: str) -> CheckedInten
                 issues.append(Issue("bad_until", "not a time of day, so the seconds stand"))
             step.until = None
         if (
-            step.timed
-            and step.kind in STRETCHES
+            step.kind in STRETCHES
             and step.proposed_duration_s > DURATION_BOUNDS[step.kind][1]
+            and (step.timed or names_a_span(action, language))
         ):
-            # W10: the player said how long, so the time stands and the kind gives way.
+            # W10: the player said how long, so the time stands and the kind gives way. Their
+            # own words count beside the reading's mark: the real model left it off "I spend
+            # the next week courting Mara", read as a week of work, and the week stopped at
+            # eighteen hours (2026-11-13).
             issues.append(Issue("long_stretch", "longer than its kind lasts, so a time skip"))
             step.kind = ActionKind.TIME_SKIP
         facts = step.facts
