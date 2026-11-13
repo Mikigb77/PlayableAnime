@@ -245,6 +245,13 @@ def check_state(state: WorldState) -> list[Violation]:
         if i in ancestors(state.characters, i)
     )
     found.extend(_bonds(state))
+    for event_id in sorted(state.lives):
+        event = state.lives[event_id]
+        people = [*event.subject_ids, *([event.child_id] if event.child_id else [])]
+        if any(i not in state.characters for i in people):
+            found.append(
+                Violation(f"life {event.id}", "reference", "it is about someone not on record")
+            )
     return found
 
 

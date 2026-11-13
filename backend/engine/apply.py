@@ -744,6 +744,9 @@ class _Applier:
         elif change.meets_player:
             _add(character.met_by, player)
             _add(character.known_by, player)
+            # W6: the two are together now, wherever the scene goes on to end
+            # (`engine.world.lives`): what comes to them from here on is news.
+            character.seen_s = self.state.world_s
         if change.known_to_player:
             _add(character.known_by, player)
         if change.rulings and self.engine_only(subject, "rulings"):

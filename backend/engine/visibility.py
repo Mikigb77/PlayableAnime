@@ -63,6 +63,7 @@ from engine.state.records import (
     Goal,
     GoalStatus,
     LeadStatus,
+    LifeKind,
     OriginKind,
     PendingEvent,
     Rumor,
@@ -83,6 +84,7 @@ from engine.state.sheet import (
     TraitKind,
 )
 from engine.state.world import WorldState, natural_key
+from engine.world import lives as lives_mod
 from engine.world.answers import ARRIVING, Answer
 from engine.world.rumors import Certainty, certainty
 from engine.world.scheduling import Kind
@@ -1047,6 +1049,38 @@ _WORDS = {
 # stage, told with the day ("You became a couple, day 9"), how it stands when it was so as the
 # story opened, and what it had come to when it ended. Nothing here says whether anyone is a
 # man or a woman.
+# W6: what came to someone in their own life, as the player character heard it: with the
+# name of whom it was with (the child, for a birth) where they know one, and without. Nothing
+# on record says whether someone is a man or a woman, so no line here needs to know.
+_LIFE_WORDS = {
+    EN: {
+        LifeKind.PAIRED: ("Found a partner: {who}", "Found a partner"),
+        LifeKind.MARRIED: ("Married {who}", "Married"),
+        LifeKind.PARTED: ("Parted from {who}", "Parted from their partner"),
+        LifeKind.CHILD: ("Had a child: {who}", "Had a child"),
+        LifeKind.FRIENDS: ("Became close friends with {who}", "Made a close friend"),
+        LifeKind.FELL_OUT: ("Fell out with {who}", "Fell out with someone close to them"),
+    },
+    ES: {
+        LifeKind.PAIRED: ("Encontró pareja: {who}", "Encontró pareja"),
+        LifeKind.MARRIED: ("Se casó con {who}", "Se casó"),
+        LifeKind.PARTED: ("Rompió con {who}", "Rompió con su pareja"),
+        LifeKind.CHILD: ("Tuvo una criatura: {who}", "Tuvo una criatura"),
+        LifeKind.FRIENDS: ("Trabó una gran amistad con {who}", "Trabó una gran amistad"),
+        LifeKind.FELL_OUT: ("Se enemistó con {who}", "Se enemistó con alguien de su entorno"),
+    },
+    CA: {
+        LifeKind.PAIRED: ("Va trobar parella: {who}", "Va trobar parella"),
+        LifeKind.MARRIED: ("Es va casar amb {who}", "Es va casar"),
+        LifeKind.PARTED: ("Va trencar amb {who}", "Va trencar amb la seva parella"),
+        LifeKind.CHILD: ("Va tenir una criatura: {who}", "Va tenir una criatura"),
+        LifeKind.FRIENDS: ("Va fer una gran amistat amb {who}", "Va fer una gran amistat"),
+        LifeKind.FELL_OUT: ("Es va enemistar amb {who}", "Es va enemistar amb algú del seu entorn"),
+    },
+}
+# How many of them a person's entry shows, the latest.
+_LIFE_LINES = 6
+
 _BOND_WORDS = {
     EN: {
         "came": {
@@ -1579,6 +1613,7 @@ class _Knowledge:
         if kin := self.kin_line(c):
             lines.insert(0, kin)
         lines += self.facts_about(c.id)
+        lines += self.life_lines(c)
         attitude = None
         if self.player_id in c.met_by:
             attitude = attitude_of(c.attitude_toward(self.player_id).shown_affinity)
@@ -1596,6 +1631,27 @@ class _Knowledge:
             bond=stage,
             bond_line=bond_line,
         )
+
+    def life_lines(self, c: Character) -> list[str]:
+        """W6, C6. What came to someone in their own life while the story was elsewhere
+        (`engine.world.lives`), as far as the player character has heard: one line each with
+        its day, oldest first, in the story's language. Whom it was with is named only where
+        the player character knows them by a name of their own."""
+        lines = []
+        for event in lives_mod.of(self.state, c.id):
+            if self.player_id not in event.known_by:
+                continue
+            who_id = event.child_id if event.kind is LifeKind.CHILD else event.other(c.id)
+            who = self.state.characters.get(who_id or "")
+            named, bare = _LIFE_WORDS[self.language][event.kind]
+            if who is None or not self.knows(who) or lives_mod.unnamed(who):
+                text = bare
+            elif who.id in self.untold.people:
+                text = bare  # G1: the story's start still holds them back
+            else:
+                text = named.format(who=who.name)
+            lines.append(f"{self._on(text, event.world_s)}.")
+        return lines[-_LIFE_LINES:]
 
     def bond(self, c: Character, *, dead: bool) -> tuple[BondStage | None, str | None]:
         """W17, C6. The romance between someone and the player character as the character

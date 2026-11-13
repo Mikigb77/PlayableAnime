@@ -251,7 +251,7 @@ def test_the_owner_dictates_free_with_the_cost_recorded(model, make_user):
     assert Decimal(entry.detail["list_cents"]) > 0
 
 
-def test_the_rate_limit_and_the_daily_quota_apply(client, model, settings):
+def test_the_rate_limit_and_the_daily_quota_apply(client, model, settings, steady_minute):
     settings.BILLING = {
         **settings.BILLING,
         "PER_MINUTE": {**settings.BILLING["PER_MINUTE"], "speech": 1},

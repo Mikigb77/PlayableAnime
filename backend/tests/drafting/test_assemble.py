@@ -693,6 +693,20 @@ def test_how_couples_hold_and_a_persons_own_faith_come_from_the_draft():
     assert check_state(held) == []
 
 
+def test_someone_who_would_never_take_a_partner_is_so_from_the_draft():
+    """W6: over the years the world may give anyone single a partner, so the draft says who
+    never would take one, and everyone else is free to."""
+    zhao, mo = _world().npcs
+    npcs = [zhao, mo.model_copy(update={"solitary": True})]
+
+    state = assemble(_world(npcs=npcs), _grown())
+
+    assert state.characters[mo.id].solitary is True
+    assert state.characters[zhao.id].solitary is False
+    assert NpcP(id="lan", name="Lan Yue").solitary is False  # nobody is, unless the draft says
+    assert check_state(state) == []
+
+
 def test_several_partners_is_the_custom_only_where_the_draft_says_so():
     zhao, mo = _world().npcs
     npcs = [

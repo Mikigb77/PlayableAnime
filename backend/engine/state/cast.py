@@ -136,6 +136,22 @@ class Character(EngineModel):
         description="W17: how they hold to a partner, where the story has said. Otherwise it "
         "follows from who they are and from the custom of the world (`engine.bonds.faith`).",
     )
+    solitary: bool = Field(
+        default=False,
+        description="W6: the world gives them no partner of its own doing: a vow, a calling or "
+        "a nature that has no such thing. What the story itself brings them is the story's.",
+    )
+    born_s: WorldSeconds | None = Field(
+        default=None,
+        description="W10, N6: when they were born, for someone born in the story, so their "
+        "age is the years since (`engine.world.lives.grow_older`).",
+    )
+    seen_s: WorldSeconds | None = Field(
+        default=None,
+        description="W6: when the player character was last in a scene with them. Whoever "
+        "they were with lately leads no life of the world's making: those days are the "
+        "story's to tell (`engine.world.lives`).",
+    )
 
     @model_validator(mode="after")
     def _death_has_certainty(self) -> "Character":

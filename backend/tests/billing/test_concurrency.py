@@ -102,7 +102,9 @@ def test_the_same_ticket_charged_at_once_bills_once(player):
     _assert_reconciles(player)
 
 
-def test_the_rate_limit_counts_simultaneous_requests_exactly(player, billing_settings):
+def test_the_rate_limit_counts_simultaneous_requests_exactly(
+    player, billing_settings, steady_minute
+):
     """T9 across instances: of 10 turns at once with a limit of 7, exactly 7 start."""
     billing_settings["PER_MINUTE"]["turn"] = 7
 

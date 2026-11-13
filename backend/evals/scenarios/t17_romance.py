@@ -1368,7 +1368,12 @@ async def faithful(ev: Eval) -> None:
                         NIGHT_AS_DECIDED,
                     ),
                     must_not=(
-                        "Jorn is in a scene, or is told of it on the page",
+                        # He is in the village, so the record may have him see it: a live
+                        # scene that walked into Millbrook showed him, as its OUTCOME said
+                        # (2026-11-13).
+                        "Jorn is in a scene, or is told of it on the page, although no step "
+                        "of that scene's OUTCOME says he saw it (wrongs with saw_it true) and "
+                        "nothing under an OUTCOME's meanwhile says word reached him",
                         "The night, if there is one, is told in explicit sexual detail",
                     ),
                 ),

@@ -28,6 +28,7 @@ from engine.state.records import EventStatus, OriginKind
 from engine.state.sheet import Health
 from engine.state.world import WorldState, natural_key
 from engine.world import Kind, catch_up
+from engine.world.lives import grow_older
 
 # The age from which an heir is played: younger ones are played from that birthday on.
 AGE_OF_ACTION = 16
@@ -163,16 +164,12 @@ def time_jump(state: WorldState, until_s: int, ctx: TurnContext, rng: SeededRng)
     # Whatever the world didn't get to on the way still lies ahead of it.
     current.world_s = max(current.world_s, until_s)
     for character in current.characters.values():
-        before = state.characters.get(character.id)
-        if character.age is None or (before is not None and not before.alive):
-            continue  # the dead stay the age they died at
-        # Up to now, or to their death on the way.
-        end = current.world_s if character.alive else _died_s(character, start)
-        born = _born_s(current, character)
-        if born is not None:
-            character.age = max(0, (end - born) // YEAR)
-        elif before is not None:
-            character.age += (end - start) // YEAR
+        if character.born_s is None:
+            # A story from before a birth kept its own time: the birth's event has it.
+            character.born_s = _born_s(current, character)
+    # The world's ticks aged everyone on the way (`engine.world.lives`): this brings them up
+    # to the day the jump ends on.
+    grow_older(current, current.world_s, start)
     return current
 
 
@@ -198,14 +195,10 @@ def born_of(state: WorldState, carrier_id: str, due_s: int) -> Character | None:
     return None
 
 
-def _died_s(character: Character, start: int) -> int:
-    """When someone who died since `start` died, as their status history has it."""
-    death = next((c for c in reversed(character.status_history) if c.status == "dead"), None)
-    return max(start, death.world_s) if death is not None else start
-
-
 def _born_s(state: WorldState, character: Character) -> int | None:
     """When someone born in the story was born."""
+    if character.born_s is not None:
+        return character.born_s
     origin = character.origin
     if origin is None or origin.kind is not OriginKind.BIRTH or origin.ref_id is None:
         return None

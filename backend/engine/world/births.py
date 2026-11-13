@@ -70,10 +70,11 @@ def on_birth(w: World, event: PendingEvent) -> bool:
     child = Character(
         id=state.new_id("npc"),
         # A placeholder until the story names them; a rename keeps it as an alias.
-        name=_placeholder(state, carrier),
+        name=placeholder_name(state, carrier),
         prominence=Prominence.MINOR,
         description=f"A newborn, the child of {names}.",
         age=0,
+        born_s=w.at_s,
         people_id=carrier.people_id,
         location_id=carrier.location_id,
         parent_ids=[p.id for p in parents],
@@ -97,7 +98,7 @@ def is_placeholder(character: Character) -> bool:
     )
 
 
-def _placeholder(state: WorldState, carrier: Character) -> str:
+def placeholder_name(state: WorldState, carrier: Character) -> str:
     """ "Mira's child", then "Mira's child 2" for the next one still unnamed, within `Name`'s
     length."""
     base = f"{carrier.name[:NAME_ROOM]}'s child"

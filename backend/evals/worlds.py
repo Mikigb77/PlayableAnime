@@ -1485,6 +1485,48 @@ def sweethearts(*, heart: int = 75) -> WorldState:
     return state
 
 
+ALDITH = "sister-aldith"
+PELL = "pell-voss"
+MILLBROOK = (
+    ("edda-marsh", "Edda Marsh", 24, "The baker's daughter, up before anyone in Millbrook."),
+    ("wil-tanner", "Wil Tanner", 26, "The tanner's son, always a little too loud."),
+    ("hanne-brook", "Hanne Brook", 31, "A weaver who came up the valley alone."),
+    ("osric-fenn", "Osric Fenn", 35, "The carter who runs the Harrowgate road."),
+    (ALDITH, "Sister Aldith", 40, "Keeper of the valley shrine, sworn to it for life."),
+    (PELL, "Pell Voss", 12, "Mara's young brother, underfoot at the mill."),
+)
+
+
+def millbrook_he_knows() -> WorldState:
+    """`husband_in_millbrook` with a village to come home to (W6): Tomas lives alone and knows
+    everyone in Millbrook. Mara Voss and Jorn Hale are a settled couple, four neighbours are
+    single, Sister Aldith keeps the shrine under a vow and takes no partner, and Pell is a boy
+    of twelve. Harrowgate lies three days by cart beyond the village, far enough that no news
+    of the valley reaches someone who lives there."""
+    state = husband_in_millbrook(faith=Faith.STEADFAST, theirs=70)
+    for character_id, name, age, about in MILLBROOK:
+        state.characters[character_id] = Character(
+            id=character_id,
+            name=name,
+            age=age,
+            description=about,
+            location_id="village",
+            solitary=character_id == ALDITH,
+            known_by=["tomas"],
+            met_by=["tomas"],
+        )
+    state.places["city"] = Place(
+        id="city",
+        name="Harrowgate",
+        kind="city",
+        setting=PlaceSetting.OUTDOORS,
+        routes=[Route(to_id="village", travel_s=3 * 24 * 60 * MINUTE, mode="by cart")],
+        known_by=["tomas"],
+    )
+    state.summary = "Tomas Weller farms a small plot in the Long Valley, alone."
+    return state
+
+
 HARROWGATE_TALK = "The old duke of Harrowgate is dead, and his two sons both claim the seat."
 
 

@@ -10,6 +10,10 @@ goal, which advances a clock of theirs that moves only by effort. Travel is an o
 back from it (`engine.world.returns`). Each move is recorded as a fact
 with an agenda origin, for the director to draw on (W16) and for the model part of the tick (W6,
 P1) to tell as what they actually did. Dormant characters and factions don't move.
+
+Each tick also has everyone grow older with the world's years, and gives the people the story
+knows what the stretch brought their own lives: a partner, a wedding, a child, a parting, a
+friend or a foe (`engine.world.lives`, W6, W10).
 """
 
 import math
@@ -31,6 +35,7 @@ from engine.world.cast import enforce_caps, schedule_revivals
 from engine.world.clocks import advance, ensure_clock_events
 from engine.world.geography import news_neighbours
 from engine.world.knowledge import shift_attitude
+from engine.world.lives import live_on
 from engine.world.returns import left, trip_of
 from engine.world.scheduling import Kind, World, by_id, pending, schedule
 from engine.world.tuning import (
@@ -84,6 +89,8 @@ def on_tick(w: World, event: PendingEvent) -> None:
             if w.roll("moves", npc.id).chance(_odds(span, NPC_MOVE_MEAN_S)):
                 _npc_move(w, npc)
     _prune_agenda_facts(w)
+    # W6, W10: everyone grows older, and the people the story knows lead lives of their own.
+    live_on(w, last_s)
     schedule(
         w,
         Kind.TICK,

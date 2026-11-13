@@ -2,6 +2,7 @@ import io
 import json
 import logging
 import sys
+import time
 from datetime import date
 
 import pytest
@@ -26,6 +27,17 @@ def log_lines():
     finally:
         root.removeHandler(handler)
         root.setLevel(previous_level)
+
+
+@pytest.fixture
+def steady_minute():
+    """For a test that makes real requests against a per-minute limit: the limit counts in
+    fixed windows on the clock (`billing.limits`), so the requests must fall in one minute.
+    A test that starts in a minute's last seconds waits for the next one. On CI one draft went
+    out at 07:54:59.99 and the next at 07:55:00.02, and both were let through (2026-11-13)."""
+    left = 60 - time.time() % 60
+    if left < 5:
+        time.sleep(left + 0.05)
 
 
 @pytest.fixture(autouse=True)
