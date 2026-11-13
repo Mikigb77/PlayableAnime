@@ -18,7 +18,7 @@ import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from engine import injuries, limits, naming, possessions
+from engine import injuries, limits, naming, path, possessions
 from engine.context import ImageSetting, Language, TurnContext
 from engine.contracts import (
     ActionKind,
@@ -70,6 +70,8 @@ REAL_ENTITY = "real_entity"
 UNRECORDED_HARM = "unrecorded_harm"
 # R3: the issue code for a scene end that gave only the date or the hour.
 CLOCK_SCENE_END = "clock_scene_end"
+# G18: the update listed a rung above a ladder's top that the scene's words never named.
+RUNG_UNTOLD = "rung_untold"
 # B8: the issue code for a turn the larger model read again, and what its first reading would
 # have done that can't be taken back (W1).
 READ_AGAIN = "read_again"
@@ -445,7 +447,8 @@ def check_update(
     dead can't be present (C1), and the rolling summary is never blanked. A new character or
     faction named after a real person or organisation is left out, and a known one keeps its
     name (G12). What the engine already moved this turn (`moved`, the transfers its steps and
-    events made, C10) is left out, so a payment told in the scene is never made twice.
+    events made, C10) is left out, so a payment told in the scene is never made twice. A rung
+    above a ladder's top that the scene's own words never named is left out too (G18).
 
     `looks` false says the scene was written without the player character's appearance (R9).
     An appearance it writes for them all the same was made up, so it is left out and the kept
@@ -466,6 +469,13 @@ def check_update(
         if len(kept) < len(delta.items):
             issues.append(Issue("move_recorded", "the step already moved it"))
             delta = delta.model_copy(update={"items": kept})
+    if delta.rungs:
+        # G18, G7: a rung above a ladder's top is the story's once its own words name it, so
+        # the record never holds a rung the player didn't read of.
+        named = [rung for rung in delta.rungs if path.named(told, rung.name)]
+        if len(named) < len(delta.rungs):
+            issues.append(Issue(RUNG_UNTOLD, "the scene never named it"))
+            delta = delta.model_copy(update={"rungs": named})
     end = delta.scene_end
     if end is not None:
         end.ended_on = end.ended_on.strip()

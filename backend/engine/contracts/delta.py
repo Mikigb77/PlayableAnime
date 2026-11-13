@@ -9,7 +9,9 @@ rulings (A9), gains (A4), accepted backstory (N4), rule changes (G7), the state 
 skills, techniques, ladders, practice and time effects (A4, G19, W10a), and a romance: the
 bond between two people and how drawn someone is to another (W17). The narrator moves an
 attitude by at most `engine.apply.NARRATOR_ATTITUDE_CAP` per delta (W4). Resolve puts the
-engine's changes for each step in `StepResolution.effects`.
+engine's changes for each step in `StepResolution.effects`. A rung above a ladder's highest
+is the narrator's to name when its scene told one (`NewRung`), and the engine's to accept
+(`engine.path.beyond_problem`): nobody on record is put on it (G18, G7).
 
 Number fields on changes are deltas, clamped to their bounds when applied. `None` means
 "unchanged".
@@ -349,6 +351,22 @@ class GoalMoved(EngineModel):
     )
 
 
+class NewRung(EngineModel):
+    """G18, G7. A rung above a ladder's highest that this scene told by name, because the story
+    reached past the top: beings stronger than its highest rung came into it, or someone at the
+    top found that something lies beyond. Never a rung WORLD's ladders already list, and never
+    for a stage or a title within a rung. The engine decides whether it holds."""
+
+    ladder_id: str
+    name: Name = Field(description="The rung's name, exactly as the scene says it.")
+    description: str = Field(default="", description="What it is, in a sentence.")
+    stands: list[str] = Field(
+        default_factory=list,
+        description="The ids of characters this same update creates who stand on it, three at "
+        "most. Never someone already on record: nobody is lifted there.",
+    )
+
+
 class RuleChange(EngineModel):
     """G7. Engine only: an open rule changed by a discovery, for everyone. Fixed rules never
     change."""
@@ -401,6 +419,10 @@ class StateDelta(EngineModel):
     leads: list[NewLead] = Field(default_factory=list)
     goals_over: list[GoalOver] = Field(default_factory=list)
     goals_moved: list[GoalMoved] = Field(default_factory=list)
+    rungs: list[NewRung] = Field(
+        default_factory=list,
+        description="G18: a rung the scene told of above a ladder's highest. Almost always empty.",
+    )
     rule_changes: list[RuleChange] = Field(default_factory=list, description="Engine only (G7).")
     time_effects: list[ActiveTimeEffect] = Field(
         default_factory=list,

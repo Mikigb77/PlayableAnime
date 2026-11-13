@@ -27,6 +27,13 @@ character, the path says that they stand somewhere higher still and nothing else
 rung's name nor how far up it lies (`higher_still`), so a ladder widens when the story reaches
 past what the character knew.
 
+A ladder can gain a rung in the middle of a story, above the highest it had (G7: how far a
+power goes is open). The story names it and code decides whether it holds (`beyond_problem`):
+only once the character has been told of the ladder's highest rung, so the rungs the world
+started with are told first, and a rung the story added has to be climbed by someone before
+the ladder grows again, so it grows no faster than someone earns it. Nobody on record is put
+on a new rung: whoever stands on it came into the story with it, or climbed there.
+
 Names are matched as whole words, whatever their case or accents, and in the plural too ("two
 knights" names the rank Knight). A name of one or two letters, such as the A and S of a guild's
 ranks, counts only next to a word for a rank ("rank A", "an S-class hunter"), since alone it is
@@ -36,10 +43,14 @@ only a letter.
 import re
 from dataclasses import dataclass
 from functools import lru_cache
+from statistics import median
 
+from engine.base import TIER_MAX
+from engine.contracts.intent import GrowthKind
+from engine.invariants import is_real_name
 from engine.limits import normalize
 from engine.resolve.powers.sensing import position, shown_rung
-from engine.state.bible import PowerLadder
+from engine.state.bible import PowerLadder, RuleTopic
 from engine.state.cast import Character, Prominence
 from engine.state.records import FactKind
 from engine.state.sheet import RungHeard
@@ -257,3 +268,84 @@ def about(state: WorldState, character: Character, name: str, *, limit: int = 3)
             said.append((rumor.heard_at[character.id], rumor.text))
     said.sort(key=lambda entry: entry[0], reverse=True)
     return list(dict.fromkeys(text for _, text in said))[:limit]
+
+
+# --- A rung above the top (G18, G7) --------------------------------------------------------
+
+# How many people a new rung may bring into the story standing on it.
+CAME_WITH = 3
+
+
+def top_told(state: WorldState, ladder: PowerLadder) -> bool:
+    """Whether the story has told the player character of the ladder's highest rung: they
+    stand on it, or it is one of the rungs they know of (`known`), heard of or confirmed."""
+    player = state.player
+    top = len(ladder.rungs) - 1
+    if own_rung(player, ladder.id) >= top:
+        return True
+    return any(standing.rung == top for standing in known(state, player, ladder))
+
+
+def climbed_to(state: WorldState, name: str) -> bool:
+    """Whether anyone on record climbed to the rung of that name: their growth holds the
+    breakthrough to it, the player character's (`engine.resolve.powers.growth`) or anyone
+    else's over the years (`engine.world.lives`). Whoever came into the story already
+    standing on a rung never climbed to it."""
+    return any(
+        gain.source == GrowthKind.BREAKTHROUGH.value and gain.what == name and not gain.loss
+        for character in state.characters.values()
+        for gain in character.sheet.growth
+    )
+
+
+def above_tier(ladder: PowerLadder) -> int | None:
+    """A8. The tier of a rung above the ladder's highest: as far above it as the ladder's
+    rungs usually lie apart, a tier at least, and no further than the scale goes. None where
+    the highest rung already stands at the end of the scale."""
+    top = ladder.rungs[-1].tier
+    if top >= TIER_MAX:
+        return None
+    steps = [b.tier - a.tier for a, b in zip(ladder.rungs, ladder.rungs[1:], strict=False)]
+    steps = [step for step in steps if step > 0]
+    step = max(1, round(median(steps))) if steps else 1
+    return min(TIER_MAX, top + step)
+
+
+def top_problem(state: WorldState, ladder: PowerLadder) -> str | None:
+    """G18, G7. Why nothing can be put above the ladder's highest rung right now, whatever it
+    is called, or None where the story can reach past it.
+
+    - No rule that never changes holds the ladder there (G7): a fixed rule on how far a power
+      goes that names the highest rung, such as "nobody ever passes the S rank". An open
+      rule is what a discovery breaks, so it stops nothing.
+    - The scale has room above the highest rung (`above_tier`).
+    - The player character has been told of the highest rung (`top_told`). While rungs they
+      haven't heard of lie above what they know, the world has more to tell before the story
+      can reach past it.
+    - A rung the story added is climbed before the ladder grows again (`climbed_to`): someone
+      broke through to it, by their own work or the world's years. So however the story goes,
+      a ladder grows no faster than someone earns its last rung."""
+    top = ladder.rungs[-1]
+    for rule in state.bible.rules:
+        if rule.fixed and rule.topic is RuleTopic.LIMITS and named(rule.text, top.name):
+            return f"a rule that never changes holds the ladder at {top.name} (G7)"
+    if above_tier(ladder) is None:
+        return f"nothing stands above {top.name}: the scale ends there"
+    if not top_told(state, ladder):
+        return f"the story hasn't told them of {top.name} yet: the rungs it has come first"
+    if top.added_s is not None and not climbed_to(state, top.name):
+        return f"nobody has climbed to {top.name} yet, and the ladder grows no faster than that"
+    return None
+
+
+def beyond_problem(state: WorldState, ladder: PowerLadder, name: str) -> str | None:
+    """G18, G7. Why the story can't put a rung called `name` above the ladder's highest right
+    now, or None where it can: the name is a name, no rung of the world's ladders has it
+    already, and the story has reached the ladder's top (`top_problem`)."""
+    if not is_real_name(name):
+        return f"{name!r} isn't a name"
+    said = normalize(name)
+    for other in state.bible.ladders:
+        if any(normalize(rung.name) == said for rung in other.rungs):
+            return f"{other.name} already has a rung called {name}"
+    return top_problem(state, ladder)

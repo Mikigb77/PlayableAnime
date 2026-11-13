@@ -1006,6 +1006,24 @@ their own record shows. Nobody is lifted: nothing here reads the player characte
 `evals/scenarios/t17_climbing.py` plays it end to end as `t17.others-rise`, in
 `worlds.azure_peak_he_leaves`.
 
+**A ladder grows past its top (G18, G7).** When the story reaches past the highest rung of one
+of the world's ladders, the scene that names a rung above it adds that rung. The narrator
+proposes it and code decides. Nobody on record is put on it.
+
+| Piece | What |
+| --- | --- |
+| `NewRung`, `StateDelta.rungs` (`engine/contracts/delta.py`) | What the narrator lists: `ladder_id`, the rung's `name` as the scene says it, a `description`, and `stands`, the ids of characters this same update creates who stand on it. |
+| `Rung.added_s` (`engine/state/bible.py`) | When the story put the rung above the top its ladder was drafted with. None for a rung the world started with. Stored state takes it with no migration. |
+| `engine/path.py` | `top_problem(state, ladder)` says why the story can't pass a ladder's top, or None: a fixed `RuleTopic.LIMITS` rule names the top rung (`named`), the scale of A8 has no room (`above_tier` is None at `TIER_MAX`), the player character hasn't been told of the top (`top_told`: they stand on it or it is among `known`), or the top is itself story-added and nobody has broken through to it (`climbed_to` reads a breakthrough `Gain` of that name on anyone's sheet). `beyond_problem(state, ladder, name)` adds the name: a real one (`naming.is_real_name`) that no rung of any ladder has. `above_tier` is the top's tier plus the median step between the ladder's rungs, one at least. `CAME_WITH` is how many can come standing on a new rung. |
+| `engine/apply.py` | `_Applier.rung` refuses with the reason (`Rejection`, area `ladder.rung`) or appends `Rung(name, tier=above_tier, loud as the last, no needs, no lifespan, added_s=now)`. A second rung in the same update stands above a top nobody has heard of or climbed to yet, so a ladder gains one a scene. Of `stands` it places only characters this same update created (`created`, filled by `new_character`), `CAME_WITH` at most, on the new rung, with the ladder's axis raised to its tier, and rejects the rest: nobody is lifted. |
+| `graph/turn/check.py` | `check_update` drops a rung whose name the scene's words don't hold (`path.named`), as a `rung_untold` issue, before anything is applied. |
+| `engine/resolve/powers/growth.py` | A breakthrough from the top is ruled out with `no_rung_above(ladder)`: "Nothing anyone knows of lies above X." |
+| `graph/turn/context.py` | `_beyond` adds `beyond` to that step under OUTCOME when `top_problem` is None: the one place the narrator is told a ladder can grow, since its standing text is at the length the starter credit allows (K1). `_world_view` keeps `added_s` out of WORLD. |
+| What follows by the standing rules | `pipeline.settle_path` has the player character hear of the rung from the scene that named it (`path.hear`, a `rung_heard` issue), and seeing a newcomer who stands on it confirms it, so the Path screen (`visibility.status_view`) grows with no change to the app. `growth.rank_of` gives the player character at the old top a rank to fill, at `rung_need_s` of the new rung. `lives._climb` picks up whoever stands on the old top: their `yearly_s` was never read there, so it is read at the age they have then. `old_age.open_ended` holds for whoever stands on a rung with no lifespan. |
+
+`evals/scenarios/t17_ladder.py` plays it end to end as `t17.ladder-grows`, in
+`worlds.azure_peak_he_leaves`.
+
 **The wider world moves (W6, W7).** Wars between factions come to a head over the years, by
 code alone: the facts decide where they can (A2), a seeded throw where they leave it open
 (A3), and nothing is timed in turns (W10).
