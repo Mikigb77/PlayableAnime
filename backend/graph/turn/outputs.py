@@ -71,7 +71,8 @@ class NarratorOutput(BaseModel):
         default_factory=list,
         description=(
             "W6: the id of every piece of news (news under a person in the brief) that this"
-            " scene showed or said. Empty when the brief has no news, or the scene told none."
+            " scene showed or said, naming whoever it came with. Empty when the brief has no"
+            " news, or the scene told none."
         ),
     )
     suggestions: list[SuggestionOut] = Field(

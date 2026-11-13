@@ -24,19 +24,23 @@ leaves alone whoever they are courting while they are near. Someone they courted
 left for years may well find someone, the less likely the more their heart is with the
 player character.
 
-What changes is on the records it touches: a romance (`WorldState.bonds`), a child or a
-partner the record didn't have, as a minor character with a placeholder name until the story
-names them, and how two people feel about each other. The news of it is a `LifeEvent`, known
-to the two it came to, and to the player character at once when they know one of the two and
-live near them (the same place, or within a day of it). Otherwise it is news of the two
-(`news_of`): the narrator is shown it whenever one of them is in the scene or about to be,
-and the player character has heard it once a scene told it (`settle`), never before. News is
-of someone they had met by then: what came to a stranger before the two ever met is who that
-person is (`Character.met_s`), and when someone else becomes the player character they have
-been with their own people all along (`hand_over`). Where someone lives is
-where the story put them, or where they set out from while the world has them out on a trip
-(`_Homes`): a partner or a child the world brings is at home there, and nobody hears a
-neighbour's news for being in town the day it happened.
+What changes is on the records it touches: a romance (`WorldState.bonds`), a child or a partner
+the record didn't have, as a minor character with a placeholder name until the story names
+them, and how two people feel about each other. The news of it is a `LifeEvent`, known to the
+two it came to, and to the player character at once when they know one of the two and live near
+them (the same place, or within a day of it). Otherwise it is news of the two (`news_of`): the
+narrator is shown it whenever one of them is in the scene or about to be, and the player
+character has heard it once a scene told it (`settle`), never before, where a scene has told
+what its own words bear out (`borne_out`). News is of someone they had met by then: what came
+to a stranger before the two ever met is who that person is (`Character.met_s`), and when
+someone else becomes the player character they have been with their own people all along
+(`hand_over`). Where someone lives is where the story put them, or where they set out from
+while the world has them out on a trip (`_Homes`): a partner or a child the world brings is at
+home there, and nobody hears a neighbour's news for being in town the day it happened.
+
+How long the two have been apart (`apart_s`) counts from the last scene they shared or from
+when they last lived near each other (`_beside`), so neighbours of ten years are nobody to
+meet again, and someone left behind for ten years is, until a scene has the two together.
 
 Nobody dies of old age yet. Until that is built, whoever has outlived their people's span
 gets no new partner, friend or foe (`_spent`).
@@ -46,7 +50,7 @@ import re
 import zlib
 from collections.abc import Iterable
 
-from engine import bonds
+from engine import bonds, naming
 from engine.base import YEAR
 from engine.limits import ADULT_AGE, is_adult
 from engine.state.cast import Character, CharacterStatus, DeathCertainty, Prominence
@@ -72,6 +76,7 @@ from engine.world.tuning import (
     CHILD_RATE_TOGETHER,
     FOE_AT,
     FRIEND_AT,
+    LIFE_APART_S,
     LIFE_NEAR_S,
     LIFE_QUIET_S,
     LIFE_SETTLED,
@@ -310,10 +315,11 @@ def live_on(w: World, since_s: int) -> None:
     pair of neighbours gets what the years bring, one thing of a kind at most per stretch."""
     state = w.state
     grow_older(state, w.at_s, since_s)
+    homes = _Homes(state)
+    _beside(state, homes, since_s, w.at_s)
     if w.at_s <= since_s:
         return
     people = living(state)
-    homes = _Homes(state)
     years = {p.id: _years(p, since_s, w.at_s) for p in people}
     whole = (w.at_s - since_s) / YEAR
     for bond in sorted(state.bonds.values(), key=lambda b: natural_key(b.id)):
@@ -335,6 +341,42 @@ def live_on(w: World, since_s: int) -> None:
         if years[person.id] > 0:
             _tie(w, homes, person, years[person.id], known)
     _prune(state)
+
+
+def _beside(state: WorldState, homes: _Homes, since_s: int, now_s: int) -> None:
+    """Whoever lives near the player character, and was with or near them when this stretch
+    began or within `LIFE_APART_S` before it, has been near them up to now
+    (`Character.near_s`): the two haven't been apart, though no scene had them together.
+    Someone the player character comes back to after longer than that stays apart from them
+    until a scene has the two together."""
+    you = state.player
+    near: dict[str | None, bool] = {}  # by where someone lives: the map is read once a place
+    for person in state.characters.values():
+        if person.id == you.id or not person.alive:
+            continue
+        last = _last_with(person)
+        if last is None or last < since_s - LIFE_APART_S:
+            continue
+        home = homes.of(person)
+        if home not in near:
+            near[home] = homes.near(you, person)
+        if near[home]:
+            person.near_s = now_s
+
+
+def apart_s(state: WorldState, person: Character) -> int | None:
+    """How long the player character and someone have been apart: since the two were last in
+    a scene together (`seen_s`) or last lived near each other (`near_s`). None when the
+    record has them together at neither. A neighbour of ten years is nobody to meet again,
+    and someone left behind for ten years is."""
+    last = _last_with(person)
+    return None if last is None else max(0, state.world_s - last)
+
+
+def _last_with(person: Character) -> int | None:
+    """When the player character and someone were last together: in a scene, or living near
+    each other, whichever came later."""
+    return max((s for s in (person.seen_s, person.near_s) if s is not None), default=None)
 
 
 def _news(
@@ -651,6 +693,7 @@ def hand_over(state: WorldState) -> None:
     for character in state.characters.values():
         theirs = character.id != you and you in character.met_by
         character.seen_s = state.world_s if theirs else None
+        character.near_s = None  # the next tick says who lives near them
         character.met_s = None
         if theirs:
             met.add(character.id)
@@ -680,6 +723,34 @@ def told_by_naming(before: WorldState, after: WorldState, shown: Iterable[str]) 
         elif event.kind is LifeKind.PAIRED and any(named(i) for i in event.subject_ids):
             told.append(key)
     return told
+
+
+def borne_out(
+    state: WorldState, told: Iterable[str], scene: str, *, there: Iterable[str] | None = None
+) -> list[str]:
+    """Of the news a scene says it told, by id, what its words bear out (C6): a piece is told
+    where the scene names whoever it came with, by a name of their own (`naming.named_in`).
+    For a birth that is the child. Otherwise it is whichever of the two wasn't in the scene
+    (`there`, or whoever the scene ended with), or either of them where both were. Someone
+    still under the name the world gave them can't be named by it: a scene that gives them a
+    name of their own has told the news that brought them (`told_by_naming`).
+
+    In the second live story of a homecoming (2026-11-13) the narrator listed all the news it
+    was handed under a scene that said none of it, so Memory held what no scene had told."""
+    here = set(state.scene.present_ids if there is None else there)
+    events = [e for key in dict.fromkeys(told) if (e := state.lives.get(key)) is not None]
+
+    def came_with(event: LifeEvent) -> list[str]:
+        if event.kind is LifeKind.CHILD:
+            return [event.child_id] if event.child_id else []
+        return [i for i in event.subject_ids if i not in here] or list(event.subject_ids)
+
+    people = state.characters
+    named = {i for e in events for i in came_with(e) if i in people and not unnamed(people[i])}
+    # The people of the scene share the words of their names with whoever the news names.
+    among = sorted(named | {i for i in here if i in people}, key=natural_key)
+    said = named.intersection(naming.named_in(state, [scene], among, anywhere=True))
+    return [e.id for e in events if said.intersection(came_with(e))]
 
 
 def settle(state: WorldState, told: Iterable[str] = ()) -> tuple[WorldState, list[str]]:

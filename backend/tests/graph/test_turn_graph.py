@@ -1338,8 +1338,9 @@ def test_a_scene_with_someone_is_where_the_player_character_hears_of_their_years
     fake, make_client, log_lines
 ):
     """W6, C6: Lin hasn't seen Zhao in three years, and nobody told him Zhao made a friend of
-    Elder Mo. The narrator reads both for the scene the two meet in. A scene that tells none
-    of it leaves it news, and the next one is handed it again; once a scene says it told it,
+    Elder Mo. The narrator reads both for the scene the two meet in, and the brief says
+    outright that they meet again. A scene that tells none of it leaves it news, whatever its
+    answer lists, and the next one is handed it again; once a scene tells it, naming Elder Mo,
     the record has it heard. Code holds the answer to the news the brief handed the scene:
     what the narrator lists beyond it counts for nothing."""
     start = cultivation_world()
@@ -1362,9 +1363,14 @@ def test_a_scene_with_someone_is_where_the_player_character_hears_of_their_years
         known_by=["wei", "elder-mo"],
     )
 
-    def zhao_in_the_brief() -> dict:
+    def section(name: str):
         brief = fake.calls(Node.NARRATOR)[-1].prompt.messages[-1].text
-        return json.loads(brief.split("## SCENE\n", 1)[1].split("\n\n## ", 1)[0])["present"][0]
+        if f"## {name}\n" not in brief:
+            return None
+        return json.loads(brief.split(f"## {name}\n", 1)[1].split("\n\n## ", 1)[0])
+
+    def zhao_in_the_brief() -> dict:
+        return section("SCENE")["present"][0]
 
     news = {
         "id": "life-1",
@@ -1372,13 +1378,18 @@ def test_a_scene_with_someone_is_where_the_player_character_hears_of_their_years
         "when": "2 years ago",
         "with": {"id": "elder-mo", "name": "Elder Mo"},
     }
-    # A scene that tells none of it, and says so.
+    # A scene that tells none of it, though its answer lists the news as told: the scene's
+    # own words name nobody the news came with (the second live story of a homecoming,
+    # 2026-11-13).
     fake.script(Node.INTERPRET, Reply(json=STONE))
-    fake.script(Node.NARRATOR, Reply(json=SCENE))
+    fake.script(Node.NARRATOR, Reply(json=SCENE | {"told_news": ["life-1"]}))
     _, result = play(make_client(), turn_input(start))
 
     zhao = zhao_in_the_brief()
     assert zhao["last_seen"] == "3 years ago" and zhao["news"] == [news]
+    again = section("MEETING AGAIN")
+    assert again["people"] == [{"who": "Zhao Kun", "last_seen": "3 years ago"}]
+    assert "first time" in again["tell"] and "at least one piece of the news" in again["tell"]
     silent = result.state
     assert silent.characters["zhao"].seen_s == silent.world_s > start.world_s
     assert silent.characters["elder-mo"].seen_s is None  # he wasn't there
@@ -1386,12 +1397,17 @@ def test_a_scene_with_someone_is_where_the_player_character_hears_of_their_years
     assert not [i for i in result.issues if i.code == "life_heard"]
 
     # The next scene with him is handed it again, and tells it.
+    telling = SCENE | {
+        "narration": 'Zhao ducks the stone. "Elder Mo and I are thick as thieves now," he says.',
+        "told_news": ["life-1", "life-2", "life-9"],
+    }
     fake.script(Node.INTERPRET, Reply(json=STONE))
-    fake.script(Node.NARRATOR, Reply(json=SCENE | {"told_news": ["life-1", "life-2", "life-9"]}))
+    fake.script(Node.NARRATOR, Reply(json=telling))
     _, result = play(make_client(), turn_input(silent))
 
     zhao = zhao_in_the_brief()
     assert "last_seen" not in zhao and zhao["news"] == [news]
+    assert section("MEETING AGAIN") is None  # they met a scene ago
     after = result.state
     assert after.lives["life-1"].known_by == ["zhao", "elder-mo", "lin"]
     assert after.lives["life-2"].known_by == ["wei", "elder-mo"]  # the brief never held it

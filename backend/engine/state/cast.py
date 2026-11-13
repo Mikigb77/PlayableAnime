@@ -152,6 +152,12 @@ class Character(EngineModel):
         "they were with lately leads no life of the world's making: those days are the "
         "story's to tell (`engine.world.lives`).",
     )
+    near_s: WorldSeconds | None = Field(
+        default=None,
+        description="W6: when the player character last lived near them, within a day of "
+        "where they live, as of the world's last tick. Neighbours haven't been apart, however "
+        "long since the two shared a scene (`engine.world.lives.apart_s`).",
+    )
     met_s: WorldSeconds | None = Field(
         default=None,
         description="W6: when the player character first met them, for someone they met in "
