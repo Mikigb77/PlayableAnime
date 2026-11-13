@@ -7,6 +7,7 @@ from evals.scenarios import (  # noqa: F401  (registers them)
     t17_climbing,
     t17_ladder,
     t17_lives,
+    t17_newcomers,
     t17_old_age,
     t17_play,
     t17_powers,

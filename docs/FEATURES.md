@@ -177,6 +177,11 @@ The first version's state, checked against the code in WS18.
       lifted onto it: the character's rank starts to fill toward it, others climb toward it
       at their own pace, and only beings that same scene brought in stand on it (G18, G7,
       G19, W6).
+- [x] Someone the story brings in comes standing on their rung: where the world has a
+      ladder, the narrator says on a character it creates which rung they stand on, and the
+      record has them there with that power, so an elder who walks into a scene is an elder
+      to the engine too, and the years take them on like anyone. Only for someone new:
+      nobody already in the story is lifted by a scene's word (G18, A4, W6, C6).
 - [x] Voice dictation of actions and premises, with a transcript the player edits before sending
       (V1 to V7)
 - [x] Basic safety: content rating per story, model safety settings, report and block (F6 to F8)

@@ -156,6 +156,13 @@ class CharacterChange(EngineModel):
     condition: ConditionChange | None = None
     faction_id: str | None = Field(default=None, description="Joins this faction, or re-ranks.")
     rank: str | None = None
+    rung: str | None = Field(
+        default=None,
+        description="G18: only for someone new, where the world has a ladder and they are "
+        "someone who stands on it: the name of their rung, as WORLD lists it. Most people the "
+        "story brings in stand on the lowest rungs or on none. Never for someone already on "
+        "record: nobody is lifted, they climb.",
+    )
     meets_player: bool = False
     known_to_player: bool = False
     parent_ids: list[str] = Field(
