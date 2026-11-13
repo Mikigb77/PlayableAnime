@@ -10,7 +10,7 @@ from engine import bonds
 from engine.context import Rating, StorySettings, TurnContext
 from engine.contracts import OutcomeClass
 from engine.samples import farm_world
-from engine.state.cast import Character
+from engine.state.cast import Character, Place, Route
 from engine.state.records import Bond, BondStage, BondStep, StepResult
 from engine.state.sheet import Attitude
 from engine.state.world import WorldState
@@ -261,3 +261,55 @@ def test_a_partner_whose_heart_is_gone_comes_to_end_it_and_no_scene_mends_it(fak
     assert (bond.stage, bond.steps[-1].by_id, bond.steps[-1].turn) == (BondStage.OVER, "ilse", 2)
     assert bonds.partners(result.state, "tomas") == []
     assert feels(result.state)[2] == 30
+
+
+def alone() -> dict:
+    """The scripted scene, ending at the farm gate with nobody but Tomas in it."""
+    told = scene()
+    told["update"]["scene_end"]["present_ids"] = ["tomas"]
+    return told
+
+
+def test_an_ask_to_someone_a_short_walk_away_goes_to_them(fake, make_client):
+    """W10: she is in Millbrook and he is at his gate. The step goes to her first, so she
+    answers where she is: the scene is told the walk and that she is here, and it ends there
+    whatever place the narrator gave."""
+    state = farm(bonds.DECLARE_SURE, BondStage.COURTING)
+    state.characters["mara"].location_id = "village"
+    state.scene.present_ids = ["tomas"]
+    result = play(fake, make_client, state, asked("declare"), alone(), "I ask Mara to be mine")
+
+    [step] = result.resolution.steps
+    assert (step.outcome_class, step.result) == (OutcomeClass.CERTAIN, StepResult.SUCCESS)
+    assert step.trip.to_id == "village" and step.trip.arrived
+    assert step.duration_s == 40 * 60  # the walk is the least it takes
+    assert bonds.live(result.state, "tomas", "mara").stage is BondStage.TOGETHER
+    assert result.state.characters["tomas"].location_id == "village"
+    assert result.state.scene.place_id == "village"
+    told = fake.calls(Node.NARRATOR)[-1].prompt.messages[-1].text
+    trip = outcome(fake)["steps"][0]["trip"]
+    assert trip == {"to": "Millbrook", "to_id": "village", "arrived": True}
+    [mara] = [p for p in json.loads(section(told, "WHO ELSE")) if p["id"] == "mara"]
+    assert mara["here"] is True
+
+
+def test_an_ask_to_someone_far_off_reaches_nobody(fake, make_client):
+    """W10: she is in a town three hours down the road. Her heart would say yes, and nothing
+    is on record all the same: the scene is told she isn't here, and lists her as elsewhere."""
+    state = farm(bonds.DECLARE_SURE, BondStage.COURTING)
+    state.places["town"] = Place(id="town", name="Harrow", kind="town", known_by=["tomas"])
+    state.places["farm"].routes.append(Route(to_id="town", travel_s=3 * 60 * 60))
+    state.characters["mara"].location_id = "town"
+    state.scene.present_ids = ["tomas"]
+    result = play(fake, make_client, state, asked("declare"), alone(), "I ask Mara to be mine")
+
+    [step] = result.resolution.steps
+    assert (step.outcome_class, step.result) == (OutcomeClass.RULED_OUT, StepResult.FAILURE)
+    assert step.reason == "Mara isn't here." and step.trip is None
+    assert bonds.live(result.state, "tomas", "mara").stage is BondStage.COURTING
+    assert result.state.characters["tomas"].location_id == "farm"
+    assert not result.state.deeds  # and nothing that would wrong his wife was done
+    told = fake.calls(Node.NARRATOR)[-1].prompt.messages[-1].text
+    assert outcome(fake)["steps"][0]["why"] == "Mara isn't here."
+    [mara] = [p for p in json.loads(section(told, "WHO ELSE")) if p["id"] == "mara"]
+    assert "here" not in mara and mara["bond_with_you"]["stage"] == "courting"

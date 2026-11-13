@@ -25,6 +25,11 @@ recorded adult (F3).
 
 A move that wrongs someone is a deed (`deed`, W1): whoever is a couple with either of the two
 may see it or come to hear of it, and what they make of it is the world's (`engine.world`).
+
+The other has to be there (`_reach`, W10): in the scene, or on record at the place the step
+plays, where the scene can bring them in. Toward someone who is elsewhere and not far, the step
+goes to them first (`Wooing.goes`), and the way is made whatever they answer. Toward anyone
+further off it is ruled out with nothing on record. Parting needs nobody there.
 """
 
 from __future__ import annotations
@@ -35,13 +40,21 @@ from engine import bonds
 from engine.context import Language
 from engine.contracts.delta import AttitudeShift, BondChange, CharacterChange, StateDelta
 from engine.contracts.intent import IntentStep, OutcomeClass, RomanceMove
-from engine.contracts.resolution import ProposedDeed, StepResolution, WooingSoFar
+from engine.contracts.resolution import ProposedDeed, StepResolution, Trip, WooingSoFar
 from engine.limits import Intimacy, intimacy, is_adult, partners
 from engine.resolve.checks import Settled
 from engine.state.cast import Character
 from engine.state.records import BondStage, StepResult
 from engine.state.world import WorldState
+from engine.world import journeys
+from engine.world.geography import scene_ids, together
 from engine.world.norms import COURT, LIE_WITH, WED
+
+# W10. How far a move in a romance goes to find someone who is elsewhere: an errand of under an
+# hour, or a way that takes no more than this part of the time the step gives it, so a week of
+# courting goes to someone a day's ride off and a kiss doesn't.
+NEAR_S = journeys.NEARBY_S
+REACH = 4
 
 _STANDS = {
     BondStage.TOGETHER: "are together",
@@ -78,6 +91,8 @@ class Wooing:
     step: IntentStep
     settled: Settled | None = None
     family: bool = False  # the two are close family, so nothing of this is ever on record
+    away: bool = False  # they aren't where the step plays, so nothing of it reached them
+    goes: Trip | None = None  # the way to them, when the step goes to them first (W10)
 
 
 def heart_of(state: WorldState, actor: Character, other: Character) -> Heart:
@@ -96,11 +111,16 @@ def read(
     step: IntentStep,
     language: Language,
     hearts: dict[str, Heart],
+    place_id: str | None = None,
+    trip: Trip | None = None,
+    *,
+    held: bool = False,
 ) -> Wooing | None:
     """The step as a move in a romance, or None when it is none: a step that aims harm, one
     whose words are sexual violence, one with nobody on record to be with, and anything
     between people who aren't both recorded adults (F3). `hearts` is what this plan's earlier
-    steps made of the romances they moved."""
+    steps made of the romances they moved and `place_id` where they took the actor. `trip` is
+    where the step itself goes, and `held` whether the actor can't walk off to anyone now."""
     if actor.id != state.player_id or step.aim.harmful:
         return None
     words = intimacy(step, language)
@@ -113,15 +133,57 @@ def read(
     if other is None or not (is_adult(actor) and is_adult(other)):
         return None
     heart = hearts.get(other.id) or heart_of(state, actor, other)
+    away, goes = False, None
+    if move is not RomanceMove.PART:
+        away, goes = _reach(state, actor, other, step, place_id, trip, held)
     wooing = Wooing(
         move=move,
         other=other,
         intimate=words is Intimacy.SEXUAL,
         heart=heart,
         step=step.model_copy(update={"romance": move}),
+        away=away,
+        goes=goes,
     )
     family = bonds.kin(state.characters, actor.id, other.id)
     return replace(wooing, settled=_ruling(state, actor, wooing), family=family)
+
+
+def _reach(
+    state: WorldState,
+    actor: Character,
+    other: Character,
+    step: IntentStep,
+    place_id: str | None,
+    trip: Trip | None,
+    held: bool,
+) -> tuple[bool, Trip | None]:
+    """W10. Whether the other is out of the step's reach, and the trip that takes the actor to
+    them when the step has to go to them first.
+
+    They are within reach when the scene has them, or the record has them at the place the
+    step plays: where its own trip goes, else where the plan has brought the actor. There the
+    scene can bring them in (W4). Someone the record doesn't place is the scene's to place.
+    Anyone else is elsewhere, and the step goes to them when the actor can find the way
+    (`journeys.to_someone`) and it is short: an errand of under an hour, or no more than a
+    part of the time the step takes (`REACH`). It doesn't when the step already goes somewhere
+    else, or while the actor can't walk off (`held`): then nothing of it reaches them."""
+    if other.id in scene_ids(state):
+        return False, None
+    spot = place_id or actor.location_id or state.scene.place_id
+    if trip is not None:
+        spot = trip.to_id
+    where = other.location_id
+    if spot not in state.places or where not in state.places or together(state, where, spot):
+        return False, None
+    if trip is not None or held:
+        return True, None
+    way = journeys.to_someone(state, actor, other, spot)
+    if way is None or way.route_s is None:
+        return True, None
+    if way.route_s > max(NEAR_S, step.proposed_duration_s // REACH):
+        return True, None
+    return False, way
 
 
 def _with(state: WorldState, actor: Character, step: IntentStep) -> Character | None:
@@ -151,6 +213,8 @@ def _ruling(state: WorldState, actor: Character, wooing: Wooing) -> Settled | No
         if stage is None:
             return _no(f"There is nothing between you and {them} to end.")
         return _yes("Ending it is yours to do.")
+    if wooing.away:
+        return _no(f"{them} isn't here.")
     closed = bonds.closed_to(state, wooing.other, actor.id)
     if wooing.move is RomanceMove.WED:
         if stage is BondStage.MARRIED:
@@ -244,8 +308,10 @@ def settle(
     the stage this earned. The first move opens the romance, whatever came of it."""
     heart = wooing.heart
     told = _Told(actor, wooing.other, heart.stage, heart.attraction, heart.moved_s)
-    if wooing.family and wooing.move is not RomanceMove.PART:
-        return told.done()  # nothing of the kind is ever between close family
+    if (wooing.family or wooing.away) and wooing.move is not RomanceMove.PART:
+        # Nothing of the kind is ever between close family, and nothing reached someone who
+        # wasn't there.
+        return told.done()
     them, mover = wooing.other.name, actor.name
     happened = settled.outcome_class is not OutcomeClass.RULED_OUT
     won = happened and settled.result is StepResult.SUCCESS
@@ -363,7 +429,7 @@ def deed(
     and where it took the two (`bonds.gravity`, `now` being where the romance stands after
     it). `hearts` is where this plan's earlier steps left the actor's other romances: a
     partner the actor has just left isn't wronged by what comes after."""
-    if wooing.family or wooing.move is RomanceMove.PART:
+    if wooing.family or wooing.away or wooing.move is RomanceMove.PART:
         return None
     before, after = wooing.heart.stage, now.stage
     wed = wooing.move is RomanceMove.WED
