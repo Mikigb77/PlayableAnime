@@ -151,6 +151,16 @@ def test_a_long_lived_people_take_the_climb_up_later_by_the_same_measure():
     assert climbing.yearly_s(state, elf, ladder, position, 110) == 2.5 * HOUR
 
 
+def test_a_people_old_age_never_takes_take_the_climb_up_at_the_age_humans_do():
+    """G23: an endless life is no measure of when a climb begins, or of how fast it goes."""
+    state = climbers(villager("lich", "Varn", 32, people_id="undead"))
+    state.bible.peoples = [People(id="undead", name="the undead", lifespan_years=0)]
+    lich = state.characters["lich"]
+
+    assert climbing.years_at_it(state, lich, 32) == pytest.approx(20)  # since twelve
+    assert climbing.years_at_it(state, lich, 13) == pytest.approx(2)
+
+
 def test_on_the_lowest_rung_talent_sets_the_pace_and_above_it_the_record_already_shows_it():
     state = climbers(villager("kid", "Kid", 16))
     kid, ladder = state.characters["kid"], state.bible.ladders[0]

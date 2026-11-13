@@ -8,7 +8,9 @@ between and from nothing else, so a month takes next to nobody, a hundred years 
 mortal, and the odds are the same however the world's ticks cut the years (W10).
 
 How long someone lives is the longest of three things on record. Their people's lifespan
-(G23), a human one where the world doesn't say. Their rung's, where climbing the world's
+(G23), a human one where the world doesn't say, and as good as for ever for a people old age
+never takes, which the record gives a lifespan of 0 (`ageless`): the undead, spirits,
+machines. Their rung's, where climbing the world's
 ladder lengthens life (`Rung.lifespan_years`, G19): whoever breaks through outlives those who
 never did (Miki, 2026-11-13: "if they are training for 100 years, either they are dead of old
 age or some of them might actually successfully improved"). And a span of their own
@@ -32,13 +34,27 @@ import math
 from engine.base import YEAR
 from engine.state.cast import Character
 from engine.state.world import WorldState
-from engine.world.tuning import LIFESPAN_YEARS, OLD_AGE_FROM, OWN_SPAN
+from engine.world.tuning import AGELESS_YEARS, LIFESPAN_YEARS, OLD_AGE_FROM, OWN_SPAN
+
+
+def _lifespan(state: WorldState, person: Character) -> int | None:
+    """Their people's lifespan as the record has it: None where it doesn't say, or where they
+    are of no people on record."""
+    people = next((p for p in state.bible.peoples if p.id == person.people_id), None)
+    return people.lifespan_years if people is not None else None
+
+
+def ageless(state: WorldState, person: Character) -> bool:
+    """Whether old age never takes someone's people (G23): the record gives it a lifespan of
+    0, which a new world's draft says of the undead, of spirits, of machines."""
+    return _lifespan(state, person) == 0
 
 
 def peoples_span(state: WorldState, person: Character) -> int:
-    """How long someone's people live (G23), or a human span where the world doesn't say."""
-    people = next((p for p in state.bible.peoples if p.id == person.people_id), None)
-    return (people.lifespan_years if people is not None else None) or LIFESPAN_YEARS
+    """How long the people of someone's kind take over a life (G23), for what is measured
+    against it, such as the age a climb is taken up at: their people's lifespan, or a human
+    span where the world doesn't say and for a people old age never takes."""
+    return _lifespan(state, person) or LIFESPAN_YEARS
 
 
 def _rungs(state: WorldState, person: Character) -> list[list[int | None]]:
@@ -62,7 +78,10 @@ def open_ended(state: WorldState, person: Character) -> bool:
 
 def natural_span(state: WorldState, person: Character) -> int:
     """How long someone like them lives, in years: the longer of their people's span and
-    their rung's (a higher rung never shortens a life, so it is the longest up to theirs)."""
+    their rung's (a higher rung never shortens a life, so it is the longest up to theirs),
+    and as good as for ever for one of a people old age never takes."""
+    if ageless(state, person):
+        return AGELESS_YEARS
     rungs = [years for spans in _rungs(state, person) for years in spans if years]
     return max([peoples_span(state, person), *rungs])
 

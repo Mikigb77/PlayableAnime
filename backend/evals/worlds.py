@@ -1571,6 +1571,39 @@ def millbrook_grown_old() -> WorldState:
     return state
 
 
+SAEL, WICK = "sael", "brother-wick"
+
+
+def millbrook_of_three_peoples() -> WorldState:
+    """`millbrook_grown_old` in a world of three peoples (G23, W6): humans, whose lifespan the
+    record doesn't give, elves, who live six hundred years, and the unsleeping, the dead who
+    walk, whom old age never takes. Sael, an elf of a hundred and forty, keeps bees above the
+    village, and Brother Wick, seventy-one years risen, digs its graves."""
+    state = millbrook_grown_old()
+    state.bible.peoples = [
+        People(id="humans", name="humans"),
+        People(id="elves", name="elves", lifespan_years=600),
+        People(id="unsleeping", name="the unsleeping", lifespan_years=0),
+    ]
+    for character in state.characters.values():
+        character.people_id = "humans"
+    for character_id, name, age, people_id, about in (
+        (SAEL, "Sael", 140, "elves", "An elf who keeps bees on the slope above Millbrook."),
+        (WICK, "Brother Wick", 71, "unsleeping", "One of the unsleeping dead, the gravedigger."),
+    ):
+        state.characters[character_id] = Character(
+            id=character_id,
+            name=name,
+            age=age,
+            people_id=people_id,
+            description=about,
+            location_id="village",
+            known_by=["tomas"],
+            met_by=["tomas"],
+        )
+    return state
+
+
 HARROWGATE_TALK = "The old duke of Harrowgate is dead, and his two sons both claim the seat."
 
 
