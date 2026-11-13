@@ -1,11 +1,12 @@
 """G18, G7: a ladder gains a rung above its top through a turn.
 
-The narrator's update names the rung and code decides whether it holds (`engine.apply`,
+The narrator names the rung and code decides whether it holds (`engine.apply`,
 `engine.path.beyond_problem`). The scene's own words have to name it (`check_update`), and
-from that scene on the character has heard of it. The narrator is told that a ladder can grow
-on the ladder itself, in WORLD, and beside a step that stopped at its top, however the model
-that reads the player's words filed it. The open rule that held the ladder there is struck
-once a rung above is told (G7).
+from that scene on the character has heard of it. While a ladder is open above its top, the
+narrator's form asks first what the scene calls the rung above it (`form.narrator_form`), and
+the narrator is told that the ladder can grow on the ladder itself, in WORLD, and beside a
+step that stopped at its top, however the model that reads the player's words filed it. The
+open rule that held the ladder there is struck once a rung above is told (G7).
 """
 
 import json
@@ -18,8 +19,10 @@ from engine.samples import cultivation_world
 from engine.state import LadderPosition, RuleTopic, StepResult
 from engine.visibility import status_view
 from graph.llm import Node, Reply
-from graph.turn.check import RUNG_UNTOLD, check_update
-from graph.turn.context import interpret_prompt
+from graph.turn.check import RUNG_UNTOLD, check_update, with_rung_above
+from graph.turn.context import interpret_prompt, open_above
+from graph.turn.form import Above, narrator_form
+from graph.turn.outputs import NarratorOutput
 from tests.graph.test_turn_context import _section, brief
 from tests.graph.test_turn_graph import SCENE, play, section, turn_input
 
@@ -99,7 +102,7 @@ def test_a_scene_that_names_a_rung_above_the_top_widens_the_ladder(fake, make_cl
     (step,) = told["steps"]
     assert (step["class"], step["result"]) == ("ruled_out", "failure")
     assert step["why"] == "Nothing anyone knows of lies above Soul Transformation."
-    assert "update.rungs" in step["beyond"] and "Soul Transformation" in step["beyond"]
+    assert "rung_above" in step["beyond"] and "Soul Transformation" in step["beyond"]
     # C6: heard of from this scene, and his rank now fills toward it. He still stands where
     # he stood: the rung is to climb.
     assert ("rung_heard", "realms") in [(i.code, i.subject) for i in result.issues]
@@ -135,7 +138,7 @@ def test_a_reach_filed_against_the_worlds_open_rule_is_told_the_same(fake, make_
     told = json.loads(section(fake.calls(Node.NARRATOR)[-1].prompt.messages[-1].text, "OUTCOME"))
     (step,) = told["steps"]
     assert step["why"] == "Nobody is known to have passed Soul Transformation."
-    assert "update.rungs" in step["beyond"]
+    assert "rung_above" in step["beyond"]
     state = result.state
     assert rungs(state)[-1] == VOID
     # G7: the discovery broke the rule, so nothing reads it any more.
@@ -169,12 +172,11 @@ def test_the_narrator_reads_on_the_ladder_itself_that_it_is_open():
     (seen,) = _section(brief(state).user, "WORLD")["ladders"]
 
     assert seen["above"] == (
-        "Open: nobody on record stands above Soul Transformation. Only if beings stronger than "
+        "Open: nobody on record stands above Soul Transformation. When beings stronger than "
         "Soul Transformation come into the story, or someone finds what lies beyond it, the "
-        "scene gives the rung above a name and update.rungs lists it, with whoever this update "
-        "brings in who stands on it."
+        "scene gives the rung above a name: rung_above asks for it."
     )
-    assert "update.rungs" not in interpret_prompt(state, "I wait").messages[-1].text
+    assert "rung_above" not in interpret_prompt(state, "I wait").messages[-1].text
     # Lin on the lowest realm has not been told of the top: the world's own rungs come first.
     (low,) = _section(brief(cultivation_world()).user, "WORLD")["ladders"]
     assert "above" not in low
@@ -238,11 +240,14 @@ def test_only_a_climb_stopped_at_an_open_top_tells_the_narrator_the_ladder_can_g
 
     (step,) = _section(brief(state, resolution=stopped).user, "OUTCOME")["steps"]
 
+    # The reach finds that a rung lies there: the scene is asked to name it, not left to.
     assert step["beyond"] == (
         "How far cultivation realms goes is open: nobody on record stands above Soul "
-        "Transformation. This step still fails. If the scene shows that something lies above "
-        "Soul Transformation and gives that rung a name, list it under update.rungs. Reaching "
-        "it would be a climb of its own."
+        "Transformation, and nothing says nobody can. This step still fails, since no rung "
+        "above Soul Transformation has a name yet, but the reach shows the character that one "
+        "lies there. Never tell Soul Transformation as the end of the path. Answer rung_above "
+        "with a name for that rung and say it in the scene. Reaching it will be a climb of its "
+        "own."
     )
     # A step ruled out for anything else says nothing of it.
     other = stopped.model_copy(deep=True)
@@ -277,3 +282,142 @@ def test_the_narrator_reads_a_rung_the_story_added_as_any_rung_of_the_world():
     (seen,) = _section(told.user, "WORLD")["ladders"]
     assert [rung["name"] for rung in seen["rungs"]][-1] == VOID
     assert "added_s" not in told.user
+
+
+# --- The form asks first (G18) ----------------------------------------------------------------
+
+REALMS = Above(ladder_id="realms", ladder="cultivation realms", top="Soul Transformation")
+
+
+def asked(fake) -> dict:
+    """The form the narrator was last asked with."""
+    return fake.calls(Node.NARRATOR)[-1].json_schema
+
+
+def test_while_a_ladder_is_open_the_form_asks_first_what_the_scene_calls_the_rung_above(
+    fake, make_client
+):
+    # The scene's own words have to name the rung, and the narrator writes its scene before its
+    # update, so the question comes before the scene, and it is required: Gemini answers only
+    # what a form requires as often as not.
+    fake.script(Node.INTERPRET, Reply(json=REACH))
+    fake.script(Node.NARRATOR, Reply(json=scene("The barrier does not give.")))
+
+    play(make_client(), turn_input(at_the_top()))
+
+    form = asked(fake)
+    assert list(form["properties"])[:2] == ["rung_above", "action"]
+    assert form["required"][0] == "rung_above"
+    question = form["properties"]["rung_above"]
+    assert question["type"] == "string"
+    assert "answer before the scene" in question["description"]
+    assert "cultivation realms is open above Soul Transformation" in question["description"]
+    # Everything else is the narrator's own form.
+    own = NarratorOutput.model_json_schema()
+    assert {k: v for k, v in form["properties"].items() if k != "rung_above"} == own["properties"]
+    assert form["$defs"] == own["$defs"]
+
+
+def test_a_turn_in_which_no_ladder_is_open_asks_the_narrators_own_form(fake, make_client):
+    # Almost every turn of almost every story: nothing is asked that can't apply.
+    fake.script(Node.INTERPRET, Reply(json=REACH))
+    fake.script(Node.NARRATOR, Reply(json=scene("The barrier does not give.")))
+
+    play(make_client(), turn_input())  # Lin on the lowest realm
+
+    assert asked(fake) == NarratorOutput.model_json_schema()
+    assert "rung_above" not in asked(fake)["properties"]
+    assert narrator_form(None) is None
+
+
+def test_the_rung_the_scene_named_where_the_form_asked_widens_the_ladder(fake, make_client):
+    # No rung is listed under the update: the answer to the form's question is the proposal.
+    fake.script(Node.INTERPRET, Reply(json=REACH))
+    fake.script(Node.NARRATOR, Reply(json=scene() | {"rung_above": VOID}))
+
+    _, result = play(make_client(), turn_input(at_the_top()))
+
+    state = result.state
+    assert rungs(state)[-2:] == ["Soul Transformation", VOID]
+    assert "rejected" not in [i.code for i in result.issues]
+    assert ("rung_heard", "realms") in [(i.code, i.subject) for i in result.issues]
+    assert [p.rung for p in state.player.sheet.ladders] == [TOP]
+
+
+def test_whoever_the_scene_brings_in_stands_on_the_rung_it_named(fake, make_client):
+    envoy = {"id": "envoy", "name": "Envoy Shen", "location_id": "well", "rung": VOID}
+    fake.script(Node.INTERPRET, Reply(json=REACH))
+    fake.script(Node.NARRATOR, Reply(json=scene(characters=[envoy]) | {"rung_above": VOID}))
+
+    _, result = play(make_client(), turn_input(at_the_top()))
+
+    assert "rejected" not in [i.code for i in result.issues]
+    assert path.own_rung(result.state.characters["envoy"], "realms") == TOP + 1
+
+
+def test_a_name_answered_that_the_scene_never_said_changes_nothing(fake, make_client):
+    fake.script(Node.INTERPRET, Reply(json=REACH))
+    fake.script(
+        Node.NARRATOR, Reply(json=scene("The barrier does not give.") | {"rung_above": VOID})
+    )
+
+    _, result = play(make_client(), turn_input(at_the_top()))
+
+    assert len(rungs(result.state)) == TOP + 1
+    assert RUNG_UNTOLD in [i.code for i in result.issues]
+
+
+def test_an_answer_no_form_asked_for_is_nothing(fake, make_client):
+    # Lin on the lowest realm: the form asked nothing, so a name it gives all the same is
+    # never the story reaching past the top.
+    fake.script(Node.INTERPRET, Reply(json=REACH))
+    fake.script(Node.NARRATOR, Reply(json=scene() | {"rung_above": VOID}))
+
+    _, result = play(make_client(), turn_input())
+
+    assert len(rungs(result.state)) == TOP + 1
+    assert "rejected" not in [i.code for i in result.issues]
+
+
+def test_only_a_name_is_read_as_the_rung_above():
+    update = StateDelta()
+
+    for answer in ("", "   ", "none", "N/A", "A realm beyond " * 5):
+        assert with_rung_above(update, answer, REALMS) is update
+    assert with_rung_above(update, VOID, None) is update
+
+    proposed = with_rung_above(update, f" {VOID} ", REALMS)
+    assert [(r.ladder_id, r.name, r.stands) for r in proposed.rungs] == [("realms", VOID, [])]
+    assert update.rungs == []  # never mutated
+
+
+def test_a_rung_the_update_lists_already_is_not_listed_twice():
+    listed = StateDelta(rungs=[NewRung(ladder_id="realms", name=VOID, stands=["envoy"])])
+
+    assert with_rung_above(listed, "void refinement", REALMS) is listed
+
+
+def test_the_form_asks_about_the_ladder_a_step_stopped_at_before_any_other():
+    # Two ladders open: with nothing stopped, the first; else the one the reach was for.
+    state = at_the_top()
+    realms = state.bible.ladder("realms")
+    ranks = realms.model_copy(deep=True, update={"id": "ranks", "name": "sect ranks"})
+    for rung in ranks.rungs:
+        rung.name = f"Rank {rung.name}"
+    state.bible.ladders.append(ranks)
+    state.player.sheet.ladders.append(LadderPosition(ladder_id="ranks", rung=TOP))
+
+    assert open_above(state).ladder_id == "realms"
+    stopped = stopped_at_the_top(state)
+    stopped.steps[0].reason = growth.no_rung_above(ranks)
+    assert open_above(state, stopped) == Above(
+        ladder_id="ranks", ladder="sect ranks", top="Rank Soul Transformation"
+    )
+    # Only that ladder's cue is told beside the step.
+    told = brief(state, resolution=stopped)
+    assert told.above.ladder_id == "ranks"
+    (step,) = _section(told.user, "OUTCOME")["steps"]
+    assert "sect ranks" in step["beyond"]
+    # Nothing open, nothing asked.
+    assert open_above(cultivation_world()) is None
+    assert brief(cultivation_world()).form is None

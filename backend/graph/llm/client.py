@@ -247,10 +247,12 @@ class ModelClient:
         schema: type[T],
         *,
         field: str | tuple[str, ...],
+        form: Mapping[str, Any] | None = None,
         options: CallOptions | None = None,
     ) -> AsyncIterator[StreamEvent[T]]:
         """One structured-output call that streams the text of a string field as it arrives,
         or of several, one after the other with a paragraph break between (`JsonFieldStreamer`).
+        `form` is the JSON schema to ask with, where the turn's differs from the class's own.
 
         Yields `TextDelta`s, a `StreamRestart` if a retry follows streamed text, and finally
         `Completed` with the validated result. Wrap the iteration in `contextlib.aclosing`.
@@ -261,7 +263,9 @@ class ModelClient:
         for name in fields:
             if name not in schema.model_fields:
                 raise ValueError(f"{schema.__name__} has no field {name!r}")
-        return self._run(node, prompt, schema=schema, stream_fields=fields, options=options)
+        return self._run(
+            node, prompt, schema=schema, form=form, stream_fields=fields, options=options
+        )
 
     async def _complete(self, node: Node, prompt: Prompt, **kwargs: Any) -> object:
         async with aclosing(self._run(node, prompt, **kwargs)) as events:

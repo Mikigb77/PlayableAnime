@@ -32,6 +32,9 @@ def _action_required(schema: dict[str, Any]) -> None:
     (R3, R8)."""
     required = ["action", *schema.get("required", []), "told_talk", "told_news", "update"]
     schema["required"] = list(dict.fromkeys(required))
+    # G18: asked only by the form of a turn in which a ladder is open above its top
+    # (`graph.turn.form.narrator_form`), which puts it first.
+    del schema["properties"]["rung_above"]
 
 
 class NarratorOutput(BaseModel):
@@ -43,6 +46,13 @@ class NarratorOutput(BaseModel):
 
     model_config = ConfigDict(json_schema_extra=_action_required)
 
+    rung_above: str = Field(
+        default="",
+        description=(
+            "G18: the name this scene gives the rung above a ladder's highest, where the turn's"
+            " form asks for one (`graph.turn.form.RUNG_ABOVE`). Empty otherwise."
+        ),
+    )
     action: str = Field(
         default="",
         description=(
