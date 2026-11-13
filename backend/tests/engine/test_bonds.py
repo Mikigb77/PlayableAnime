@@ -17,6 +17,8 @@ from engine.state import (
     CharacterStatus,
     DeathCertainty,
     Deed,
+    Faith,
+    Unions,
     WorldState,
 )
 from engine.world import knowledge
@@ -433,3 +435,167 @@ def test_an_end_is_recorded_with_who_ended_it_and_when():
     assert (last.stage, last.by_id, last.turn, last.world_s) == (BondStage.OVER, "ilse", 7, 4 * DAY)
     assert bonds.live(state, "tomas", "ilse") is None and bonds.partners(state, "tomas") == []
     assert check_state(state) == []
+
+
+# --- someone who has a partner already --------------------------------------------------------
+
+
+def wife(state: WorldState, stage: BondStage = BondStage.MARRIED, **felt) -> Character:
+    """Mara with Jorn, her husband since before the story, and her heart for him where the
+    record holds one."""
+    state.characters["jorn"] = Character(id="jorn", name="Jorn", age=33, location_id="village")
+    paired(state, "jorn", "mara", stage)
+    mara = state.characters["mara"]
+    if felt:
+        mara.sheet.disposition.attitudes["jorn"] = Attitude(**felt)
+    return mara
+
+
+def test_how_someone_holds_to_a_partner_is_theirs_and_follows_the_custom_of_the_world():
+    state = farm()
+    mara, lena = state.characters["mara"], Character(id="lena", name="Lena")
+    kinds = {}
+    for unions in Unions:
+        state.bible.unions = unions
+        kinds[unions] = (bonds.faith(state, mara), bonds.faith(state, lena))
+        assert bonds.faith(state, mara) is kinds[unions][0]  # the same every time it is asked
+    # Mara keeps to a partner where couples hold, and is torn where they part easily. Lena
+    # lets a partner stand in nobody's way wherever she lives.
+    assert kinds[Unions.FOR_LIFE] == (Faith.STEADFAST, Faith.ROVING)
+    assert kinds[Unions.HELD] == (Faith.STEADFAST, Faith.ROVING)
+    assert kinds[Unions.EASY] == (Faith.TORN, Faith.ROVING)
+    # What the story said of someone wins over all of it.
+    mara.faith = Faith.ROVING
+    state.bible.unions = Unions.FOR_LIFE
+    assert bonds.faith(state, mara) is Faith.ROVING
+
+
+def test_how_many_keep_to_a_partner_is_the_custom_of_the_world():
+    state = farm()
+    people = [Character(id=f"someone-{n}", name="Someone") for n in range(1000)]
+    shares, found = {}, {}
+    for unions in Unions:
+        state.bible.unions = unions
+        found[unions] = [bonds.faith(state, person) for person in people]
+        shares[unions] = {kind: found[unions].count(kind) / 10 for kind in Faith}
+    for unions, (steadfast, roving) in bonds.FAITH.items():
+        assert abs(shares[unions][Faith.STEADFAST] - steadfast) < 5
+        assert abs(shares[unions][Faith.ROVING] - roving) < 5
+    # Most keep to a partner where a marriage is for life, and fewer than half where couples
+    # part easily: nobody anywhere is sure to, and nobody is sure not to.
+    assert shares[Unions.FOR_LIFE][Faith.STEADFAST] > shares[Unions.HELD][Faith.STEADFAST] > 50
+    assert shares[Unions.EASY][Faith.STEADFAST] < 50
+    assert all(share > 0 for by_kind in shares.values() for share in by_kind.values())
+    # A custom never turns anyone round: whoever keeps to a partner where couples part easily
+    # does so anywhere, and whoever roves where a marriage is for life roves anywhere.
+    kinds = zip(found[Unions.EASY], found[Unions.HELD], found[Unions.FOR_LIFE], strict=True)
+    for easy, held, life in kinds:
+        if easy is Faith.STEADFAST:
+            assert held is Faith.STEADFAST and life is Faith.STEADFAST
+        if life is Faith.ROVING:
+            assert held is Faith.ROVING and easy is Faith.ROVING
+
+
+def test_a_settled_couples_hearts_are_theirs_where_the_record_holds_none():
+    state = farm()
+    mara = wife(state)
+    jorn = state.characters["jorn"]
+    hers, his = bonds.heart_for(state, mara, "jorn"), bonds.heart_for(state, jorn, "mara")
+    assert (hers, his) == (bonds.settled_heart("mara", "jorn"), bonds.settled_heart("jorn", "mara"))
+    assert hers != his  # each heart is its own
+    hearts = [bonds.settled_heart(f"one-{n}", "other") for n in range(300)]
+    assert min(hearts) == bonds.SETTLED and max(hearts) == bonds.SETTLED_TOP
+    assert any(heart < bonds.LEAVES_UNDER for heart in hearts)  # a few have gone cold
+    # What the record holds is what counts, and so is a heart that moved all the way to nothing.
+    mara.sheet.disposition.attitudes["jorn"] = Attitude(attraction=20)
+    assert bonds.heart_for(state, mara, "jorn") == 20
+    mara.sheet.disposition.attitudes["jorn"] = Attitude(attraction=0, heart_moved_s=DAY)
+    assert bonds.heart_for(state, mara, "jorn") == 0
+    # Anything with the player character is only ever what the story made of it.
+    assert bonds.heart_for(state, state.characters["ilse"], "tomas") == 80
+    assert bonds.heart_for(state, mara, "tomas") == 0
+    assert bonds.heart_for(state, state.characters["tomas"], "ilse") == 0
+
+
+def test_the_partner_who_stands_between_someone_and_a_suitor():
+    state = farm()
+    assert bonds.kept(state, "mara", "tomas") is None  # she has nobody
+    wife(state)
+    assert bonds.kept(state, "mara", "tomas") == "jorn"
+    assert bonds.kept(state, "mara", "jorn") is None  # her own husband is no one else
+    assert bonds.kept(state, "nobody", "tomas") is None
+    # Someone only courted stands between nobody.
+    state.characters["odo"] = Character(id="odo", name="Odo", age=40, location_id="village")
+    courted = paired(state, "odo", "mara", BondStage.COURTING)
+    assert bonds.kept(state, "mara", "jorn") is None
+    # Of two, the one it has come furthest with, and then the one their heart is most with.
+    courted.stage = BondStage.TOGETHER
+    assert bonds.kept(state, "mara", "tomas") == "jorn"
+    courted.stage = BondStage.MARRIED
+    hearts = {who: bonds.heart_for(state, state.characters["mara"], who) for who in ("jorn", "odo")}
+    assert bonds.kept(state, "mara", "tomas") == max(hearts, key=hearts.get)
+    # The dead stand between nobody, and nor does anyone where several partners are the custom.
+    del state.bonds[courted.id]
+    state.bible.several_partners = True
+    assert bonds.kept(state, "mara", "tomas") is None
+    state.bible.several_partners = False
+    state.characters["jorn"].status = CharacterStatus.DEAD
+    assert bonds.kept(state, "mara", "tomas") is None
+
+
+def test_the_steadfast_keep_to_a_partner_while_that_bond_holds():
+    state = farm()
+    mara = wife(state, attraction=70)
+    assert bonds.faith(state, mara) is Faith.STEADFAST
+    assert bonds.keeps_to(state, mara, "tomas") == "jorn"
+    assert bonds.closed_to(state, mara, "tomas") is bonds.Closed.BOUND
+    assert bonds.closed_to(state, mara, "jorn") is None  # never to her own husband
+    # Someone torn or roving keeps to nobody: their partner only stands in the way.
+    for other in (Faith.TORN, Faith.ROVING):
+        mara.faith = other
+        assert bonds.keeps_to(state, mara, "tomas") is None
+        assert bonds.closed_to(state, mara, "tomas") is None
+    mara.faith = None
+    # A bond that has gone cold holds nobody, save a marriage where that is for life.
+    mara.sheet.disposition.attitudes["jorn"].attraction = bonds.LEAVES_UNDER - 1
+    assert bonds.keeps_to(state, mara, "tomas") is None
+    state.bible.unions = Unions.FOR_LIFE
+    assert bonds.for_life(state, "mara", "jorn") and bonds.for_life(state, "jorn", "mara")
+    assert bonds.keeps_to(state, mara, "tomas") == "jorn"
+    state.bonds["bond-2"].stage = BondStage.TOGETHER  # not wed: nothing is for life yet
+    assert not bonds.for_life(state, "mara", "jorn")
+    assert bonds.keeps_to(state, mara, "tomas") is None
+    state.bible.unions = Unions.HELD
+    state.bonds["bond-2"].stage = BondStage.MARRIED
+    assert not bonds.for_life(state, "mara", "jorn")  # a marriage here can be left
+    mara.sheet.disposition.attitudes["jorn"].attraction = bonds.LEAVES_UNDER
+    assert bonds.keeps_to(state, mara, "tomas") == "jorn"
+    # A first move on record changes nothing, and someone who answered the suitor already,
+    # as the record has it, is past keeping to anyone.
+    theirs = paired(state, "tomas", "mara", BondStage.INTEREST)
+    assert bonds.keeps_to(state, mara, "tomas") == "jorn"
+    theirs.stage = BondStage.COURTING
+    assert bonds.keeps_to(state, mara, "tomas") is None
+
+
+def test_a_partner_stands_in_a_suitors_way_by_how_much_they_are_loved():
+    state = farm()
+    mara = state.characters["mara"]
+    assert bonds.hold(state, mara, "tomas") == 0  # nobody stands in the way
+    wife(state, attraction=80)
+    mara.faith = Faith.TORN
+    assert bonds.hold(state, mara, "tomas") == 80 // bonds.HOLD == 20
+    mara.sheet.disposition.attitudes["jorn"].attraction = 40
+    assert bonds.hold(state, mara, "tomas") == 10  # a neglected partner, half as much
+    mara.faith = Faith.ROVING
+    assert bonds.hold(state, mara, "tomas") == 0
+    # For the steadfast it counts once their own bond no longer holds them.
+    mara.faith = Faith.STEADFAST
+    mara.sheet.disposition.attitudes["jorn"].attraction = 36
+    assert bonds.keeps_to(state, mara, "tomas") is None and bonds.hold(state, mara, "tomas") == 9
+    # Once the two are a couple as well, nothing more stands in the way of an evening, and
+    # a promise still means leaving the other.
+    mara.faith = Faith.TORN
+    paired(state, "tomas", "mara", BondStage.TOGETHER)
+    assert bonds.hold(state, mara, "tomas") == 0
+    assert bonds.hold(state, mara, "tomas", promise=True) == 9

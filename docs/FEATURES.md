@@ -128,6 +128,12 @@ The first version's state, checked against the code in WS18.
       a move of its own, so "we sleep together" is one whatever the step's words (W17).
 - [x] Whoever ended a romance has made up their mind: for a while, by their own pace, nothing
       of the kind moves them, so nobody is won back in the scene they were left in (W17).
+- [x] Faithfulness is each person's own, and the world's custom: someone with a partner keeps
+      to them (nothing of the kind moves them while that bond holds), can be moved with their
+      partner standing in the way, or lets a partner stand in nobody's way. How many are which
+      depends on whether a marriage there is for life, held or easily left. Whoever gives a
+      promise leaves the partner they had, a steadfast person's yes is leaving theirs, and
+      nobody leaves a marriage that is for life (W17).
 - [x] Voice dictation of actions and premises, with a transcript the player edits before sending
       (V1 to V7)
 - [x] Basic safety: content rating per story, model safety settings, report and block (F6 to F8)

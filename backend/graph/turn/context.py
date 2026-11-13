@@ -38,6 +38,7 @@ from engine.state.cast import (
     Character,
     CharacterStatus,
     FactionStatus,
+    Faith,
     Place,
     PlaceStatus,
     Prominence,
@@ -189,9 +190,9 @@ def _talents_view(state: WorldState) -> dict[str, Any] | None:
 def _family_view(
     state: WorldState, character: Character, *, knower: str | None = None
 ) -> dict[str, Any]:
-    """N6, W17: a character's parents and children by name, whom they are a couple with, and a
-    child they carry, when due. With `knower`, kin that character doesn't know of are marked
-    so."""
+    """N6, W17: a character's parents and children by name, whom they are a couple with, how
+    they hold to that partner when someone else courts them (`bonds.faith`), and a child they
+    carry, when due. With `knower`, kin that character doesn't know of are marked so."""
     children = [c for c in state.characters.values() if character.id in c.parent_ids]
     family: dict[str, Any] = {}
     for key, ids in (
@@ -209,6 +210,9 @@ def _family_view(
             partners.append(_kin_name(state, other_id, knower) | {"bond": bond.stage.value})
     if partners:
         family["partners"] = partners
+        if character.id != state.player_id and not state.bible.several_partners:
+            # The player character's own heart is the player's (G15).
+            family["faith"] = _FAITH[bonds.faith(state, character)]
     expecting = character.expecting
     if expecting is not None and character.alive:
         other = state.characters.get(expecting.other_parent_id or "")
@@ -253,6 +257,11 @@ def _npc_view(character: Character, state: WorldState) -> dict[str, Any]:
 
 
 _HEART = {"attraction": True, "heart_moved_s": True}
+_FAITH = {
+    Faith.STEADFAST: "keeps to their partner: nobody else moves them while that bond holds",
+    Faith.TORN: "could be moved by someone else, with their partner standing in the way",
+    Faith.ROVING: "lets a partner stand in nobody's way",
+}
 _PACE = {
     bonds.Pace.SLOW: "slow to give their heart",
     bonds.Pace.STEADY: "neither quick nor slow to give their heart",
@@ -264,7 +273,8 @@ def _bond_view(state: WorldState, character: Character) -> dict[str, Any] | None
     """W17. The romance between someone and the player character as the record has it: the
     stage it stands at and since when, or how the last one ended, the one that ended before
     it (`earlier`), and their own heart and pace in words: closed, while someone who ended it
-    stays so (`bonds.Closed.ENDED`). None when there has been nothing between the two and they
+    stays so (`bonds.Closed.ENDED`) and while someone keeps to a partner of their own
+    (`bonds.Closed.BOUND`). None when there has been nothing between the two and they
     aren't drawn to the player character."""
     you = state.player_id
     drawn = character.attitude_toward(you).attraction
@@ -290,9 +300,13 @@ def _bond_view(state: WorldState, character: Character) -> dict[str, Any] | None
     elif drawn == 0:
         return None
     view["their_heart"] = bonds.heart_words(drawn, "you")
-    if bonds.closed_to(state, character, you) is bonds.Closed.ENDED:
+    closed = bonds.closed_to(state, character, you)
+    if closed is bonds.Closed.ENDED:
         # They made up their mind, and for a good while nothing of the kind moves them.
         view["their_heart"] = "closed to you since they ended it"
+    elif closed is bonds.Closed.BOUND:
+        theirs = state.characters[bonds.keeps_to(state, character, you) or ""]
+        view["their_heart"] = f"closed to you: they keep to {theirs.name}"
     view["their_pace"] = _PACE[bonds.pace(character.id)]
     return view
 

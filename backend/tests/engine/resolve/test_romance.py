@@ -26,11 +26,13 @@ from engine.state import (
     Disposition,
     Encounter,
     EncounterKind,
+    Faith,
     PendingEvent,
     Place,
     PowerAxis,
     Route,
     StepResult,
+    Unions,
     WorldState,
 )
 
@@ -790,6 +792,240 @@ def test_the_partner_of_whoever_is_courted_is_wronged_too():
     state.characters["jorn"].status = CharacterStatus.DEAD
     state.characters["jorn"].death_certainty = DeathCertainty.CONFIRMED
     assert wrong(one(state, flirt())) is None  # the dead mind nothing
+
+
+# --- someone who has a partner already (W17) ---------------------------------------------------
+
+
+def someone_elses(
+    drawn: int = 0,
+    *,
+    faith: Faith,
+    theirs: int = 80,
+    stage: BondStage | None = None,
+    unions: Unions = Unions.HELD,
+) -> WorldState:
+    """Tomas, unmarried here, and Mara, who is Jorn's wife: how she holds to a partner, how
+    drawn she is to her husband (`theirs`), and what the custom makes of a marriage."""
+    state = world(drawn, stage)
+    state.bonds.pop("bond-1")
+    state.bible.unions = unions
+    married_to(state, "mara", jorn())
+    mara, husband = state.characters["mara"], state.characters["jorn"]
+    mara.faith = faith
+    mara.sheet.disposition.attitudes["jorn"] = Attitude(affinity=50, trust=50, attraction=theirs)
+    husband.sheet.disposition.attitudes["mara"] = Attitude(affinity=60, trust=60, attraction=70)
+    return state
+
+
+def with_jorn(state: WorldState) -> BondStage | None:
+    bond = bonds.live(state, "mara", "jorn")
+    return bond.stage if bond is not None else None
+
+
+KEEPS = "Mara keeps to Jorn, and nothing of the kind moves them."
+BETWEEN = "Jorn still stands between you and Mara."
+
+
+@pytest.mark.parametrize("move", [flirt, ask, lie_with])
+def test_someone_who_keeps_to_their_partner_is_moved_by_nothing_of_the_kind(move):
+    state = someone_elses(bonds.DECLARE_SURE, faith=Faith.STEADFAST)
+    done = one(state, move())
+    assert (done.outcome_class, done.roll) == (OutcomeClass.RULED_OUT, None)
+    assert done.reason.startswith(KEEPS)
+    # It was still made, and her husband is wronged by it.
+    told = after(state, done)
+    assert stage(told) is BondStage.INTEREST and heart(told) == bonds.DECLARE_SURE
+    assert with_jorn(told) is BondStage.MARRIED
+    assert wrong(done).wronged_ids == ["jorn"]
+
+
+def test_with_someone_torn_their_partner_stands_in_the_way():
+    held = 80 // bonds.HOLD  # a loved husband: every mark is this much higher
+
+    def asked(drawn: int, **kw):
+        return one(someone_elses(drawn, faith=Faith.TORN, **kw), ask())
+
+    cold = asked(bonds.DECLARE_NO - 1)
+    assert cold.outcome_class is OutcomeClass.RULED_OUT
+    assert cold.reason.startswith("Mara's heart isn't there yet.")
+    # Drawn enough for someone free to be asked, and not for her.
+    between = asked(bonds.DECLARE_NO + held - 1)
+    assert between.outcome_class is OutcomeClass.RULED_OUT and between.reason.startswith(BETWEEN)
+    assert one(world(bonds.DECLARE_NO + held - 1), ask()).roll is not None
+    # Sure with someone free, and a throw with her: a step harder for her husband.
+    free = one(world(bonds.DECLARE_SURE), ask())
+    thrown = asked(bonds.DECLARE_SURE)
+    assert (free.outcome_class, free.roll) == (OutcomeClass.CERTAIN, None)
+    assert thrown.roll is not None
+    assert "Mara is with Jorn" in thrown.reason
+    roving = one(someone_elses(bonds.DECLARE_SURE - 1, faith=Faith.ROVING), ask())
+    torn = asked(bonds.DECLARE_SURE - 1)
+    assert "is with Jorn" not in roving.reason
+    assert torn.roll.throw.number > roving.roll.throw.number
+    # Her heart far enough past it is a yes all the same.
+    sure = asked(bonds.DECLARE_SURE + held)
+    assert (sure.outcome_class, sure.roll) == (OutcomeClass.CERTAIN, None)
+    # A husband she has little left for stands half as much in the way.
+    assert asked(bonds.DECLARE_NO + held - 1, theirs=40).roll is not None
+
+
+def test_with_someone_torn_a_night_and_a_courtship_take_more_too():
+    held = 80 // bonds.HOLD
+    night = one(someone_elses(bonds.INTIMATE_NO + held - 1, faith=Faith.TORN), lie_with())
+    assert night.outcome_class is OutcomeClass.RULED_OUT and night.reason.startswith(BETWEEN)
+    assert one(someone_elses(bonds.INTIMATE_SURE, faith=Faith.TORN), lie_with()).roll is not None
+    sure = one(someone_elses(bonds.INTIMATE_SURE + held, faith=Faith.TORN), lie_with())
+    assert sure.outcome_class is OutcomeClass.CERTAIN
+    assert "You and Mara sleep together." in sure.reason
+    assert with_jorn(after(someone_elses(100, faith=Faith.TORN), sure)) is BondStage.MARRIED
+    # An answered advance makes it a courtship only with her heart that much further along.
+    about = bonds.COURTING_AT - bonds.NOTCH
+    for drawn, courting in ((about, False), (about + held, True)):
+        state = someone_elses(drawn, faith=Faith.TORN, stage=BondStage.INTEREST)
+        won = one(state, flirt(), seed_for(state, flirt(), StepResult.SUCCESS))
+        assert (stage(after(state, won)) is BondStage.COURTING) is courting
+        assert ("courting now" in won.reason) is courting
+
+
+def test_someone_roving_lets_a_partner_stand_in_nobodys_way():
+    state = someone_elses(bonds.DECLARE_SURE, faith=Faith.ROVING)
+    yes = one(state, ask())
+    assert (yes.outcome_class, yes.roll) == (OutcomeClass.CERTAIN, None)
+    assert "leaves" not in yes.reason
+    told = after(state, yes)
+    # She is his as well now, and her husband's still.
+    assert stage(told) is BondStage.TOGETHER and with_jorn(told) is BondStage.MARRIED
+    assert (wrong(yes).wronged_ids, wrong(yes).severity) == (["jorn"], bonds.BETRAYAL)
+    assert one(someone_elses(bonds.INTIMATE_SURE, faith=Faith.ROVING), lie_with()).roll is None
+
+
+def test_someone_steadfast_whose_own_bond_has_gone_cold_leaves_on_a_yes():
+    """Never two people's at once: she can be courted once her marriage no longer holds her,
+    there is no night before she has left it, and her yes is leaving it."""
+    state = someone_elses(80, faith=Faith.STEADFAST, theirs=bonds.LEAVES_UNDER - 20)
+    assert one(state, flirt()).roll is not None
+    night = one(state, lie_with())
+    assert night.outcome_class is OutcomeClass.RULED_OUT
+    assert night.reason.startswith("Mara won't while they are still with Jorn.")
+
+    yes = one(state, ask())
+
+    assert (yes.outcome_class, yes.roll) == (OutcomeClass.CERTAIN, None)
+    assert yes.reason.startswith(
+        "Mara wants this too. Mara leaves Jorn for you. You and Mara are together now."
+    )
+    moves = [(b.a_id, b.b_id, b.stage, b.by_id) for b in yes.effects.bonds]
+    assert moves == [
+        (YOU, "mara", BondStage.INTEREST, YOU),
+        ("mara", "jorn", BondStage.OVER, "mara"),
+        (YOU, "mara", BondStage.TOGETHER, YOU),
+    ]
+    assert yes.effects.bonds[1].how == "Mara left Jorn for Tomas Weller."
+    told = after(state, yes)
+    assert stage(told) is BondStage.TOGETHER and with_jorn(told) is None
+    over = bonds.last_over(told, "mara", "jorn")
+    assert (over.end, over.steps[-1].by_id) == (BondEnd.PARTED, "mara")
+    # Being left costs him what it costs anyone, and it is the two of them who wronged him.
+    his = told.characters["jorn"].attitude_toward("mara")
+    cost = bonds.PARTED_COUPLE
+    assert (his.affinity, his.trust) == (60 - cost, 60 - cost)
+    assert his.attraction == 70 - bonds.PARTED_HEART_COUPLE
+    assert (wrong(yes).wronged_ids, wrong(yes).severity) == (["jorn"], bonds.BETRAYAL)
+    # Once she is with him and no one else, a night is theirs and wrongs nobody.
+    theirs = one(told, lie_with())
+    assert theirs.outcome_class is OutcomeClass.CERTAIN and wrong(theirs) is None
+
+
+def test_a_husband_the_record_gives_no_heart_is_left_from_the_one_he_had():
+    state = someone_elses(80, faith=Faith.STEADFAST, theirs=10)
+    del state.characters["jorn"].sheet.disposition.attitudes["mara"]
+    told = after(state, one(state, ask()))
+    his = told.characters["jorn"].attitude_toward("mara")
+    assert his.attraction == bonds.settled_heart("jorn", "mara") - bonds.PARTED_HEART_COUPLE
+    assert his.heart_moved_s == told.world_s
+
+
+def test_a_promise_is_to_one_person_so_it_means_leaving_the_other():
+    # Whoever she is, a promise to him ends her marriage.
+    state = someone_elses(bonds.PROPOSE_SURE, faith=Faith.ROVING, stage=BondStage.TOGETHER)
+    yes = one(state, propose())
+    assert (yes.outcome_class, yes.roll) == (OutcomeClass.CERTAIN, None)
+    assert yes.reason.startswith(
+        "Mara wants this too. Mara leaves Jorn for you. You and Mara are promised to each other"
+    )
+    told = after(state, yes)
+    assert stage(told) is BondStage.PROMISED and with_jorn(told) is None
+    # With someone torn her husband stands in the way of it, lovers as the two are.
+    held = 80 // bonds.HOLD
+    torn = someone_elses(bonds.PROPOSE_NO + held - 1, faith=Faith.TORN, stage=BondStage.TOGETHER)
+    no = one(torn, propose())
+    assert no.outcome_class is OutcomeClass.RULED_OUT and no.reason.startswith(BETWEEN)
+    assert with_jorn(after(torn, no)) is BondStage.MARRIED
+    # An evening with her is as it was: only a promise asks her to leave him.
+    kiss = to("mara", "kiss Mara", RomanceMove.ADVANCE, verb="kiss")
+    assert one(torn, kiss).outcome_class is OutcomeClass.CERTAIN
+
+
+def test_nobody_leaves_a_marriage_where_that_is_for_life():
+    def here(drawn: int, faith: Faith, **kw) -> WorldState:
+        return someone_elses(drawn, faith=faith, unions=Unions.FOR_LIFE, **kw)
+
+    lovers = here(100, Faith.ROVING, stage=BondStage.TOGETHER)
+    no = one(lovers, propose())
+    assert no.outcome_class is OutcomeClass.RULED_OUT
+    assert no.reason.startswith("Mara is married to Jorn, and here that is for life.")
+    told = after(lovers, no)
+    assert stage(told) is BondStage.TOGETHER and with_jorn(told) is BondStage.MARRIED
+    # Someone steadfast keeps to such a marriage however cold it has gone.
+    cold = here(90, Faith.STEADFAST, theirs=5)
+    assert one(cold, ask()).reason.startswith(KEEPS)
+    # Even one the story opened in a courtship with him: her yes would be leaving it.
+    courted = here(90, Faith.STEADFAST, theirs=5, stage=BondStage.COURTING)
+    asked = one(courted, ask())
+    assert asked.outcome_class is OutcomeClass.RULED_OUT
+    assert asked.reason.startswith("Mara is married to Jorn, and here that is for life.")
+    assert with_jorn(after(courted, asked)) is BondStage.MARRIED
+    # Two who aren't wed can part here like anywhere.
+    cold.bonds["bond-jorn"].stage = BondStage.TOGETHER
+    left = one(cold, ask())
+    assert "Mara leaves Jorn for you." in left.reason
+    assert with_jorn(after(cold, left)) is None
+
+
+def test_someone_left_in_a_plan_is_left_once_and_not_wronged_by_what_comes_after():
+    state = someone_elses(bonds.PROPOSE_SURE, faith=Faith.STEADFAST, theirs=10)
+    kiss = to("mara", "kiss Mara", RomanceMove.ADVANCE, verb="kiss")
+    asked, kissed, promised = resolve(state, Intent(steps=[ask(), kiss, propose()])).steps
+    assert "Mara leaves Jorn for you." in asked.reason and wrong(asked).wronged_ids == ["jorn"]
+    for later in (kissed, promised):
+        assert later.outcome_class is OutcomeClass.CERTAIN
+        assert "Jorn" not in later.reason and wrong(later) is None
+        assert all("jorn" not in (b.a_id, b.b_id) for b in later.effects.bonds)
+        assert all(c.id != "jorn" for c in later.effects.characters)
+    told = after(state, asked, kissed, promised)
+    assert stage(told) is BondStage.PROMISED and with_jorn(told) is None
+
+
+def test_where_several_partners_are_the_custom_a_partner_stands_in_nobodys_way():
+    state = someone_elses(bonds.DECLARE_SURE, faith=Faith.STEADFAST)
+    state.bible.several_partners = True
+    yes = one(state, ask())
+    assert yes.outcome_class is OutcomeClass.CERTAIN and "Jorn" not in yes.reason
+    assert with_jorn(after(state, yes)) is BondStage.MARRIED
+
+
+def test_courting_cut_short_makes_a_courtship_only_past_what_stands_in_the_way():
+    rest = bonds.REST_S[bonds.pace("mara")]
+    for faith, courting in ((Faith.ROVING, True), (Faith.TORN, False)):
+        state = cut_at(someone_elses(faith=faith), 3 * rest + HOUR)
+        whole, seed = a_season(state)
+        played = pipeline.play_out(state, whole, ctx(), rng(seed))
+        (courted,) = played.resolution.steps
+        assert courted.duration_s // rest == 3
+        assert heart(played.state) == bonds.COURTING_AT
+        assert (stage(played.state) is BondStage.COURTING) is courting
+        assert ("courting now" in courted.reason) is courting
 
 
 # --- they have to be there (W10) --------------------------------------------------------------
