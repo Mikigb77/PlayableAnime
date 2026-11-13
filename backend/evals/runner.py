@@ -262,6 +262,17 @@ class Played:
         return [issue.code for issue in self.result.issues] if self.result is not None else []
 
     @property
+    def findings(self) -> list[str]:
+        """What code found wrong in the turn, each with what it was about and why. These can
+        hold story text (T6): only for a check that failed in a story that is the eval's own
+        (T16)."""
+        found = self.result.issues if self.result is not None else []
+        return [
+            f"{issue.code} ({issue.subject}): {issue.detail}" if issue.subject else issue.code
+            for issue in found
+        ]
+
+    @property
     def cost_usd(self) -> Decimal:
         return sum((c.cost_usd for c in self.calls), Decimal(0))
 

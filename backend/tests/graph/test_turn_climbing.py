@@ -37,7 +37,7 @@ def test_someone_met_again_stands_on_their_new_rung_and_brings_the_news_of_it(mo
     told = brief(state)
 
     (kid,) = _section(told.user, "SCENE")["present"]
-    assert kid["sheet"]["ladders"] == [{"ladder_id": "realms", "rung": 1}]
+    assert kid["sheet"]["ladders"] == [{"ladder_id": "realms", "rung": "Realm 1"}]
     assert kid["news"] == [{"id": event.id, "what": "rose to Realm 1", "when": "moments ago"}]
     assert told.news == (event.id,)
 
@@ -68,7 +68,9 @@ def test_the_hours_toward_someones_next_rung_stay_out_and_their_stage_tells_it(m
     kid, smith = _section(brief(state).user, "SCENE")["present"]
 
     assert "practice" not in kid["sheet"]
-    assert kid["sheet"]["ladders"] == [{"ladder_id": "realms", "rung": 0, "stage": "middle"}]
+    assert kid["sheet"]["ladders"] == [
+        {"ladder_id": "realms", "rung": "Realm 0", "stage": "middle"}
+    ]
     assert [work["key"] for work in smith["sheet"]["practice"]] == ["skill:smithing"]
 
 

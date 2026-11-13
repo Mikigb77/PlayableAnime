@@ -20,6 +20,10 @@ from engine.state import CharacterStatus, Fact, FactKind, Rumor, RungHeard
         ("An A-rank hunter took the job.", "A"),
         ("She made rank A last spring.", "A"),
         ("Un cazador de rango S.", "S"),
+        # As the first live scene to lose its realm wrote it (2026-11-13).
+        ("A glimpse of a higher realm—Ascendant Divinity—shimmers.", "Ascendant Divinity"),
+        ("They call it “Golden Core”,«Núcleo Dorado» in the south.", "Golden Core"),
+        ("They call it “Golden Core”,«Núcleo Dorado» in the south.", "Núcleo Dorado"),
     ],
 )
 def test_a_scene_names_a_rung(text, name):

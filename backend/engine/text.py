@@ -67,14 +67,30 @@ def any_mentions(haystacks: list[str], needle: str) -> str | None:
     return next((h for h in haystacks if mentions(h, needle)), None)
 
 
-# A typographic apostrophe parts two words as a plain one does: "l’amor", "Beyoncé’s".
-_APOSTROPHES = str.maketrans({"\u2019": "'", "\u2018": "'", "\u02bc": "'"})
+class _Parting(dict[int, int | str]):
+    """The marks beyond ASCII that part two words: a dash, a quote mark, any sign of punctuation,
+    symbol or space. Each reads as a space, as a plain hyphen or apostrophe does: "l’amor",
+    "Beyoncé’s", "a higher realm—Ascendant Divinity—shimmers". They were once dropped like an
+    accent, so a dash ran the words beside it together, and the first live story to name a
+    realm between dashes lost it (2026-11-13). The raised dot of Catalan stays inside its word
+    ("col·lecció"), and so does every letter and accent. The table fills as marks are met."""
+
+    def __missing__(self, code: int) -> int | str:
+        parts = code > 127 and code != _RAISED_DOT and unicodedata.category(chr(code))[0] in "PSZ"
+        self[code] = " " if parts else code
+        return self[code]
+
+
+_RAISED_DOT = 0x00B7
+# The apostrophe that is a letter to Unicode parts two words like any other.
+_PARTING = _Parting({0x02BC: " "})
 
 
 def normalize(text: str) -> str:
     """Lowercase ASCII words separated by single spaces, so accents, case and punctuation never
-    change a match ("Beyoncé's" becomes "beyonce s", with either apostrophe). For matching whole
-    words and phrases as they are written, where `stems` matches on meaning."""
-    folded = unicodedata.normalize("NFKD", text.casefold().translate(_APOSTROPHES))
+    change a match ("Beyoncé's" becomes "beyonce s", with either apostrophe, and a dash parts two
+    words as a space does). For matching whole words and phrases as they are written, where
+    `stems` matches on meaning."""
+    folded = unicodedata.normalize("NFKD", text.casefold()).translate(_PARTING)
     ascii_only = folded.encode("ascii", "ignore").decode()
     return " ".join(re.sub(r"[^a-z0-9]+", " ", ascii_only).split())

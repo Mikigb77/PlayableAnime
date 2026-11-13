@@ -2,7 +2,10 @@
 through a turn. Nobody on record is lifted (`engine.apply`)."""
 
 from engine import path
+from engine.contracts.intent import ActionKind, Intent, IntentStep
+from engine.samples import cultivation_world
 from graph.llm import Node, Reply
+from graph.turn.context import interpret_prompt
 from graph.turn.outputs import NarratorOutput
 from tests.graph.test_turn_context import _section, brief
 from tests.graph.test_turn_graph import SCENE, play, turn_input
@@ -49,7 +52,7 @@ def test_someone_a_scene_brings_in_is_on_record_where_its_update_has_them(fake, 
     # The next scene's narrator reads him on that rung, like anyone the world was drafted with.
     present = _section(brief(state).user, "SCENE")["present"]
     shown = next(p for p in present if p["id"] == "elder_bai")
-    assert [p["rung"] for p in shown["sheet"]["ladders"]] == [2]
+    assert [p["rung"] for p in shown["sheet"]["ladders"]] == ["Core Formation"]
 
 
 def test_through_a_turn_nobody_on_record_is_lifted(fake, make_client):
@@ -88,3 +91,53 @@ def test_a_change_that_leaves_the_rung_empty_puts_nobody_anywhere(fake, make_cli
     assert "rejected" not in [i.code for i in result.issues]
     assert result.state.characters["gate_boy"].sheet.ladders == []
     assert on_realms(result.state, "zhao") == 1
+
+
+def test_the_narrator_reads_where_everyone_stands_by_the_rungs_name():
+    """A place counted from 0 was read one rung low: in the first live story that brought in an
+    elder on Core Formation, he said he had reached Foundation Establishment (2026-11-13)."""
+    state = cultivation_world()
+    state.characters["zhao"].sheet.ladders[0].shown_rung = 0
+    calls_on = IntentStep(
+        text="call on Elder Mo",
+        verb="greet",
+        kind=ActionKind.CONVERSATION,
+        proposed_duration_s=300,
+        target_ids=["elder-mo"],
+    )
+
+    text = brief(state, intent=Intent(steps=[calls_on])).user
+
+    def stands(view: dict) -> list[dict]:
+        return view["sheet"]["ladders"]
+
+    assert stands(_section(text, "PLAYER CHARACTER")) == [
+        {"ladder_id": "realms", "rung": "Qi Condensation", "stage": "early"}
+    ]
+    zhao = next(p for p in _section(text, "SCENE")["present"] if p["id"] == "zhao")
+    assert stands(zhao) == [
+        {
+            "ladder_id": "realms",
+            "rung": "Foundation Establishment",
+            "stage": "early",
+            # G20: the rung he passes for, by its name too.
+            "shown_rung": "Qi Condensation",
+        }
+    ]
+    (mo,) = _section(text, "WHO ELSE")
+    assert mo["id"] == "elder-mo"
+    assert stands(mo) == [{"ladder_id": "realms", "rung": "Core Formation", "stage": "late"}]
+
+
+def test_the_interpret_step_keeps_the_number_its_form_answers_with():
+    state = cultivation_world()
+    state.characters["zhao"].sheet.ladders[0].shown_rung = 0
+
+    text = interpret_prompt(state, "I hide my cultivation").messages[-1].text
+
+    assert _section(text, "PLAYER CHARACTER")["sheet"]["ladders"][0]["rung"] == 0
+    zhao = next(p for p in _section(text, "SCENE")["present"] if p["id"] == "zhao")
+    assert (zhao["sheet"]["ladders"][0]["rung"], zhao["sheet"]["ladders"][0]["shown_rung"]) == (
+        1,
+        0,
+    )

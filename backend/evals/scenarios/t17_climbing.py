@@ -352,7 +352,7 @@ async def others_rise(ev: Eval) -> None:
             shown = in_scene(brief, riser)
             ev.check(
                 "the scene of his return shows them on their new realm, the rise news under them",
-                [p["rung"] for p in shown.get("sheet", {}).get("ladders", [])] == [now[riser]]
+                [p["rung"] for p in shown.get("sheet", {}).get("ladders", [])] == [rise.rung]
                 and any(
                     piece.get("id") == rise.id and piece["what"].startswith(f"rose to {rise.rung}")
                     for piece in shown.get("news", [])
