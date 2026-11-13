@@ -662,9 +662,13 @@ async def apply_update(state: TurnState) -> dict[str, Any]:
         for key in told
     ]
     # W6, C6: the player character has now been with whoever the scene ended with, and has
-    # heard what the years brought them. Each is logged by its code only (T6), never who or what.
-    world, heard = pipeline.settle_lives(world)
-    issues += [Issue("life_heard", "the scene had them meet", subject=key) for key in heard]
+    # heard the news the scene says it told, where the brief gave it that news to tell, and
+    # the news of whoever it gave a name of their own. What a scene left out is still news
+    # the next time. Each is logged by its code only (T6), never who or what.
+    shown = state["brief"].news
+    told_news = [] if mode == "template" else [i for i in narration.told_news if i in shown]
+    world, heard = pipeline.settle_lives(world, told_news, played=state["world"], shown=shown)
+    issues += [Issue("life_heard", "the scene told it", subject=key) for key in heard]
     return {"world": world, "plan": plan, "scene": scene, "issues": _issues(state, issues)}
 
 

@@ -3,17 +3,26 @@ own while it is elsewhere.
 
 Code decides what the years bring each of them and who has heard of it (`engine.world.lives`):
 the checks here read the record. Whether a scene of meeting again shows those years, and makes
-up nothing the record doesn't hold, is the judge's in live mode.
+up nothing the record doesn't hold, is the judge's in live mode, and there the record is held
+to the judge: it has the player character hearing news exactly when the scene told some.
 """
 
 from __future__ import annotations
 
+import json
 from collections import Counter
 
 from engine import bonds
 from engine.base import DAY, MINUTE, YEAR
 from engine.context import EventFrequency, StorySettings
-from engine.contracts import ActionKind, CharacterChange, Intent, SceneEnd, StateDelta
+from engine.contracts import (
+    ActionKind,
+    CharacterChange,
+    Intent,
+    OutcomeClass,
+    SceneEnd,
+    StateDelta,
+)
 from engine.invariants import check_state
 from engine.labels import ago_label
 from engine.state import LifeEvent, LifeKind, SceneFrame, WorldState
@@ -87,6 +96,18 @@ async def live_there(
     return played
 
 
+def ruled_out(played: list[tuple[Played, str]]) -> list[str]:
+    """Why the engine ruled a stretch out with no throw, for a live run's report: the first
+    live story (2026-11-13) lost a year of its ten to refusals nobody could read."""
+    return [
+        f"t{turn.turn}: {s.reason}"
+        for turn, _ in played
+        if turn.completed
+        for s in turn.steps
+        if s.outcome_class is OutcomeClass.RULED_OUT
+    ]
+
+
 def came(state: WorldState, who: str) -> list[LifeEvent]:
     return lives.of(state, who)
 
@@ -150,28 +171,63 @@ def greet(present: list[str]) -> Intent:
     )
 
 
-def named_scene(present: list[str], names: dict[str, str]) -> dict:
-    """A scripted scene of the meeting that gives each partner or child the world brought a
-    name, under their own id, as the narrator is told to."""
-    naming = [CharacterChange(id=i, name=n, known_to_player=True) for i, n in names.items()]
-    end = SceneEnd(
-        ended_on="The lane has filled with people who want a look at him.",
-        place_id="village",
-        present_ids=[YOU, *present],
+def nod(present: list[str]) -> Intent:
+    return plan(
+        step(
+            "nod to the people on the mill lane and stop at the trough for water",
+            ActionKind.CONVERSATION,
+            5 * MINUTE,
+            verb="nod",
+            target_ids=present,
+        )
     )
+
+
+def on_the_lane(present: list[str], ended_on: str) -> SceneEnd:
+    return SceneEnd(ended_on=ended_on, place_id="village", present_ids=[YOU, *present])
+
+
+def passing_scene(present: list[str]) -> dict:
+    """A scripted scene with the people on the lane that tells nothing of their years."""
+    end = on_the_lane(present, "Tomas drinks at the trough, the lane watching him.")
+    return {
+        "narration": "(scripted) Tomas nods to the faces on the lane and stops for water.",
+        "suggestions": [],
+        "update": StateDelta(scene_end=end).model_dump(mode="json"),
+    }
+
+
+def named_scene(present: list[str], names: dict[str, str], told: list[str]) -> dict:
+    """A scripted scene of the meeting that tells the news `told`, by id, and gives each
+    partner or child the world brought a name, under their own id, as the narrator is told
+    to."""
+    naming = [CharacterChange(id=i, name=n, known_to_player=True) for i, n in names.items()]
+    end = on_the_lane(present, "The lane has filled with people who want a look at him.")
     return {
         "narration": "(scripted) Ten years show on every face that turns toward Tomas.",
+        "told_news": told,
         "suggestions": [],
         "update": StateDelta(characters=naming, scene_end=end).model_dump(mode="json"),
     }
 
 
-def on_record(state: WorldState, present: list[str]) -> str:
-    """What the record holds of the people in the scene, for the judge: the story is the eval's
-    own (T16)."""
+def reads_the_years(brief: str, who: str, away: str | None, news: list[str]) -> bool:
+    """Whether a brief hands its scene the `news` of someone in it, by id, and says the two
+    were last together `away` ago, or nothing of that when they were together lately."""
+    if "## SCENE\n" not in brief:
+        return False  # a live run keeps no brief
+    scene = json.loads(brief.split("## SCENE\n", 1)[1].split("\n\n## ", 1)[0])
+    person = next((p for p in scene["present"] if p["id"] == who), {})
+    return person.get("last_seen") == away and [n["id"] for n in person.get("news", [])] == news
+
+
+def on_record(state: WorldState, present: list[str], others: list[str]) -> str:
+    """What the record holds of the people in the scene, and of the `others` of the village it
+    may bring in or speak of, for the judge: the story is the eval's own (T16)."""
     away = ago_label(state.world_s - (state.characters[present[0]].seen_s or 0))
     lines = [f"Tomas last saw the people of Millbrook {away}, and nobody sent word since."]
-    for who in present:
+
+    def told_of(who: str) -> str:
         person = state.characters[who]
         told = []
         for event in came(state, who):
@@ -186,7 +242,14 @@ def on_record(state: WorldState, present: list[str]) -> str:
                 said += f" (the child is {child.age} now)"
             told.append(f"{said}, {when}")
         age = f", {person.age} now" if person.age is not None else ""
-        lines.append(f"{person.name}{age}: {'; '.join(told) or 'nothing came to them'}.")
+        return f"{person.name}{age}: {'; '.join(told) or 'nothing came to them'}."
+
+    lines += [told_of(who) for who in present]
+    around = [who for who in others if who not in present and came(state, who)]
+    if around:
+        lines.append("Others in the village, whom the scene may bring in or speak of:")
+        lines += [told_of(who) for who in around]
+    lines.append("Nothing of the kind came to anyone else in Millbrook, nor to Tomas.")
     return "\n".join(lines)
 
 
@@ -204,9 +267,11 @@ def on_record(state: WorldState, present: list[str]) -> str:
         "to a life alone is given no partner, and the world gives the player character "
         "nothing of the kind. Far away he hears none of it, and Memory holds none of it. The "
         "scene he meets someone in is told how long it has been and what the years brought "
-        "them, and after it he has heard it and Memory tells it with its day. A partner or a "
-        "child the world brought is named by the story under their own id. Someone who stays "
-        "in the valley instead hears what comes to his neighbours as it happens"
+        "them. A scene that tells none of it leaves it news for the next, and once a scene "
+        "told it he has heard what it told, no more, and Memory tells it with its day. A "
+        "partner or a child the world brought is named by the story under their own id. "
+        "Someone who stays in the valley instead hears what comes to his neighbours as it "
+        "happens"
     ),
 )
 async def years_away(ev: Eval) -> None:
@@ -228,10 +293,14 @@ async def years_away(ev: Eval) -> None:
         story = ev.story(worlds.millbrook_he_knows(), seed=seed, settings=CALM, under_way=True)
         story.change(in_harrowgate)
         left_s = story.state.world_s
-        await live_there(story, TEN, where="in Harrowgate", turns=LIVE_TURNS if ev.live else TURNS)
+        stretches = await live_there(
+            story, TEN, where="in Harrowgate", turns=LIVE_TURNS if ev.live else TURNS
+        )
         state = story.state
         years = (state.world_s - left_s) // YEAR
         ev.metric(f"years away, {seed}", years)
+        if ev.live:
+            ev.metric(f"stretches ruled out, {seed}", ruled_out(stretches))
         ev.check("ten years went by", years == 10, f"{seed}: {years}", live=False)
         ev.check(
             "everyone on record is as many years older as went by",
@@ -242,7 +311,8 @@ async def years_away(ev: Eval) -> None:
             )
             and state.characters[YOU].age
             == worlds.millbrook_he_knows().characters[YOU].age + years,
-            f"{seed}: {years} years, { {i: state.characters[i].age for i in known} }",
+            f"{seed}: {years} years, Tomas {state.characters[YOU].age}, "
+            f"{ {i: state.characters[i].age for i in known} }",
         )
         events = list(state.lives.values())
         kinds.update(e.kind.value for e in events)
@@ -282,41 +352,68 @@ async def years_away(ev: Eval) -> None:
         news = came(state, most)
         story.change(home_again(present))
         before = story.state
-        names = dict(zip(unnamed_in(before, news), SPARE_NAMES, strict=False))
-        was = len(before.characters)
+        away = ago_label(before.world_s - (before.characters[most].seen_s or 0))
+        # What a brief hands a scene of someone's news: the latest five.
+        handed = [e.id for e in lives.news_of(before, before.characters[most])[-5:]]
+
+        if not ev.live:
+            # A scene with them that tells none of it: it is still news, and the next scene
+            # is handed it again.
+            await story.act(
+                "I nod to the people on the mill lane and stop at the trough for water",
+                nod(present),
+                narration=passing_scene(present),
+            )
+            ev.check(
+                "the scene is told how long it has been and what the years brought them",
+                reads_the_years(story.prompt(Node.NARRATOR), most, away, handed),
+                f"{seed}: {away}, {len(news)} for {most}",
+            )
+            state = story.state
+            ev.check(
+                "a scene that tells none of it leaves it news, and Memory without it",
+                not heard(state)
+                and not life_lines(state, most)
+                and lives.news_of(state, state.characters[most]) == news
+                and all(state.characters[who].seen_s == state.world_s for who in present),
+                f"{seed}: {[e.id for e in heard(state)]}",
+            )
+        names = dict(zip(unnamed_in(story.state, news), SPARE_NAMES, strict=False))
+        was = len(story.state.characters)
         met = await story.act(
             "I greet the people on the mill lane and ask how they have all been",
             greet(present),
-            narration=None if ev.live else named_scene(present, names),
+            narration=None if ev.live else named_scene(present, names, handed),
         )
         state = story.state
-        away = ago_label(before.world_s - (before.characters[most].seen_s or 0))
-        brief = story.prompt(Node.NARRATOR)
         ev.check(
-            "the scene is told how long it has been and what the years brought them",
-            f'"last_seen":"{away}"' in brief
-            and brief.count('"what":"') >= min(len(news), 5)
-            and (not news or '"news":[' in brief),
-            f"{seed}: {away}, {len(news)} for {most}",
+            "the next scene with them is handed the news again",
+            reads_the_years(story.prompt(Node.NARRATOR), most, None, handed),
+            f"{seed}: {len(news)} for {most}",
+            live=False,
+        )
+        now_heard = heard(state)
+        ev.check(
+            "after the scene that told it he has heard what it told, and no more",
+            sorted(e.id for e in now_heard) == sorted(handed),
+            f"{seed}: heard {[e.id for e in now_heard]}, told {handed}",
             live=False,
         )
         ev.check(
-            "after the scene he has heard what came to the people in it, and has seen them",
-            all(YOU in e.known_by for who in present for e in came(state, who))
-            and all(state.characters[who].seen_s == state.world_s for who in present),
-            f"{seed}: {[e.id for who in present for e in lives.unheard(state, who)]}",
+            "he has now been with whoever the scene ended with",
+            all(
+                state.characters[who].seen_s == state.world_s
+                for who in present
+                if who in state.scene.present_ids
+            ),
+            f"{seed}: {present}",
         )
         told = life_lines(state, most)
         ev.check(
             "Memory tells what he heard of them, each with its day",
-            len(told) == min(len(news), 6) and all("day " in line for line in told),
+            len(told) == min(len([e for e in now_heard if most in e.subject_ids]), 6)
+            and all("day " in line for line in told),
             f"{seed}: {told} of {len(news)}",
-        )
-        elsewhere = [e for e in state.lives.values() if not set(e.subject_ids) & set(present)]
-        ev.check(
-            "what came to people he hasn't met yet is still unheard",
-            not any(YOU in e.known_by for e in elsewhere),
-            f"{seed}: {[e.id for e in elsewhere if YOU in e.known_by]}",
         )
         ev.check(
             "a partner or a child the world brought is named by the story under their own id",
@@ -335,6 +432,7 @@ async def years_away(ev: Eval) -> None:
             still = unnamed_in(state, news)
             ev.metric(f"named in the scene, {seed}", f"{len(names) - len(still)} of {len(names)}")
             ev.metric(f"people the scene added, {seed}", len(state.characters) - was)
+            ev.metric(f"news heard in the scene, {seed}", f"{len(now_heard)} of {len(events)}")
         must = [
             "The scene is told as a return after the years CONTEXT says: the people Tomas "
             "meets are older or changed by the time, or the years are spoken of",
@@ -344,20 +442,31 @@ async def years_away(ev: Eval) -> None:
                 "At least one thing CONTEXT says came to someone in the scene is shown or "
                 "said in it"
             )
-        await ev.judge(
+        judgement = await ev.judge(
             "meeting again after ten years",
             Rubric(
                 must=tuple(must),
                 must_not=(
-                    "Someone in the scene is given a partner, a wedding, a child or a parting "
-                    "that CONTEXT doesn't say came to them",
+                    "Someone in the scene is given a romantic partner, a wedding, a child or a "
+                    "parting of a couple that CONTEXT doesn't say came to them",
                     "Tomas knows what the years brought someone before anyone shows or tells him",
                     "A child CONTEXT gives an age is told as years younger or older than that",
                 ),
             ),
             met,
-            context=on_record(before, present),
+            context=on_record(before, present, at_home),
         )
+        shown = None
+        if judgement is not None and judgement.error is None and news:
+            shown = next((v.passed for v in judgement.verdicts if v.id == "M2"), None)
+        if shown is not None:
+            # C6: Memory holds what the story told, so the record is held to what the judge
+            # read in the scene.
+            ev.check(
+                "the record has him hearing news exactly when the scene told some",
+                shown == bool(now_heard),
+                f"{seed}: the judge found news told: {shown}; heard {[e.id for e in now_heard]}",
+            )
 
     ev.metric("what ten years brought", dict(kinds))
     ev.metric("found as they were left", f"{as_left} of {people}")

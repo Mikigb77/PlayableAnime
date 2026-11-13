@@ -209,6 +209,30 @@ def test_a_year_counts_once_however_the_time_is_split(monkeypatch):
     assert state.aged_s == 2 * YEAR
 
 
+def test_a_scene_cannot_move_an_age_the_record_has(monkeypatch):
+    """W10: the years are the world's to count. A scene that tells ten years gone by and sets
+    the age it works out would count them twice (the first live story of a homecoming,
+    2026-11-13). An age the record doesn't have is still the story's to give."""
+    quiet(monkeypatch)
+    state = valley(villager("nobody", "Wren", None))
+    state, _ = idle(state, 10 * YEAR + 40 * DAY)
+    told = [
+        CharacterChange(id=YOU, age=54),
+        CharacterChange(id="ilse", age=42),  # as the record has it: nothing to refuse
+        CharacterChange(id="nobody", age=27),
+        CharacterChange(id="hob", name="Hob", age=9, location_id="farm"),
+    ]
+
+    applied = apply_delta(state, StateDelta(characters=told), ctx(), source=NARRATOR)
+
+    assert [(r.subject, r.change) for r in applied.rejected] == [(f"character {YOU}", "age")]
+    ages = {i: c.age for i, c in applied.state.characters.items()}
+    assert ages == {YOU: 44, "ilse": 42, "bram": 81, "nobody": 27, "hob": 9}
+    # The engine's own delta may still set one, as a time jump to an heir does.
+    engine = apply_delta(state, StateDelta(characters=told[:1]), ctx(), source=DeltaSource.ENGINE)
+    assert not engine.rejected and engine.state.characters[YOU].age == 54
+
+
 def test_the_dead_stay_the_age_they_died_at_and_a_death_only_presumed_counts_on(monkeypatch):
     quiet(monkeypatch)
     state = valley(villager("mara", "Mara", 29), villager("jorn", "Jorn", 33))
@@ -708,7 +732,9 @@ def test_what_comes_to_someone_they_have_never_heard_of_is_no_talk_of_theirs(mon
     assert YOU in event.known_by
 
 
-def test_far_away_they_hear_it_when_they_next_meet_one_of_the_two(monkeypatch):
+def test_far_away_they_hear_it_once_a_scene_tells_it(monkeypatch):
+    """C6: news is heard when a scene told it, and no sooner. A scene with one of the two
+    that left it out leaves it news, and so it is still theirs to tell the next time."""
     quiet(monkeypatch)
     sure(monkeypatch, MARRY_RATE=1.0)
     state = pair()
@@ -718,29 +744,58 @@ def test_far_away_they_hear_it_when_they_next_meet_one_of_the_two(monkeypatch):
     state = a_year(state)
 
     (event,) = news(state)
+    jorn = state.characters["jorn"]
     assert lives.heard_in(state, ctx().turn) == []
     assert lives.unheard(state, "mara") == lives.unheard(state, "jorn") == [event]
+    assert lives.news_of(state, jorn) == [event]
 
-    # A scene with someone else changes nothing of it.
-    state.scene.present_ids = [YOU, "bram"]
-    met_bram, heard = pipeline.settle_lives(state)
-    assert heard == [] and lives.unheard(met_bram, "mara") == [event]
-    assert met_bram.characters["bram"].seen_s == state.world_s
-
+    # A scene with Jorn in it that told none of it: the two have been together, and that is all.
     state.scene.present_ids = [YOU, "jorn"]
-    met, heard = pipeline.settle_lives(state)
+    silent, heard = pipeline.settle_lives(state)
+    assert heard == [] and lives.news_of(silent, silent.characters["jorn"]) == [event]
+    assert silent.characters["jorn"].seen_s == state.world_s
+
+    # The next one tells it.
+    met, heard = pipeline.settle_lives(silent, [event.id])
     assert heard == [event.id]
     assert lives.unheard(met, "mara") == lives.unheard(met, "jorn") == []
-    assert met.characters["jorn"].seen_s == state.world_s
     assert met.characters["mara"].seen_s == state.characters["mara"].seen_s  # she wasn't there
-    assert lives.unheard(state, "mara") == [event]  # the state it was handed is untouched
-    assert check_transition(state, met) == []
+    assert lives.unheard(silent, "mara") == [event]  # the state it was handed is untouched
+    assert check_transition(silent, met) == []
+
+    # News is heard once, and a scene can't tell what isn't on record.
+    again, heard = pipeline.settle_lives(met, [event.id, "life-99"])
+    assert heard == [] and again.lives == met.lives
+
+
+def test_a_scene_that_says_again_that_two_met_keeps_their_news(monkeypatch):
+    """The first live story of a homecoming (2026-11-13): the narrator marked old neighbours
+    as met once more, the record took that for the two having just been together, and ten
+    years of news were gone before any scene told them. Only a first meeting sets apart what
+    is news from who someone is."""
+    quiet(monkeypatch)
+    sure(monkeypatch, MARRY_RATE=1.0)
+    state = pair()
+    state.characters[YOU].location_id = "city"
+    state.scene.present_ids = [YOU]
+    state = a_year(state)
+    (event,) = news(state)
+    state.characters[YOU].location_id = "village"
+    state.scene.place_id, state.scene.present_ids = "village", [YOU, "jorn"]
+
+    again = CharacterChange(id="jorn", meets_player=True)
+    applied = apply_delta(state, StateDelta(characters=[again]), ctx(), source=NARRATOR)
+
+    assert not applied.rejected
+    jorn = applied.state.characters["jorn"]
+    assert jorn.met_s is None and jorn.seen_s == state.world_s
+    assert lives.news_of(applied.state, jorn) == [event]
 
 
 def test_what_came_to_a_stranger_before_they_met_is_no_news(monkeypatch):
     """News is of someone the player character knew. What came to a stranger is who they
     are: no scene is told it as news, meeting them hears nothing, and a later scene with
-    them doesn't bring it up as new either."""
+    them doesn't bring it up as new either. What comes to them after the two met is news."""
     quiet(monkeypatch)
     sure(monkeypatch, MARRY_RATE=1.0)
     state = pair()
@@ -755,12 +810,46 @@ def test_what_came_to_a_stranger_before_they_met_is_no_news(monkeypatch):
     assert lives.news_of(state, mara) == []
     assert lives.news_of(state, jorn) == [event]  # Jorn he knew: it is news of him
 
-    state.scene.present_ids = [YOU, "mara"]
-    met, heard = pipeline.settle_lives(state)
-    assert heard == []
-    assert met.characters["mara"].seen_s == met.world_s
-    assert lives.news_of(met, met.characters["mara"]) == []  # still none, now they have met
-    assert lives.unheard(met, "jorn") == [event]  # and still Jorn's to tell
+    # He meets her: her wedding is who she is, and still Jorn's to tell.
+    state.characters[YOU].location_id = "village"
+    state.scene.place_id, state.scene.present_ids = "village", [YOU, "mara"]
+    meeting = CharacterChange(id="mara", meets_player=True)
+    met = apply_delta(state, StateDelta(characters=[meeting]), ctx(), source=NARRATOR).state
+    met, heard = pipeline.settle_lives(met)
+    mara = met.characters["mara"]
+    assert heard == [] and mara.met_s == mara.seen_s == met.world_s
+    assert lives.news_of(met, mara) == []
+    assert lives.unheard(met, "jorn") == [event]
+
+    # A scene can't tell as news what came to two people he had never met.
+    for who in ("mara", "jorn"):
+        met.characters[who].met_by, met.characters[who].met_s = [], None
+    unmet, heard = pipeline.settle_lives(met, [event.id])
+    assert heard == [] and YOU not in unmet.lives[event.id].known_by
+
+
+def test_what_comes_to_someone_after_the_two_first_met_is_news(monkeypatch):
+    quiet(monkeypatch)
+    sure(monkeypatch, PAIR_RATE=1.0, PAIR_FROM_CAST=0.0)
+    wen = Character(id="wen", name="Wen", age=30, location_id="village")
+    wen.prominence = Prominence.KEY  # someone of the story, whom he has yet to meet
+    state = valley(wen)
+    state = a_year(state)
+    (before,) = news(state, LifeKind.PAIRED)  # a stranger found someone: who she is
+    sure(monkeypatch, PAIR_RATE=0.0, MARRY_RATE=1.0)
+    state.characters[YOU].location_id = "village"
+    state.scene.place_id, state.scene.present_ids = "village", [YOU, "wen"]
+    meeting = CharacterChange(id="wen", meets_player=True)
+    state = apply_delta(state, StateDelta(characters=[meeting]), ctx(), source=NARRATOR).state
+    assert lives.news_of(state, state.characters["wen"]) == []
+
+    state.characters[YOU].location_id = "city"
+    state.scene.place_id, state.scene.present_ids = "city", [YOU]
+    state = a_year(state)
+
+    (wedding,) = news(state, LifeKind.MARRIED)
+    assert lives.news_of(state, state.characters["wen"]) == [wedding]
+    assert before.id != wedding.id and YOU not in state.lives[before.id].known_by
 
 
 def test_someone_met_on_the_way_was_seen_then_though_the_scene_ended_without_them(monkeypatch):
@@ -776,7 +865,8 @@ def test_someone_met_on_the_way_was_seen_then_though_the_scene_ended_without_the
     )
     assert not applied.rejected
     state, heard = pipeline.settle_lives(applied.state)  # the scene ends at the farm, without her
-    assert heard == [] and state.characters["wen"].seen_s == 3 * DAY
+    wen = state.characters["wen"]
+    assert heard == [] and wen.seen_s == wen.met_s == 3 * DAY
 
     state.characters[YOU].location_id = "city"
     state.scene.present_ids = [YOU]
@@ -800,6 +890,7 @@ def test_someone_who_takes_over_the_story_grew_up_knowing_their_own_people(monke
     heir.met_by = ["mara", "lena"]
     state.characters["lena"] = heir
     state.characters["mara"].met_by.append("lena")
+    state.characters["mara"].met_s = state.world_s  # when Tomas first met her, say
 
     after = carry_on(state, heir, "Dawn at the mill.", ending="chosen", turn=9)
 
@@ -807,6 +898,7 @@ def test_someone_who_takes_over_the_story_grew_up_knowing_their_own_people(monke
     assert "lena" in after.lives[event.id].known_by  # her mother's wedding is no news to her
     assert lives.news_of(after, after.characters["mara"]) == []
     assert after.characters["mara"].seen_s == after.world_s
+    assert after.characters["mara"].met_s is None  # she has always known her mother
     # Bram, whom only Tomas knew, was last seen by nobody who matters now.
     assert after.characters["bram"].seen_s is None
     assert state.lives[event.id].known_by == ["jorn", "mara"]  # the state before is untouched
@@ -881,3 +973,38 @@ def test_the_story_names_a_partner_the_world_brought_under_their_id(monkeypatch)
     assert not lives.unnamed(named) and YOU in named.known_by
     assert bonds.partners(applied.state, "mara") == [partner]
     assert check_transition(state, applied.state) == []
+
+
+def test_a_scene_that_names_whom_the_world_brought_has_told_the_news_of_them(monkeypatch):
+    """C6: a scene names a partner or a child when it first tells of them, so the name is
+    the telling: the news that brought them is heard, whether the scene's answer lists it or
+    not. The wedding it didn't tell is still news, and naming tells nothing the scene wasn't
+    handed."""
+    quiet(monkeypatch)
+    sure(monkeypatch, PAIR_RATE=1.0, PAIR_FROM_CAST=0.0)
+    state = valley(villager("mara", "Mara", 29))
+    state.characters[YOU].location_id = "city"
+    state.scene.place_id, state.scene.present_ids = "city", [YOU]
+    state = a_year(state, 2)
+    sure(monkeypatch, PAIR_RATE=0.0, MARRY_RATE=1.0, CHILD_RATE_MARRIED=1.0)
+    state = a_year(a_year(state), 2)  # a wedding, and then a child
+    (found,), (wed,) = news(state, LifeKind.PAIRED), news(state, LifeKind.MARRIED)
+    born = news(state, LifeKind.CHILD)[0]
+    partner, child = found.other("mara"), born.child_id
+    shown = [found.id, wed.id, born.id]
+    state.characters[YOU].location_id = "village"
+    state.scene.place_id, state.scene.present_ids = "village", [YOU, "mara"]
+
+    naming = [
+        CharacterChange(id=partner, name="Edrik Hale", known_to_player=True),
+        CharacterChange(id=child, name="Tobin Hale", known_to_player=True),
+    ]
+    applied = apply_delta(state, StateDelta(characters=naming), ctx(), source=NARRATOR).state
+
+    assert lives.told_by_naming(state, applied, shown) == [found.id, born.id]
+    met, heard = pipeline.settle_lives(applied, played=state, shown=shown)
+    assert heard == [found.id, born.id]
+    assert lives.news_of(met, met.characters["mara"])[0] == wed  # the wedding is still to tell
+    # Only what the scene was handed, and nobody who already had a name.
+    assert pipeline.settle_lives(applied, played=state, shown=[wed.id])[1] == []
+    assert pipeline.settle_lives(applied, played=applied, shown=shown)[1] == []

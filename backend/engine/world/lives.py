@@ -28,11 +28,12 @@ What changes is on the records it touches: a romance (`WorldState.bonds`), a chi
 partner the record didn't have, as a minor character with a placeholder name until the story
 names them, and how two people feel about each other. The news of it is a `LifeEvent`, known
 to the two it came to, and to the player character at once when they know one of the two and
-live near them (the same place, or within a day of it). Otherwise they hear it when they are
-next in a scene with one of the two (`settle`), and until then the narrator is shown it as
-news (`news_of`). News is of someone they have been with before: what came to a stranger
-before the two ever met is who that person is, and when someone else becomes the player
-character they have been with their own people all along (`hand_over`). Where someone lives is
+live near them (the same place, or within a day of it). Otherwise it is news of the two
+(`news_of`): the narrator is shown it whenever one of them is in the scene or about to be,
+and the player character has heard it once a scene told it (`settle`), never before. News is
+of someone they had met by then: what came to a stranger before the two ever met is who that
+person is (`Character.met_s`), and when someone else becomes the player character they have
+been with their own people all along (`hand_over`). Where someone lives is
 where the story put them, or where they set out from while the world has them out on a trip
 (`_Homes`): a partner or a child the world brings is at home there, and nobody hears a
 neighbour's news for being in town the day it happened.
@@ -613,13 +614,14 @@ def unheard(state: WorldState, character_id: str) -> list[LifeEvent]:
 
 
 def news_of(state: WorldState, character: Character) -> list[LifeEvent]:
-    """What the player character would hear on meeting someone again: what came to them since
-    the two were last together (`Character.seen_s`) that hasn't reached the player character.
+    """What the player character has yet to hear of someone they know: what came to them since
+    the two first met (`Character.met_s`, or always, for someone known from before the story)
+    that hasn't reached the player character. It stays news until a scene tells it (`settle`).
     What came to a stranger before they ever met is no news, only who they are."""
-    seen = character.seen_s
-    if seen is None:
+    if state.player_id not in character.met_by:
         return []
-    return [e for e in unheard(state, character.id) if e.world_s > seen]
+    since = -1 if character.met_s is None else character.met_s
+    return [e for e in unheard(state, character.id) if e.world_s > since]
 
 
 def heard_in(state: WorldState, turn: int) -> list[LifeEvent]:
@@ -649,6 +651,7 @@ def hand_over(state: WorldState) -> None:
     for character in state.characters.values():
         theirs = character.id != you and you in character.met_by
         character.seen_s = state.world_s if theirs else None
+        character.met_s = None
         if theirs:
             met.add(character.id)
     for event in state.lives.values():
@@ -656,11 +659,36 @@ def hand_over(state: WorldState) -> None:
             event.known_by.append(you)
 
 
-def settle(state: WorldState) -> tuple[WorldState, list[str]]:
+def told_by_naming(before: WorldState, after: WorldState, shown: Iterable[str]) -> list[str]:
+    """The news among `shown`, by id, that a scene told by naming whom it brought: someone
+    who went by the world's placeholder before the scene (`unnamed`) and has a name of their
+    own after it. A scene names a partner or a child when it first tells of them, so the
+    news of a partner found, or of a child born, is told with the name, whatever else the
+    scene's answer lists."""
+
+    def named(character_id: str | None) -> bool:
+        was, now = before.characters.get(character_id), after.characters.get(character_id)
+        return was is not None and now is not None and unnamed(was) and not unnamed(now)
+
+    told = []
+    for key in dict.fromkeys(shown):
+        event = after.lives.get(key)
+        if event is None:
+            continue
+        if event.kind is LifeKind.CHILD and named(event.child_id):
+            told.append(key)
+        elif event.kind is LifeKind.PAIRED and any(named(i) for i in event.subject_ids):
+            told.append(key)
+    return told
+
+
+def settle(state: WorldState, told: Iterable[str] = ()) -> tuple[WorldState, list[str]]:
     """A scene ended. Whoever was in it, the player character has now been with
-    (`Character.seen_s`), and has heard what the years brought those they knew before
-    (`news_of`): the ids of that news come back with the state, which is a new one where
-    anything changed."""
+    (`Character.seen_s`). `told` is the news the scene was shown and says it showed or said,
+    by the ids of its `LifeEvent`s: what of it is news of someone they know (`news_of`) the
+    player character has now heard. News a scene left out stays news, however long the two
+    were together (C6: Memory holds only what the story told). The ids of the news now heard
+    come back with the state, which is a new one where anything changed."""
     you = state.player_id
     there = [
         c
@@ -668,11 +696,14 @@ def settle(state: WorldState) -> tuple[WorldState, list[str]]:
         if i != you and (c := state.characters.get(i)) is not None and c.alive
     ]
     seen = {c.id: c.model_copy(update={"seen_s": state.world_s}) for c in there}
-    heard = {
-        e.id: e.model_copy(update={"known_by": [*e.known_by, you]})
-        for c in there
-        for e in news_of(state, c)
-    }
+    heard = {}
+    for key in dict.fromkeys(told):
+        event = state.lives.get(key)
+        if event is None:
+            continue
+        of_whom = [state.characters[i] for i in event.subject_ids if i in state.characters]
+        if any(event in news_of(state, person) for person in of_whom):
+            heard[key] = event.model_copy(update={"known_by": [*event.known_by, you]})
     if not seen and not heard:
         return state, []
     update: dict = {"characters": state.characters | seen}
