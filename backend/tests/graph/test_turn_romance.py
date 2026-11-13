@@ -8,7 +8,7 @@ import json
 
 from engine import bonds
 from engine.context import Rating, StorySettings, TurnContext
-from engine.contracts import OutcomeClass
+from engine.contracts import OutcomeClass, RomanceMove
 from engine.resolve.romance import SLEPT
 from engine.samples import farm_world
 from engine.state.cast import Character, Place, Route
@@ -104,9 +104,14 @@ def test_an_ask_their_heart_is_there_for_makes_a_couple_on_record(fake, make_cli
     assert asks(state).romance
     assert read.json_schema == intent_form(asks(state))
     assert "- romance, always (W17)" in read.prompt.system
-    # A night together is read as one however the player words it: code reads the verb (on the
-    # real model, 2026-11-13, "we sleep together" was read with the verb "romance").
-    assert 'is an advance whose verb is "sleep with"' in " ".join(read.prompt.system.split())
+    # A night together is a move of its own, however the player words it (on the real model,
+    # 2026-11-13, "we sleep together" was read as an advance with the verb "romance", twice,
+    # the second time against a guide that asked for the verb "sleep with").
+    guide = " ".join(read.prompt.system.split())
+    assert "night_together: making love, or a night spent as lovers" in guide
+    assert "never advance, which stops at a kiss" in guide
+    moves = read.json_schema["$defs"]["RomanceMove"]["enum"]
+    assert RomanceMove.NIGHT.value in moves
     assert read.prompt.system == prompts.interpret_system(asks(state))
     # The narrator reads the scene as it began, with the two still courting, and is told what
     # came of the ask. The next scene begins with a couple.

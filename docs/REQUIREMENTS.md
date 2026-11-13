@@ -1441,16 +1441,19 @@ a wedding looks like is the world's. The details:
   heart of someone who neither likes nor trusts the character. The player character's own
   feelings are the player's (G15), so no record holds them.
 - **A move in a romance.** The interpret step says of every step whether it is itself a move in
-  a romance, and which: an advance (flirting, courting, a gift meant to win them, a kiss, a
-  night together), asking to be a couple, asking for a promise, a wedding, or ending it. The
-  step's own words count beside that reading, as they do for F3: a kiss, a flirt or a night
-  together is an advance whatever the reading left out. Code tells a night together from an
-  evening in someone's company by those words, so the reading is told to name it the same way
-  however the player asked for it: making love or spending the night as lovers is an advance
-  whose verb is "sleep with", and sharing a room, a camp or a bed only to sleep is no move (on
-  the real model, 2026-11-13, "I spend the night with Mara, and we sleep together" was read
-  with the verb "romance", and the record held an evening of courting). In a Teen story such
-  a step never plays (F2). Only the player character's own steps
+  a romance, and which: an advance (flirting, courting, a gift meant to win them, a kiss, an
+  evening in their company), a night together, asking to be a couple, asking for a promise, a
+  wedding, or ending it. The step's own words count beside that reading, as they do for F3: a
+  kiss, a flirt or a night together is an advance whatever the reading left out. **A night
+  together is a move of its own in the reading** (2026-11-13): making love or a night spent
+  as lovers, however the player asked for it, and never an advance, which stops at a kiss;
+  sharing a room, a camp or a bed only to sleep is no move. Code takes it as an advance
+  beyond a kiss whatever the step's words are, since "we sleep together" names no act. On
+  the real model "I spend the night with Mara, and we sleep together" was read as an advance
+  with the verb "romance", and again once the guide asked for the verb "sleep with" to mark
+  it, so the record held an evening of courting while the scene told a night: a reading
+  answers a choice it is given more surely than it follows a rule about its wording. In a
+  Teen story such a step never plays (F2). Only the player character's own steps
   are read this way, toward a living person on record, and everyone in one is a recorded adult
   (F3). The form asks nothing about romance while the player character is no recorded adult or
   nobody else on record is one (B5). The Romance switch is about what the world starts (F7):

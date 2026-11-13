@@ -302,10 +302,10 @@ Hiding or showing is a step of its own, before whatever they do next.
 <<romance>>
 - romance, always (W17): null unless the step is itself a move in a romance between the character \
 and someone it is aimed at, who goes in target_ids. advance: flirting, courting, a gift or a word \
-meant to win them, a kiss, a night together. Making love or spending the night as lovers, \
-however the player words it, is an advance whose verb is "sleep with": code reads that verb to \
-tell it from an evening in their company. Sharing a room, a camp or a bed only to sleep is no \
-move. declare: asking them to be a couple, or saying yes \
+meant to win them, a kiss, an evening in their company. night_together: making love, or a night \
+spent as lovers, however the player words it ("we sleep together", "I take her to bed", "I stay \
+the night with him"): never advance, which stops at a kiss. Sharing a room, a camp or a bed only \
+to sleep is no move. declare: asking them to be a couple, or saying yes \
 when they ask. propose: asking them to promise marriage, or the world's own lasting union, or \
 saying yes to it. wed: marrying them. part: ending it with them. Give the move the player's words \
 make, never the one the bond would allow: marrying someone they aren't promised to is still wed, \
