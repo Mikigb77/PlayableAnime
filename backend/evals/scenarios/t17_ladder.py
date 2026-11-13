@@ -665,9 +665,9 @@ async def ladder_grows(ev: Eval) -> None:
             f"{seed}: {came}",
         )
         ev.check(
-            "a realm the story told is one he has heard of, and at most one a scene",
+            "the two scenes with the envoy add one realm, not two",
             len(told_above(state)) <= 1,
-            f"{seed}: {told_above(state)}",
+            f"{seed}: {told_above(state)}; asked: {seen.findings}",
         )
 
 
