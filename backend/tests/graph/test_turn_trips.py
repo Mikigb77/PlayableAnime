@@ -15,7 +15,7 @@ from graph.drafting import prompts as drafting_prompts
 from graph.drafting.schema import DraftProposal
 from graph.llm import Block, Node, Reply
 from graph.turn import TurnKind, prompts
-from graph.turn.context import _known_view, _scene_view
+from graph.turn.context import _known_view, _scene_view, interpret_prompt
 from tests.graph.test_turn_graph import play, section, turn_input
 
 WALK = 40 * MINUTE
@@ -324,8 +324,13 @@ def test_the_scene_shows_a_trip_that_stopped_on_the_way():
         "travel_s": 2 * DAY,
         "left": "2 d",
     }
+    # The first model's guide says what on_the_way means only while the scene shows it (B5).
+    told = "on_the_way under SCENE is a trip that stopped before its end"
+    assert told in interpret_prompt(state, "I ride on").system
     state.scene.place_id = "village"  # the scene has gone somewhere else since
     assert "on_the_way" not in _scene_view(state)
+    assert told not in interpret_prompt(state, "I ride on").system
+    assert told in prompts.INTERPRET_SYSTEM
 
 
 def test_the_models_are_told_how_trips_work():

@@ -425,7 +425,8 @@ def test_the_open_rule_that_held_the_ladder_is_struck_once_a_rung_is_told():
     assert [rule.id for rule in path.ceilings(state, ladder)] == ["realm-ceiling"]
     stopped = against_the_ceiling(state).resolution.steps[0]
     assert stopped.outcome_class is OutcomeClass.RULED_OUT
-    assert stopped.reason == "Nobody is known to have passed Soul Transformation."
+    # G19: the top of the ladder stops the climb. An open rule never does by itself.
+    assert stopped.reason == "Nothing anyone knows of lies above Soul Transformation."
 
     after = told(state).state
 

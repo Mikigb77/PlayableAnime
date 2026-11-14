@@ -31,20 +31,23 @@ from engine.contracts import (
     OutcomeClass,
     PictureTrigger,
     Resolution,
+    SheetPart,
     StateDelta,
     StepFacts,
     StepResolution,
     StopReason,
     SuggestionPlan,
+    UseSource,
 )
 from engine.director.themes import allowed_themes, fits
 from engine.invariants import is_real_name
 from engine.labels import only_the_clock
-from engine.resolve import bouts
+from engine.resolve import bouts, checks
 from engine.resolve.powers import growth, sensing
 from engine.state.cast import CharacterStatus
 from engine.state.records import GoalStatus, LeadStatus, RollRecord, StepResult, Transfer
 from engine.state.world import WorldState
+from engine.text import stems
 from engine.timekeeping import DURATION_BOUNDS, names_a_span, parse_clock
 from engine.world.geography import scene_ids
 from graph.turn.form import Above
@@ -85,6 +88,9 @@ MAX_RUNG_NAME = 60
 READ_AGAIN = "read_again"
 BEYOND_TERMS = "beyond_terms"
 BREAKTHROUGH = "breakthrough"
+# C10, R2: something the reading filed as the character's own that they don't hold and the
+# player's words never named: a prop the reading added, so it is a thing of the place.
+PROP_ADDED = "prop_added"
 
 
 @dataclass(frozen=True)
@@ -108,7 +114,9 @@ def check_intent(
     who it is aimed at finds them where the player's words point (V3, W1, `_aimed`). A stretch
     the player timed for longer than its kind can last is a time skip (W10): the reading marks
     it `timed`, and the player's own words count beside that mark when they name a span of
-    time, in English or in the story's `language` (`timekeeping.names_a_span`).
+    time, in English or in the story's `language` (`timekeeping.names_a_span`). Something the
+    reading says the character carries, which they don't hold and the player never named, is
+    the reading's own prop and no claim of the player's (C10, R2, `_props`).
     """
     issues: list[Issue] = []
     intent = intent.model_copy(deep=True)
@@ -148,6 +156,7 @@ def check_intent(
             facts.opposition_ids = [ref for ref in facts.opposition_ids if ref in known]
             facts.opposition = "; ".join(filter(None, [facts.opposition, *unknown]))
         _aimed(step, state, issues, action if len(intent.steps) == 1 else "")
+        _props(step, state, action, issues)
         # N6, A8: an edge or hindrance that leans on an injury the record doesn't hold, such as
         # an "old wound" the character never had, is left out of the odds and the scene.
         step.facts, dropped = injuries.unrecorded_harm(state, state.player, step)
@@ -284,6 +293,36 @@ def _aimed(step: IntentStep, state: WorldState, issues: list[Issue], action: str
         return
     step.target_ids = list(found)
     issues.append(Issue("target_found", how, ", ".join(found)))
+
+
+def _props(step: IntentStep, state: WorldState, action: str, issues: list[Issue]) -> None:
+    """C10, R2, in place. The belongings are the truth about what the player says their
+    character has: "I drink my healing draught" with no draught on the sheet is refused. A
+    prop the reading added by itself is no such claim. The real model read "I nurse her until
+    she is well" as a step that uses "herbs of the region" the character carries, and the step
+    was ruled out for herbs the player never mentioned (2026-11-14).
+
+    So something a step files as the character's own (an item it draws on, or a thing a beat
+    carries) that they don't hold in any way (`checks.not_theirs`), and that no word of the
+    player's names, is taken for what it is: an item the step draws on is left out, and a
+    thing a beat uses is one of the place, there or not as a place like this would have it
+    (R2). What the player's own words name stays under C10."""
+    said = stems(action)
+    you = state.player
+
+    def added(words: str, ref: str | None = None) -> bool:
+        return not (stems(words) & said) and checks.not_theirs(state, you, words, ref)
+
+    kept = [u for u in step.uses if not (u.part is SheetPart.ITEM and added(u.ref))]
+    for use in step.uses:
+        if use not in kept:
+            issues.append(Issue(PROP_ADDED, "left out: the player never named it", use.ref))
+    step.uses = kept
+    for beat in step.beats:
+        for use in beat.uses:
+            if use.source is UseSource.CARRIED and added(use.thing, use.ref):
+                use.source = UseSource.NEW
+                issues.append(Issue(PROP_ADDED, "a thing of the place", use.thing))
 
 
 def _shows_apart(

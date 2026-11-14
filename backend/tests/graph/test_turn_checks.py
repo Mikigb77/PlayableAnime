@@ -13,6 +13,8 @@ from engine.context import (
 from engine.contracts import (
     ActionKind,
     Aim,
+    Beat,
+    BeatUse,
     CharacterChange,
     DirectorPlan,
     EventKind,
@@ -31,6 +33,8 @@ from engine.contracts import (
     Plausibility,
     Resolution,
     SceneEnd,
+    SheetPart,
+    SheetUse,
     ShowStrength,
     StateDelta,
     StepFacts,
@@ -40,6 +44,7 @@ from engine.contracts import (
     SuggestionPlan,
     Theme,
     Training,
+    UseSource,
 )
 from engine.samples import cultivation_world, grounded_world
 from engine.state.cast import CharacterStatus, DeathCertainty
@@ -54,7 +59,7 @@ from engine.state.records import (
     Transfer,
 )
 from engine.state.scene import Bout, Encounter, EncounterKind, Terms
-from engine.state.sheet import LadderPosition
+from engine.state.sheet import Item, LadderPosition
 from engine.state.world import EventSize
 from graph.turn.check import (
     ACTION_UNTOLD,
@@ -63,6 +68,7 @@ from graph.turn.check import (
     CLOCK_SCENE_END,
     LOOKS_UNSEEN,
     MAX_STEPS,
+    PROP_ADDED,
     check_intent,
     check_plan,
     check_resolution,
@@ -231,6 +237,53 @@ def test_words_that_are_exactly_someones_name_are_that_person():
         ("target_by_name", "zhao"),
         ("target_by_name", "elder-mo"),
     ]
+
+
+def nursing(*, thing: str = "healing herbs", ref: str = "healing-herbs") -> Intent:
+    """Looking after someone, as the real model read it: with herbs the character carries."""
+    rubbed = Beat(text="rub them in", uses=[BeatUse(source=UseSource.CARRIED, thing=thing)])
+    return Intent(
+        steps=[step("tend Zhao", beats=[rubbed], uses=[SheetUse(part=SheetPart.ITEM, ref=ref)])]
+    )
+
+
+def test_a_prop_the_reading_added_by_itself_is_a_thing_of_the_place():
+    # C10, R2. In play (2026-11-14) "I nurse her until she is well" was read as a step that
+    # uses "herbs of the region" the character carries, and it was ruled out for want of
+    # herbs the player never mentioned.
+    state = cultivation_world()
+
+    checked = check_intent(nursing(), state, "I nurse Zhao until he is well")
+
+    (read,) = checked.intent.steps
+    assert read.uses == []
+    assert [u.source for u in read.beats[0].uses] == [UseSource.NEW]
+    assert [i.code for i in checked.issues] == [PROP_ADDED, PROP_ADDED]
+
+
+def test_what_the_players_own_words_claim_stays_under_their_belongings():
+    # "I rub my healing herbs into his wound" claims the herbs: the belongings are the truth.
+    state = cultivation_world()
+
+    claimed = check_intent(nursing(), state, "I rub my healing herbs into Zhao's wound")
+
+    (read,) = claimed.intent.steps
+    assert [u.ref for u in read.uses] == ["healing-herbs"]
+    assert [u.source for u in read.beats[0].uses] == [UseSource.CARRIED]
+    assert claimed.issues == []
+
+
+def test_what_they_do_hold_is_theirs_whatever_the_player_said():
+    state = cultivation_world()
+    held = Item(id="salve", name="jar of bruise salve")
+    state.player.sheet.resources.items.append(held)
+
+    checked = check_intent(nursing(thing="the bruise salve", ref="salve"), state, "I tend Zhao")
+
+    (read,) = checked.intent.steps
+    assert [u.ref for u in read.uses] == [held.id]
+    assert [u.source for u in read.beats[0].uses] == [UseSource.CARRIED]
+    assert checked.issues == []
 
 
 def test_unknown_opposition_is_kept_as_words():

@@ -46,6 +46,7 @@ from engine.state import (
     Power,
     PowerAxes,
     RankStage,
+    RuleTopic,
     RulingSource,
     SkillLevel,
     StepResult,
@@ -55,6 +56,7 @@ from engine.state import (
     Trait,
     TraitKind,
     Visibility,
+    WorldRule,
 )
 from engine.world.answers import actor_might
 from tests.engine.resolve.power_worlds import (
@@ -654,6 +656,38 @@ def test_nothing_a_rung_lists_is_required_and_what_they_have_adds_a_green_die():
     guided = seclusion(teacher=Teacher.MASTER, teacher_id="elder-mo")
     both = resolve(with_master(state), Intent(steps=[guided])).steps[0]
     assert both.roll.throw.greens == ["a master's teaching", "a Foundation Pill"]
+
+
+def test_a_rule_that_makes_a_climb_deadly_is_a_danger_and_never_a_wall():
+    """In play (2026-11-14) an old cultivator at the peak of his realm set out to break through
+    without the pill, his last chance before his years ran out. The reading filed the attempt
+    against the world's open rule that the climb is "highly lethal without protective pills",
+    and it was refused as impossible. A danger is the player's to risk (G19, G8)."""
+    state = at_peak()
+    state.bible.rules.append(
+        WorldRule(
+            id="core-bottleneck",
+            text="Condensing a core is highly lethal without protective pills.",
+            fixed=False,
+            topic=RuleTopic.LIMITS,
+        )
+    )
+    filed = StepFacts(against_rule_ids=["core-bottleneck"])
+    forced = seclusion(risky=True).model_copy(update={"facts": filed})
+
+    risked = resolve(state, Intent(steps=[forced])).steps[0]
+
+    assert risked.outcome_class is OutcomeClass.CONTESTED and risked.roll is not None
+    assert risked.roll.throw.hand == 3
+    # A rule the world holds for good still stops it, as for any other training.
+    state.bible.rules[-1].fixed = True
+    barred = resolve(state, Intent(steps=[forced])).steps[0]
+    assert barred.outcome_class is OutcomeClass.RULED_OUT
+    assert barred.reason == "Condensing a core is highly lethal without protective pills."
+    # And an open rule still rules out any step that isn't a climb.
+    state.bible.rules[-1].fixed = False
+    other = step("condense a core in the palm of one hand", facts=filed)
+    assert resolve(state, Intent(steps=[other])).steps[0].outcome_class is OutcomeClass.RULED_OUT
 
 
 def test_a_master_named_who_is_not_there_teaches_nothing():

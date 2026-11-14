@@ -15,6 +15,7 @@ from engine.contracts import (
     Intent,
     ItemChange,
     OutcomeClass,
+    Plausibility,
     SheetPart,
     SheetUse,
     StateDelta,
@@ -22,7 +23,7 @@ from engine.contracts import (
     UseSource,
 )
 from engine.samples import grounded_world
-from engine.state import Character, CharacterSheet, StepResult, WorldState
+from engine.state import Character, CharacterSheet, Item, StepResult, WorldState
 
 from .worlds import SEEDS, ctx, facts, resolve, rng, step
 
@@ -247,3 +248,119 @@ def test_two_payments_in_one_step_must_both_fit_the_purse():
     assert short.outcome_class is OutcomeClass.RULED_OUT
     assert short.reason == "You have only one of your copper coins left."
     assert [(m.to_id, m.quantity) for m in paid.effects.items] == [("milo", 5), ("carmine", 5)]
+
+
+def pouring(*uses: BeatUse, thing: str = "a glass of grappa", to: str = "milo"):
+    """Handing Milo a drink, as a reading may file it: a gift, with the beats it takes."""
+    gift = Exchange(kind=ExchangeKind.GIVE, thing=thing, with_id=to)
+    beats = [Beat(text="pour it and hold it out", uses=list(uses))] if uses else []
+    return step(
+        "pour Milo a drink", ActionKind.INSTANT, 20, verb="give", exchanges=[gift], beats=beats
+    )
+
+
+def of_the_place(thing: str = "a glass of grappa", plausibility=Plausibility.PLAUSIBLE):
+    return BeatUse(source=UseSource.NEW, thing=thing, plausibility=plausibility)
+
+
+def test_a_drink_poured_for_a_guest_is_the_places_and_never_fails_for_want_of_it():
+    """In play (2026-11-14) a fisherman poured a frightened neighbour a glass of brandy in his
+    own kitchen, as the scene before had offered. He was told "You have no glass of brandy",
+    and the question he asked with it was never played: no sheet lists what a kitchen holds."""
+    asking = step("ask Milo what happened", ActionKind.CONVERSATION, 60, verb="ask")
+
+    played = resolve(street(), Intent(steps=[pouring(of_the_place()), asking]))
+
+    poured, asked = played.steps
+    assert poured.outcome_class is not OutcomeClass.RULED_OUT
+    assert poured.beats[0].verdict is BeatVerdict.MADE_CANON
+    assert poured.effects.items == []  # nothing of theirs moved
+    assert asked.outcome_class is not OutcomeClass.RULED_OUT
+
+
+def test_whether_a_thing_of_the_place_is_there_is_the_beats_to_say():
+    absent = of_the_place(plausibility=Plausibility.ABSENT)
+
+    (missing,) = resolve(street(), Intent(steps=[pouring(absent)])).steps
+
+    assert missing.beats[0].verdict is BeatVerdict.EMPTY
+    assert missing.reason == "There is no glass of grappa to be found here."
+
+
+def test_a_gift_no_beat_reaches_for_in_the_place_must_be_theirs():
+    (bare,) = resolve(street(), Intent(steps=[pouring()])).steps
+    carried = BeatUse(source=UseSource.CARRIED, thing="a glass of grappa")
+    (claimed,) = resolve(street(), Intent(steps=[pouring(carried)])).steps
+
+    assert bare.outcome_class is OutcomeClass.RULED_OUT
+    assert bare.reason == "You have no glass of grappa."
+    assert claimed.outcome_class is OutcomeClass.RULED_OUT
+
+
+def test_money_and_what_was_theirs_or_is_someone_elses_is_never_the_places_to_give():
+    # Coins on the table are still the purse's to pay.
+    coins = pay(to="carmine")
+    paid = step(
+        "pay Carmine",
+        ActionKind.INSTANT,
+        3,
+        exchanges=[coins],
+        beats=[Beat(text="slide the coins over", uses=[of_the_place("12 copper coins")])],
+    )
+    (short,) = resolve(robbed(), Intent(steps=[paid])).steps
+    assert short.reason == "You have no copper coins. They went to Milo."
+
+    # What Milo holds has to be taken from him before it is given away.
+    state = street()
+    state.characters["milo"].sheet.resources.items.append(Item(id="ring", name="silver ring"))
+    ring = of_the_place("the silver ring")
+    (his,) = resolve(
+        state, Intent(steps=[pouring(ring, thing="the silver ring", to="carmine")])
+    ).steps
+    assert his.outcome_class is OutcomeClass.RULED_OUT and his.reason == "You have no silver ring."
+
+
+def buying(*, price: int = 12, seller: str | None = None):
+    """Buying a healing draught: a give of the price and a take of the thing (C10)."""
+    paid = Exchange(kind=ExchangeKind.GIVE, thing=f"{price} copper coins", money=True, amount=price)
+    got = Exchange(kind=ExchangeKind.TAKE, thing="a healing draught", with_id=seller)
+    return step(
+        "buy a healing draught at the market", ActionKind.INSTANT, 60, exchanges=[paid, got]
+    )
+
+
+def test_what_is_bought_from_a_seller_nobody_named_arrives_with_its_price():
+    """In play (2026-11-14) a cultivator paid his last spirit stones for a pill at a market.
+    The stones left his purse and the pill never reached his belongings."""
+    state = street()
+
+    resolution = resolve(state, Intent(steps=[buying()]))
+    played = pipeline.play_out(state, resolution, ctx(), rng())
+
+    (bought,) = resolution.steps
+    assert [(c.name, c.from_id, c.to_id) for c in bought.effects.items] == [
+        ("12 copper coins", "luca", "world"),
+        ("a healing draught", "world", "luca"),
+    ]
+    after = played.state.player.sheet.resources
+    assert after.money == 0
+    assert [(i.name, i.quantity) for i in after.items if "draught" in i.name] == [
+        ("healing draught", 1)
+    ]
+
+
+def test_what_is_taken_with_nothing_paid_is_still_the_scenes_to_tell():
+    found = Exchange(kind=ExchangeKind.TAKE, thing="a healing draught")
+    taking = step("take a draught off the stall", ActionKind.INSTANT, 5, exchanges=[found])
+
+    (taken,) = resolve(street(), Intent(steps=[taking])).steps
+
+    assert taken.effects.items == []
+
+
+def test_a_purchase_the_purse_cant_pay_buys_nothing():
+    (short,) = resolve(street(money=5), Intent(steps=[buying()])).steps
+
+    assert short.outcome_class is OutcomeClass.RULED_OUT
+    assert short.reason == "You have only 5 copper coins."
+    assert short.effects.items == []

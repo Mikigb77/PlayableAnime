@@ -1007,7 +1007,10 @@ def test_the_narrator_is_told_who_runs_to_tell_and_the_interpret_step_who_is_lea
     scene = _section(interpret_prompt(after, "I grab Wei").messages[-1].text, "SCENE")
     assert scene["leaving"] == [{"id": "wei", "to_tell": sect}]
     assert "leaving" not in _section(interpret_prompt(before, "x").messages[-1].text, "SCENE")
+    # The guide says what leaving means only to a turn whose scene shows someone leaving (B5).
     assert "SCENE's leaving" in prompts.INTERPRET_SYSTEM
+    assert "SCENE's leaving" in interpret_prompt(after, "I grab Wei").system
+    assert "SCENE's leaving" not in interpret_prompt(before, "x").system
 
     # A scene that ran past the moment he set off shows him go (W10).
     later = after.model_copy(deep=True)
@@ -1308,6 +1311,20 @@ def test_bodies_are_as_the_record_says():
     assert "an old wound included, and never reopen or worsen one" in prompts.NARRATOR_SYSTEM
     assert "Never hurt the player character here" in prompts.NARRATOR_SYSTEM
     assert "never an injury no one's record holds" in prompts.INTERPRET_SYSTEM
+
+
+def test_the_reading_is_told_what_is_the_places_what_waits_and_what_is_only_dangerous():
+    # What the hand plays of 2026-11-14 showed. A glass of brandy poured for a guest at home
+    # was a gift of something the character didn't have (C10, R2); "That evening I find the
+    # widow" played at half past ten in the morning (W10); and a breakthrough the world calls
+    # deadly without a pill was refused as against that rule, where it is the player's to risk
+    # (G8, G19). Code backs each of them where it can (`check._props`, `exchanges._of_the_place`,
+    # `checks.world_check`).
+    guide = " ".join(prompts.INTERPRET_SYSTEM.split())
+    assert "everyday things of their own home included: a drink off the shelf" in guide
+    assert "Nor does serving an everyday thing of the place" in guide
+    assert "begins with the wait: a step of kind wait with until that hour" in guide
+    assert "one that only makes it dangerous or costly forbids nothing" in guide
 
 
 def test_ability_costs_come_from_the_sheet_and_the_world_never_from_the_narrator():

@@ -1082,7 +1082,9 @@ def asks(state: WorldState) -> Asks:
     (`graph.turn.form`), read from the state: a power over time the player character holds or
     one at work (W10a), a ladder in the world (G18, G20), talents of theirs to rule on (A4), a
     goal they could give up (N2), a thread or a lead open to take up (W16, N1), and a romance
-    that could be: the player character and someone else on record are adults (W17, F3)."""
+    that could be: the player character and someone else on record are adults (W17, F3). Two
+    more ask no field and only bring the guide's word on what SCENE then shows: someone about
+    to get away with what they saw (W11), and a trip that stopped on the way (W10)."""
     you = state.player
     open_to_them = _goals_and_threads(state)
     return Asks(
@@ -1093,6 +1095,8 @@ def asks(state: WorldState) -> Asks:
         goals=bool(open_to_them["goals"]),
         threads=bool(open_to_them["threads"] or open_to_them["leads"]),
         romance=is_adult(you) and any(c.alive and is_adult(c) for c in state.npcs()),
+        leaving=bool(_leaving_view(state)),
+        trip="on_the_way" in _scene_view(state),
     )
 
 
