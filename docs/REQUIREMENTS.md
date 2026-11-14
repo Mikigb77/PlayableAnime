@@ -286,7 +286,10 @@ player's to say** (G1): the drafter writes a goal, or something they want, only 
 premise says it as an aim ("I must pass the knight exam" gives "Pass the knight exam"; a
 deadline, or something that happened, gives none), and a goal that is the premise handed back
 word for word is dropped, unless the premise is itself one short sentence that says an aim
-("I want to be a pirate."), which is then the goal in the player's own words. The summary shows
+("I want to be a pirate."), which is then the goal in the player's own words. Code gives that
+goal itself where the drafter wrote none that says it: words that open on what the character
+is after ("I want to", "I must", "My dream is", and the same in Spanish and Catalan) are their
+goal, and no model decides whether they are. The summary shows
 one only where the player's words say it as an
 aim, whatever the drafter wrote, and the story starts with no other (G1). An aim is said once:
 a want that repeats a goal, word for word or in the same words that say something ("to steal
