@@ -1,0 +1,716 @@
+{
+ "premise": "A shy girl at a magic academy who is the reincarnation of the greatest mage in history, but she doesn't know it yet.",
+ "language": "en",
+ "rating": "teen",
+ "settings": {
+  "narration_length": "medium",
+  "tone": null,
+  "difficulty": "balanced",
+  "event_frequency": "normal",
+  "images": "key_moments",
+  "suggestions": true,
+  "language": "en",
+  "accent": null
+ },
+ "seed": "play/w-reborn",
+ "state": null,
+ "scenes": [],
+ "choices": [],
+ "cost_usd": 0.079068,
+ "draft": {
+  "premise": "A shy girl at a magic academy who is the reincarnation of the greatest mage in history, but she doesn't know it yet.",
+  "proposal": {
+   "world": {
+    "title": "Echo of the Archmage",
+    "genre": "magic academy fantasy",
+    "tone": "wonder",
+    "era": "A Victorian-style magical era with gas lamps, steam trains, and parchment scrolls.",
+    "extraordinary": [
+     {
+      "id": "magic",
+      "kind": "spellcasting and mana manipulation",
+      "prevalence": "common",
+      "reach": "Mages can conjure elements, ward off curses, and manipulate physical laws, though creating life remains impossible."
+     }
+    ],
+    "rules": [
+     {
+      "id": "catalyst-requirement",
+      "text": "Magic requires a physical catalyst like a wand, staff, or focus ring to channel safely.",
+      "fixed": true,
+      "topic": "nature",
+      "about": [
+       "magic"
+      ]
+     },
+     {
+      "id": "reincarnation-souls",
+      "text": "The soul can reincarnate across centuries, carrying its original magical blueprint, though memories are sealed at birth.",
+      "fixed": true,
+      "topic": "nature",
+      "about": [
+       "magic"
+      ]
+     },
+     {
+      "id": "academy-sanctuary",
+      "text": "Oakhaven Academy is a sovereign sanctuary where external kingdom laws do not apply.",
+      "fixed": true,
+      "topic": "law",
+      "about": []
+     }
+    ],
+    "dropped_rule_ids": [],
+    "peoples": [
+     {
+      "id": "humans",
+      "name": "Humans",
+      "description": "",
+      "lifespan_years": 80,
+      "gifts": [
+       "adaptability"
+      ],
+      "culture": "A society deeply divided by bloodlines and magical aptitude.",
+      "relations": [],
+      "path": ""
+     }
+    ],
+    "creatures": [
+     {
+      "id": "mana-sprite",
+      "name": "Mana Sprite",
+      "description": "Small glowing embers of pure magical energy that feed on ambient spells.",
+      "rung": "1st Circle",
+      "habitat": "The Whispering Woods",
+      "worth": "Can be harvested for liquid mana stabilizer.",
+      "can_be_tamed": true
+     }
+    ],
+    "nature": [
+     "Magic flows in underground ley lines, making certain geographic points highly conductive to spellcraft."
+    ],
+    "ladders": [
+     {
+      "id": "mage-circles",
+      "name": "Mage Circles",
+      "axis": "might",
+      "rungs": [
+       {
+        "name": "1st Circle",
+        "description": "Novices who can light candles or lift feathers.",
+        "lifespan_years": 80
+       },
+       {
+        "name": "2nd Circle",
+        "description": "Apprentices learning to shape elemental shields and standard charms.",
+        "lifespan_years": 90
+       },
+       {
+        "name": "3rd Circle",
+        "description": "Adepts capable of casting complex combat spells and wards.",
+        "lifespan_years": 100
+       },
+       {
+        "name": "4th Circle",
+        "description": "Mages recognized as fully independent magic practitioners.",
+        "lifespan_years": 120
+       },
+       {
+        "name": "5th Circle",
+        "description": "Scholar-Mages who command high elements and specialize in research.",
+        "lifespan_years": 150
+       },
+       {
+        "name": "6th Circle",
+        "description": "High Mages who serve as battle commanders or court advisors.",
+        "lifespan_years": 200
+       },
+       {
+        "name": "7th Circle",
+        "description": "Master Mages, the peak of modern magical society.",
+        "lifespan_years": 300
+       },
+       {
+        "name": "8th Circle",
+        "description": "Grandmasters, legendary figures who can reshape landscapes.",
+        "lifespan_years": 500
+       },
+       {
+        "name": "9th Circle",
+        "description": "Archmage, a mythic state where one becomes a living conduit of magic.",
+        "lifespan_years": 1000
+       }
+      ],
+      "known_to_all": 7,
+      "sensing": true,
+      "standing_follows": true,
+      "lengthens_life": true
+     }
+    ],
+    "calendar": {
+     "style": "day_count",
+     "clock_time": false,
+     "epoch": "",
+     "start_hour": 8,
+     "months": [],
+     "start_year": 1,
+     "start_month": 1,
+     "start_day": 1,
+     "era": "Academy Term"
+    },
+    "travel": {
+     "description": "Scholars and nobles travel by steam-powered trains or enchanted carriages. Messages are sent via messenger owls or magic mirrors.",
+     "instant_messages": false
+    },
+    "medicine": {
+     "healing": "Potions and restorative spells can mend bone and skin in hours, but complex organ damage requires intensive surgery.",
+     "resurrection": "none",
+     "resurrection_means": ""
+    },
+    "laws": [
+     {
+      "id": "no-unauthorized-dueling",
+      "text": "Magic duels must be overseen by a licensed academic arbiter.",
+      "enforcer": "Academy Prefects",
+      "enforcer_faction_id": "oakhaven-faculty",
+      "zeal": "high",
+      "corruptible": false
+     }
+    ],
+    "norms": [],
+    "several_partners": false,
+    "unions": "held",
+    "places": [
+     {
+      "id": "oakhaven-academy",
+      "name": "Oakhaven Academy Grounds",
+      "kind": "wilds",
+      "description": "An sprawling gothic campus surrounded by high iron gates and misty ancient forests.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "oakhaven-faculty",
+      "mood": "studious and solemn",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "whispering-woods",
+        "travel_hours": 1.0,
+        "mode": "on foot"
+       }
+      ]
+     },
+     {
+      "id": "dormitories",
+      "name": "The Hearthside Dormitories",
+      "kind": "building",
+      "description": "A cozy, stone-walled dormitory complex smelling of cedarwood and old tea.",
+      "parent_id": "oakhaven-academy",
+      "setting": "indoors",
+      "controller_id": "oakhaven-faculty",
+      "mood": "warm and safe",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "grand-library",
+      "name": "The Grand Library of Oakhaven",
+      "kind": "building",
+      "description": "Countless floors of towering mahogany bookshelves that stretch into the vaulted ceilings.",
+      "parent_id": "oakhaven-academy",
+      "setting": "indoors",
+      "controller_id": "oakhaven-faculty",
+      "mood": "quiet and mysterious",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "whispering-woods",
+      "name": "The Whispering Woods",
+      "kind": "wilds",
+      "description": "An ancient, forbidden forest bordering the academy where wild magical beasts roam.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "ominous and vibrant",
+      "known_to_player": false,
+      "routes": []
+     }
+    ],
+    "factions": [
+     {
+      "id": "oakhaven-faculty",
+      "name": "Oakhaven Faculty Council",
+      "kind": "court",
+      "description": "The senior scholars and masters who manage the curriculum and safety of the academy.",
+      "parent_id": "",
+      "leader_ids": [
+       "headmaster-alastair"
+      ],
+      "goal": "To preserve the secrets of ancient magic while molding the next generation of wizards.",
+      "methods": "Strict educational discipline and rigorous testing.",
+      "strength": "Dozens of high-level battle mages and centuries of defensive runes.",
+      "relations": [],
+      "secrets": [
+       "They suspect an Archmage soul has returned to the academy."
+      ],
+      "known_to_player": true
+     },
+     {
+      "id": "the-ecliptic-order",
+      "name": "The Ecliptic Order",
+      "kind": "sect",
+      "description": "A secretive cabal operating outside the kingdoms, searching for relics of the ancient mages.",
+      "parent_id": "",
+      "leader_ids": [],
+      "goal": "To find and forcibly awaken the reincarnation of Valerius the Great to use his magic for world domination.",
+      "methods": "Infiltration, espionage, and forbidden soul-tracking spells.",
+      "strength": "Wealthy patrons and rogue dark mages.",
+      "relations": [],
+      "secrets": [
+       "They have a spy among the academy students."
+      ],
+      "known_to_player": false
+     }
+    ],
+    "npcs": [
+     {
+      "id": "headmaster-alastair",
+      "name": "Headmaster Alastair Vance",
+      "aliases": [],
+      "description": "A kind but watchful old wizard with a sweeping silver beard and eyes that seem to read minds.",
+      "appearance": "Tall, dressed in elaborate gold-stitched velvet robes, carrying a gnarled elderwood staff.",
+      "age": 74,
+      "people_id": "humans",
+      "location_id": "grand-library",
+      "memberships": [
+       {
+        "faction_id": "oakhaven-faculty",
+        "rank": "Headmaster",
+        "loyalty": 100
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "cautious",
+        "wise",
+        "patient"
+       ],
+       "values": [
+        "knowledge",
+        "safety",
+        "free-will"
+       ],
+       "loves": [
+        "rare tea",
+        "classical chess"
+       ],
+       "fears": [
+        "a second magical cataclysm"
+       ],
+       "wants": [
+        "to protect the world from unstable high-tier spells"
+       ],
+       "voice": "Slow, deep, and reassuring."
+      },
+      "attributes": {
+       "strength": 2,
+       "speed": 3,
+       "toughness": 3,
+       "wits": 5,
+       "knowledge": 5,
+       "willpower": 5,
+       "charm": 4,
+       "nerve": 4,
+       "bearing": 5
+      },
+      "skills": [
+       {
+        "name": "ancient-runes",
+        "level": "expert",
+        "notes": ""
+       },
+       {
+        "name": "abjuration-magic",
+        "level": "master",
+        "notes": ""
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [
+       {
+        "ladder_id": "mage-circles",
+        "rung": "7th Circle",
+        "stage": "peak"
+       }
+      ],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 20,
+       "fear": 0,
+       "trust": 30,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": {
+       "goal": "Quietly monitor Sylvia Mercer to see if her latent mana matches the ancient records.",
+       "method": "Assigning her subtle reading tasks and tracking her growth.",
+       "secret": "He suspects her true identity but fears telling her will shatter her fragile mind.",
+       "clock_id": ""
+      },
+      "secrets": [
+       "He knows Valerius's final resting place is sealed beneath the library."
+      ],
+      "player_knows": "heard_of"
+     },
+     {
+      "id": "evelyn-vance",
+      "name": "Evelyn Vance",
+      "aliases": [],
+      "description": "An arrogant and highly talented noble girl who believes she is destined to be the top scholar of her year.",
+      "appearance": "Sharp facial features, long golden ringlets, wearing a tailored silk academy uniform with a ruby brooch.",
+      "age": 16,
+      "people_id": "humans",
+      "location_id": "dormitories",
+      "memberships": [
+       {
+        "faction_id": "oakhaven-faculty",
+        "rank": "Junior Prodigy",
+        "loyalty": 40
+       }
+      ],
+      "parent_ids": [
+       "headmaster-alastair"
+      ],
+      "temperament": {
+       "traits": [
+        "proud",
+        "competitive",
+        "insecure"
+       ],
+       "values": [
+        "prestige",
+        "achievement",
+        "lineage"
+       ],
+       "loves": [
+        "public praise",
+        "winning duels"
+       ],
+       "fears": [
+        "mediocrity",
+        "disappointing her grandfather Alastair"
+       ],
+       "wants": [
+        "to be the undisputed star of Oakhaven Academy"
+       ],
+       "voice": "Sharp, clear, and slightly condescending."
+      },
+      "attributes": {
+       "strength": 2,
+       "speed": 3,
+       "toughness": 2,
+       "wits": 4,
+       "knowledge": 3,
+       "willpower": 3,
+       "charm": 3,
+       "nerve": 3,
+       "bearing": 4
+      },
+      "skills": [
+       {
+        "name": "evocation-magic",
+        "level": "fair",
+        "notes": ""
+       },
+       {
+        "name": "magical-history",
+        "level": "novice",
+        "notes": ""
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [
+       {
+        "ladder_id": "mage-circles",
+        "rung": "2nd Circle",
+        "stage": "early"
+       }
+      ],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": -10,
+       "fear": 0,
+       "trust": -10,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "met"
+     }
+    ],
+    "clocks": [
+     {
+      "id": "the-midterm-exhibition",
+      "name": "The Midterm Spellcraft Exhibition",
+      "steps": [
+       "Students draft their spell demonstrations under teacher supervision.",
+       "The theoretical exams begin in the Grand Library.",
+       "The practical magic arena is opened for live spell-weaving tests."
+      ],
+      "step_every_hours": 24.0,
+      "owner_id": "headmaster-alastair",
+      "thread_id": "survive-midterms",
+      "known_to_player": true
+     }
+    ],
+    "threads": [
+     {
+      "id": "survive-midterms",
+      "title": "Passing the Midterm Exhibition",
+      "kind": "ambition",
+      "stakes": "Failing the midterms means being placed in remedial classes or losing academy housing.",
+      "involved_ids": [
+       "player",
+       "evelyn-vance"
+      ],
+      "clock_id": "the-midterm-exhibition",
+      "known_to_player": true
+     },
+     {
+      "id": "the-shadow-of-valerius",
+      "title": "Echoes of the Forgotten Archmage",
+      "kind": "mystery",
+      "stakes": "Discovering why Sylvia can read languages she was never taught and why ancient spells bend to her command.",
+      "involved_ids": [
+       "player",
+       "headmaster-alastair"
+      ],
+      "clock_id": "",
+      "known_to_player": false
+     }
+    ],
+    "mysteries": [
+     {
+      "id": "identity-of-valerius",
+      "question": "Why do the ancient texts of Archmage Valerius feel so familiar?",
+      "answer": "Sylvia is the direct reincarnation of Archmage Valerius. He sealed his soul centuries ago to escape a cosmic soul-devouring curse, leaving his memories to slowly drip-feed into his next incarnation once her mana matured.",
+      "clues": [
+       "Sylvia can effortlessly read the encrypted Valerian cipher without a translation key.",
+       "She experiences reoccurring dreams of a burning black tower and an obsidian staff.",
+       "Her mana signature perfectly resonates with the ancient wards protecting the academy library."
+      ],
+      "thread_id": "the-shadow-of-valerius",
+      "known_to_player": false
+     }
+    ],
+    "known_facts": [
+     "Oakhaven Academy is the premier magic institution on the continent.",
+     "Archmage Valerius was the legendary figure who ended the Great Rift War 500 years ago.",
+     "The midterm exhibition requires a successful display of elemental magic."
+    ],
+    "opening": {
+     "place_id": "dormitories",
+     "present_ids": [],
+     "positions": [],
+     "props": [
+      "heavy-spellbook",
+      "copper-wand"
+     ],
+     "situation": "The morning sun filters through the stained-glass window of your dormitory room, illuminating a towering stack of spellbooks you must memorize before your first exam."
+    },
+    "summary": "Sylvia Mercer is a quiet, unassuming student struggling to stay afloat in the prestigious Oakhaven Academy. Unbeknownst to her and the world, her fragile soul is the vessel for the reincarnation of Valerius, the greatest archmage in mortal history."
+   },
+   "character": {
+    "name": "Sylvia Mercer",
+    "aliases": [
+     "The Quiet Mouse of Oakhaven"
+    ],
+    "age": 16,
+    "lifespan_years": 80,
+    "people_id": "humans",
+    "description": "A quiet, fragile-looking girl who flinches when spoken to, keeping her eyes glued to her boots.",
+    "appearance": "Slim build, shoulder-length unruly brown hair, large hazel eyes. She wears an oversized, slightly faded Oakhaven uniform that dwarfs her frame.",
+    "location_id": "dormitories",
+    "attributes": {
+     "strength": 2,
+     "speed": 3,
+     "toughness": 2,
+     "wits": 4,
+     "knowledge": 3,
+     "willpower": 4,
+     "charm": 2,
+     "nerve": 1,
+     "bearing": 1
+    },
+    "skills": [
+     {
+      "name": "theory-of-magic",
+      "level": "fair",
+      "notes": "Excellent reading retention, though shy to speak up in class."
+     },
+     {
+      "name": "transmutation-charms",
+      "level": "novice",
+      "notes": "Simple household transmutations."
+     }
+    ],
+    "traits": [
+     {
+      "name": "Socially Shy",
+      "kind": "flaw",
+      "description": "Sylvia struggles with public speaking and panics under direct pressure from authority figures."
+     },
+     {
+      "name": "Meticulous Note-taker",
+      "kind": "quirk",
+      "description": "Writes small, incredibly detailed margins on margins, keeping a very clean record of magical formulas."
+     }
+    ],
+    "talents": [
+     {
+      "name": "Echo of the Archmage",
+      "covers": "any spellcraft or ancient magical script she studies",
+      "strength": "one_of_a_kind",
+      "general": false,
+      "reason": "Her soul carries the dormant memories of the greatest mage in history, making complex magical theorems feel like remembering an old habit."
+     }
+    ],
+    "powers": [
+     {
+      "id": "dormant-mana-pool",
+      "name": "Latent Primordial Mana",
+      "description": "",
+      "kind_id": "magic",
+      "gift": true,
+      "strength": "overpowered",
+      "limits": [
+       "Currently locked by a soul seal, only triggering when her life is in mortal peril.",
+       "Casting at this level without a sturdy catalyst will severely burn her hands."
+      ],
+      "costs": [
+       {
+        "kind": "fatigue",
+        "text": "Requires days of bed rest to recover from a single high-tier manifestation."
+       }
+      ],
+      "secret": false,
+      "time": null
+     }
+    ],
+    "techniques": [],
+    "temperament": {
+     "traits": [
+      "quiet",
+      "cautious",
+      "studious"
+     ],
+     "values": [
+      "solitude",
+      "safety",
+      "gentleness"
+     ],
+     "loves": [
+      "quiet library alcoves",
+      "hot chamomile tea"
+     ],
+     "fears": [
+      "public failure",
+      "loud confrontations",
+      "expulsion"
+     ],
+     "wants": [
+      "to pass her midterms quietly and blend into the background"
+     ],
+     "voice": "Soft, hesitant, and prone to whispering."
+    },
+    "items": [
+     {
+      "name": "standard-issue copper wand",
+      "kind": "weapon",
+      "description": "A basic magic focus tailored for beginner students.",
+      "quantity": 1,
+      "carried": true
+     },
+     {
+      "name": "Elementary Spellbook",
+      "kind": "gear",
+      "description": "Thick leather-bound book containing standard 1st Circle and 2nd Circle incantations.",
+      "quantity": 1,
+      "carried": true
+     }
+    ],
+    "money": 15,
+    "currency": "silver shillings",
+    "title": "Novice Scholar",
+    "rank": "Commoner Student",
+    "family_name": "Mercer",
+    "connections": [],
+    "parent_ids": [],
+    "memberships": [],
+    "ladders": [
+     {
+      "ladder_id": "mage-circles",
+      "rung": "1st Circle",
+      "stage": "early"
+     }
+    ],
+    "axes": {
+     "might": 1,
+     "influence": 1,
+     "wealth": 1,
+     "knowledge": 2,
+     "stealth": 3
+    },
+    "reserves": [
+     {
+      "name": "mana",
+      "level": 100
+     }
+    ],
+    "goals": [],
+    "backstory": [
+     "Raised in a quiet rural village, Sylvia was sent to the prestigious Oakhaven Academy after she accidentally lit her family's well on fire during a sudden panic.",
+     "She has spent her first month at school terrified of being sent home, constantly hiding behind her massive textbooks."
+    ],
+    "hidden_past": [
+     "She was once Archmage Valerius, who saved the mortal world five centuries ago before sealing his own soul to hide from a powerful cosmic entity that sought to devour his power."
+    ]
+   }
+  },
+  "rating": "teen",
+  "premise_id": null,
+  "physics": "fun_first",
+  "gift": null,
+  "released_rules": [],
+  "language": "en",
+  "told": []
+ }
+}

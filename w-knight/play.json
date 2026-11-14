@@ -1,0 +1,649 @@
+{
+ "premise": "A knight in his thirties serving a minor lord on the border. Decent with a sword, nothing special.",
+ "language": "en",
+ "rating": "teen",
+ "settings": {
+  "narration_length": "medium",
+  "tone": null,
+  "difficulty": "balanced",
+  "event_frequency": "normal",
+  "images": "key_moments",
+  "suggestions": true,
+  "language": "en",
+  "accent": null
+ },
+ "seed": "play/w-knight",
+ "state": null,
+ "scenes": [],
+ "choices": [],
+ "cost_usd": 0.0970965,
+ "draft": {
+  "premise": "A knight in his thirties serving a minor lord on the border. Decent with a sword, nothing special.",
+  "proposal": {
+   "world": {
+    "title": "The Border Knight",
+    "genre": "grounded medieval drama",
+    "tone": "gritty and realistic",
+    "era": "High Medieval borderlands: steel swords, chainmail, and horse-travel",
+    "extraordinary": [
+     {
+      "id": "magic-supernatural",
+      "kind": "magic or anything supernatural",
+      "prevalence": "none",
+      "reach": ""
+     }
+    ],
+    "rules": [
+     {
+      "id": "no-magic",
+      "text": "Magic and the supernatural do not exist; the physical laws of nature are absolute.",
+      "fixed": true,
+      "topic": "existence",
+      "about": [
+       "magic-supernatural"
+      ]
+     },
+     {
+      "id": "oath-of-fealty",
+      "text": "A knight is bound by holy oath to serve their lord, and breaking fealty brings absolute ruin.",
+      "fixed": true,
+      "topic": "law",
+      "about": []
+     },
+     {
+      "id": "grim-medicine",
+      "text": "Wounds fester easily and diseases kill; there are no magical cures, only basic herbalism and amputations.",
+      "fixed": true,
+      "topic": "medicine",
+      "about": []
+     }
+    ],
+    "dropped_rule_ids": [],
+    "peoples": [
+     {
+      "id": "human",
+      "name": "Human",
+      "description": "",
+      "lifespan_years": 75,
+      "gifts": [],
+      "culture": "Feudal borderland culture, focused on hard labor, duty, and keeping watch against raids.",
+      "relations": [],
+      "path": ""
+     }
+    ],
+    "creatures": [],
+    "nature": [
+     "The seasons are harsh on the border, with long, damp winters that rot crops and freeze patrols."
+    ],
+    "ladders": [],
+    "calendar": {
+     "style": "day_count",
+     "clock_time": false,
+     "epoch": "",
+     "start_hour": 8,
+     "months": [],
+     "start_year": 1,
+     "start_month": 1,
+     "start_day": 1,
+     "era": ""
+    },
+    "travel": {
+     "description": "Riders on horseback carry messages. A broken bridge or muddy road can isolate a keep for days.",
+     "instant_messages": false
+    },
+    "medicine": {
+     "healing": "Basic stitching and hot iron cauterization. A deep gut wound is a slow death sentence.",
+     "resurrection": "none",
+     "resurrection_means": ""
+    },
+    "laws": [
+     {
+      "id": "lords-justice",
+      "text": "The local lord holds absolute power of high and low justice over his domain.",
+      "enforcer": "Lord Oswald's men-at-arms",
+      "enforcer_faction_id": "house-oswald",
+      "zeal": "medium",
+      "corruptible": false
+     }
+    ],
+    "norms": [
+     "Desertion or cowardice on the border is considered monstrous.",
+     "Frugality and simple, sturdy armor are normal and respected."
+    ],
+    "several_partners": false,
+    "unions": "held",
+    "places": [
+     {
+      "id": "border-keep",
+      "name": "Oswald Keep",
+      "kind": "building",
+      "description": "A drafty stone fortress weathered by the northern wind, standing watch over the border lands.",
+      "parent_id": "",
+      "setting": "indoors",
+      "controller_id": "house-oswald",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "garrison-yard",
+        "travel_hours": 0.1,
+        "mode": "on foot"
+       },
+       {
+        "to_id": "border-village",
+        "travel_hours": 2.0,
+        "mode": "by cart"
+       }
+      ]
+     },
+     {
+      "id": "garrison-yard",
+      "name": "The Garrison Yard",
+      "kind": "wilds",
+      "description": "A muddy training yard within the keep's wooden palisade, smelling of horse dung and wet hay.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "house-oswald",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "border-village",
+      "name": "Lowbridge Village",
+      "kind": "village",
+      "description": "A cluster of thatched peasant huts huddled near a strategic river crossing.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "wild-woods",
+        "travel_hours": 1.5,
+        "mode": "on foot"
+       }
+      ]
+     },
+     {
+      "id": "wild-woods",
+      "name": "The Wild Woods",
+      "kind": "wilds",
+      "description": "A dense, ancient forest stretching past the border, unclaimed by any king and home to outlaws.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     }
+    ],
+    "factions": [
+     {
+      "id": "house-oswald",
+      "name": "House Oswald",
+      "kind": "family",
+      "description": "A minor noble house tasked with holding this barren stretch of the realm's frontier.",
+      "parent_id": "",
+      "leader_ids": [
+       "lord-oswald"
+      ],
+      "goal": "",
+      "methods": "",
+      "strength": "",
+      "relations": [],
+      "secrets": [],
+      "known_to_player": true
+     },
+     {
+      "id": "border-bandits",
+      "name": "The Red Cap Bandits",
+      "kind": "crew",
+      "description": "A ruthless gang of outlaws and deserters who raid isolated farms along the border.",
+      "parent_id": "",
+      "leader_ids": [
+       "karl-one-eye"
+      ],
+      "goal": "",
+      "methods": "",
+      "strength": "",
+      "relations": [],
+      "secrets": [],
+      "known_to_player": true
+     }
+    ],
+    "npcs": [
+     {
+      "id": "lord-oswald",
+      "name": "Lord Oswald",
+      "aliases": [],
+      "description": "An aging, stern frontier lord who values duty and order above all else.",
+      "appearance": "Stout frame, grey beard, wearing a heavy wool cloak over plain chainmail.",
+      "age": 58,
+      "people_id": "human",
+      "location_id": "border-keep",
+      "memberships": [
+       {
+        "faction_id": "house-oswald",
+        "rank": "Lord",
+        "loyalty": 100
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "cautious",
+        "stern",
+        "duty-bound"
+       ],
+       "values": [
+        "stability",
+        "fealty"
+       ],
+       "loves": [],
+       "fears": [],
+       "wants": [
+        "defend his territory with limited coin"
+       ],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 3,
+       "speed": 3,
+       "toughness": 3,
+       "wits": 3,
+       "knowledge": 3,
+       "willpower": 3,
+       "charm": 3,
+       "nerve": 3,
+       "bearing": 3
+      },
+      "skills": [],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 20,
+       "fear": 0,
+       "trust": 40,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "met"
+     },
+     {
+      "id": "ser-rodrick",
+      "name": "Ser Rodrick",
+      "aliases": [],
+      "description": "A cynical veteran knight who has spent twenty years on these borders and expects little from life.",
+      "appearance": "Broad shoulders, a face scarred by old blade-cuts, and tired dark eyes.",
+      "age": 45,
+      "people_id": "human",
+      "location_id": "border-keep",
+      "memberships": [
+       {
+        "faction_id": "house-oswald",
+        "rank": "Knight",
+        "loyalty": 80
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "cynical",
+        "weary",
+        "loyal"
+       ],
+       "values": [
+        "comradeship",
+        "survival"
+       ],
+       "loves": [],
+       "fears": [],
+       "wants": [
+        "keep his men alive on patrols"
+       ],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 3,
+       "speed": 3,
+       "toughness": 3,
+       "wits": 3,
+       "knowledge": 3,
+       "willpower": 3,
+       "charm": 3,
+       "nerve": 3,
+       "bearing": 3
+      },
+      "skills": [],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 30,
+       "fear": 0,
+       "trust": 50,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "met"
+     },
+     {
+      "id": "karl-one-eye",
+      "name": "Karl One-Eye",
+      "aliases": [],
+      "description": "The brutal leader of the Red Cap Bandits, known for his cunning and lack of mercy.",
+      "appearance": "Tall, lean, wearing a leather eyepatch and a stained red cap.",
+      "age": 41,
+      "people_id": "human",
+      "location_id": "wild-woods",
+      "memberships": [
+       {
+        "faction_id": "border-bandits",
+        "rank": "Captain",
+        "loyalty": 100
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "ruthless",
+        "greedy",
+        "clever"
+       ],
+       "values": [
+        "plunder",
+        "authority"
+       ],
+       "loves": [],
+       "fears": [],
+       "wants": [
+        "pillage Lowbridge Village without getting cornered by Oswald's knights"
+       ],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 3,
+       "speed": 3,
+       "toughness": 3,
+       "wits": 3,
+       "knowledge": 3,
+       "willpower": 3,
+       "charm": 3,
+       "nerve": 3,
+       "bearing": 3
+      },
+      "skills": [],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 0,
+       "fear": 0,
+       "trust": 0,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "heard_of"
+     }
+    ],
+    "clocks": [
+     {
+      "id": "bandit-raid-clock",
+      "name": "The Red Cap Raid",
+      "steps": [
+       "Bandit scouts are spotted in the forest fringes near Lowbridge Village.",
+       "An outlying barn is burned in the night as the bandits gather.",
+       "The Red Cap Bandits launch a full-scale raid to sack Lowbridge Village."
+      ],
+      "step_every_hours": 24.0,
+      "owner_id": "",
+      "thread_id": "",
+      "known_to_player": true
+     }
+    ],
+    "threads": [
+     {
+      "id": "border-defense",
+      "title": "Defending the Border",
+      "kind": "threat",
+      "stakes": "The lives of the villagers and the survival of House Oswald's hold.",
+      "involved_ids": [
+       "lord-oswald",
+       "player",
+       "karl-one-eye"
+      ],
+      "clock_id": "bandit-raid-clock",
+      "known_to_player": true
+     }
+    ],
+    "mysteries": [
+     {
+      "id": "the-informant",
+      "question": "Who is leaking the garrison's patrol routes to the Red Cap Bandits?",
+      "answer": "Berthold, a disgruntled guard in the keep, is being bribed by Karl One-Eye to leave schedules in a hollow tree.",
+      "clues": [
+       "A map with the exact times of the knight patrols was found on a captured bandit scout.",
+       "Berthold has been seen spending heavy silver coins at the village tavern far beyond a guard's pay."
+      ],
+      "thread_id": "border-defense",
+      "known_to_player": true
+     }
+    ],
+    "known_facts": [
+     "The Red Cap Bandits have grown bolder since winter began.",
+     "House Oswald lacks the coin to hire mercenaries, leaving the defense entirely to the local garrison."
+    ],
+    "opening": {
+     "place_id": "border-keep",
+     "present_ids": [
+      "lord-oswald",
+      "ser-rodrick"
+     ],
+     "positions": [
+      "studying a crude parchment map on the long oak table",
+      "standing by the hearth, warming his hands"
+     ],
+     "props": [
+      "a half-empty pitcher of small beer",
+      "a map of the southern borderlands"
+     ],
+     "situation": "Lord Oswald has summoned you and Ser Rodrick into the drafty great hall to address reports of outlaws moving near Lowbridge Village."
+    },
+    "summary": "Ser Thomas, a plain-skilled border knight, must defend his lord's modest lands from a growing outlaw threat. As the Red Cap Bandits prepare a raid, Thomas must rally the garrison, patrol the damp woods, and root out a suspected traitor in their midst."
+   },
+   "character": {
+    "name": "Ser Thomas",
+    "aliases": [],
+    "age": 34,
+    "lifespan_years": 75,
+    "people_id": "human",
+    "description": "A quiet, weathered knight in his thirties who knows his duty and does it without complaint.",
+    "appearance": "An average, unassuming build, dark brown hair cut short, wearing a faded green surcoat over simple steel chainmail.",
+    "location_id": "border-keep",
+    "attributes": {
+     "strength": 3,
+     "speed": 3,
+     "toughness": 3,
+     "wits": 3,
+     "knowledge": 3,
+     "willpower": 3,
+     "charm": 3,
+     "nerve": 3,
+     "bearing": 3
+    },
+    "skills": [
+     {
+      "name": "Swordsmanship",
+      "level": "fair",
+      "notes": "Decent with an iron blade, though no match for a true champion."
+     },
+     {
+      "name": "Horsemanship",
+      "level": "fair",
+      "notes": "Capable of riding in formation and handling long, exhausting patrols."
+     },
+     {
+      "name": "Shield-work",
+      "level": "novice",
+      "notes": "Trained to keep a wooden shield between himself and incoming blows."
+     }
+    ],
+    "traits": [
+     {
+      "name": "Duty-Bound",
+      "kind": "gift",
+      "description": "He takes his knightly oath seriously, earning him the respect of his lord."
+     },
+     {
+      "name": "Patrol Weariness",
+      "kind": "flaw",
+      "description": "Years of riding in cold rain have left him with stiff joints that ache on damp mornings."
+     }
+    ],
+    "talents": [],
+    "powers": [],
+    "techniques": [],
+    "temperament": {
+     "traits": [
+      "practical",
+      "quiet",
+      "reliable"
+     ],
+     "values": [
+      "duty",
+      "survival"
+     ],
+     "loves": [
+      "the warmth of the barracks hearth"
+     ],
+     "fears": [
+      "failing his oath and dishonoring his name"
+     ],
+     "wants": [],
+     "voice": ""
+    },
+    "items": [
+     {
+      "name": "Iron Sword",
+      "kind": "weapon",
+      "description": "A simple, well-balanced arming sword showing signs of regular sharpening.",
+      "quantity": 1,
+      "carried": true
+     },
+     {
+      "name": "Weathered Chainmail",
+      "kind": "armour",
+      "description": "A sturdy suit of iron mail links, worn over a padded gambeson.",
+      "quantity": 1,
+      "carried": true
+     },
+     {
+      "name": "Wooden Shield",
+      "kind": "armour",
+      "description": "A heater-style shield painted with the fading oak leaf of House Oswald.",
+      "quantity": 1,
+      "carried": true
+     },
+     {
+      "name": "Patrol Horse",
+      "kind": "vehicle",
+      "description": "A reliable, short-tempered gelding suited for rough terrain.",
+      "quantity": 1,
+      "carried": false
+     }
+    ],
+    "money": 15,
+    "currency": "silver coins",
+    "title": "Ser",
+    "rank": "Knight",
+    "family_name": "",
+    "connections": [
+     {
+      "name": "Lord Oswald",
+      "kind": "trusts_them",
+      "character_id": "lord-oswald",
+      "note": "Thomas has served him faithfully for nearly a decade."
+     }
+    ],
+    "parent_ids": [],
+    "memberships": [
+     {
+      "faction_id": "house-oswald",
+      "rank": "Knight",
+      "loyalty": 85
+     }
+    ],
+    "ladders": [],
+    "axes": {
+     "might": 1,
+     "influence": 1,
+     "wealth": 1,
+     "knowledge": 1,
+     "stealth": 1
+    },
+    "reserves": [],
+    "goals": [],
+    "backstory": [
+     "Thomas was knighted after defending a supply wagon during a border skirmish in his twenties.",
+     "He has spent his entire knightly career in service to House Oswald, patrolling the same muddy forests."
+    ],
+    "hidden_past": []
+   }
+  },
+  "rating": "teen",
+  "premise_id": null,
+  "physics": "fun_first",
+  "gift": null,
+  "released_rules": [],
+  "language": "en",
+  "told": []
+ }
+}

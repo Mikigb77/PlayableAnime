@@ -1,0 +1,676 @@
+{
+ "premise": "A 17-year-old chess prodigy who just enrolled in an elite academy where everything, even your rank, is decided by strategy games.",
+ "language": "en",
+ "rating": "teen",
+ "settings": {
+  "narration_length": "medium",
+  "tone": null,
+  "difficulty": "balanced",
+  "event_frequency": "normal",
+  "images": "key_moments",
+  "suggestions": true,
+  "language": "en",
+  "accent": null
+ },
+ "seed": "play/w-prodigy",
+ "state": null,
+ "scenes": [],
+ "choices": [],
+ "cost_usd": 0.075645,
+ "draft": {
+  "premise": "A 17-year-old chess prodigy who just enrolled in an elite academy where everything, even your rank, is decided by strategy games.",
+  "proposal": {
+   "world": {
+    "title": "The Grandmaster's Academy",
+    "genre": "academic strategy thriller",
+    "tone": "sharp and calculating",
+    "era": "Modern day boarding school with advanced touch-screen gaming tables and digital leaderboards",
+    "extraordinary": [
+     {
+      "id": "magic_or_supernatural",
+      "kind": "magic or anything supernatural",
+      "prevalence": "none",
+      "reach": "None exists. All outcomes depend entirely on intellect, psychological pressure, and strategic play."
+     }
+    ],
+    "rules": [
+     {
+      "id": "sovereign-board",
+      "text": "All institutional privileges, dorm assignments, and student budgets are decided strictly by registered board game matches.",
+      "fixed": true,
+      "topic": "law",
+      "about": [
+       "magic_or_supernatural"
+      ]
+     },
+     {
+      "id": "no-violence",
+      "text": "Any student engaging in physical violence is instantly expelled; conflicts must be settled on the board.",
+      "fixed": true,
+      "topic": "law",
+      "about": [
+       "magic_or_supernatural"
+      ]
+     },
+     {
+      "id": "unbreakable-challenge",
+      "text": "A student in the upper half of the school ladder may issue one un-declinable match challenge per week to any player ranked lower than them.",
+      "fixed": false,
+      "topic": "law",
+      "about": [
+       "magic_or_supernatural"
+      ]
+     }
+    ],
+    "dropped_rule_ids": [],
+    "peoples": [
+     {
+      "id": "human",
+      "name": "Human",
+      "description": "",
+      "lifespan_years": 80,
+      "gifts": [],
+      "culture": "A highly competitive meritocracy where mental acumen is prized above all else.",
+      "relations": [],
+      "path": ""
+     }
+    ],
+    "creatures": [],
+    "nature": [
+     "The academy campus is entirely self-sufficient, run by an automated network of security cameras and digital kiosks."
+    ],
+    "ladders": [
+     {
+      "id": "academy-ranks",
+      "name": "Academy Board Ranks",
+      "axis": "influence",
+      "rungs": [
+       {
+        "name": "Pawn",
+        "description": "Freshmen and low-tier players who sleep in crowded dorms and eat basic rations.",
+        "lifespan_years": null
+       },
+       {
+        "name": "Knight",
+        "description": "Established players with decent private quarters and access to analytical libraries.",
+        "lifespan_years": null
+       },
+       {
+        "name": "Bishop",
+        "description": "Tacticians who run small clubs and dominate class discussions.",
+        "lifespan_years": null
+       },
+       {
+        "name": "Rook",
+        "description": "High-tier challengers who command respect and control major campus facilities.",
+        "lifespan_years": null
+       },
+       {
+        "name": "Queen",
+        "description": "The absolute elite, second only to the King, with luxurious suites and personal assistants.",
+        "lifespan_years": null
+       },
+       {
+        "name": "King",
+        "description": "The singular champion of the academy, who wields veto power over school policy.",
+        "lifespan_years": null
+       }
+      ],
+      "known_to_all": 6,
+      "sensing": false,
+      "standing_follows": true,
+      "lengthens_life": false
+     }
+    ],
+    "calendar": {
+     "style": "day_count",
+     "clock_time": true,
+     "epoch": "",
+     "start_hour": 9,
+     "months": [],
+     "start_year": 1,
+     "start_month": 1,
+     "start_day": 1,
+     "era": ""
+    },
+    "travel": {
+     "description": "Students travel on foot or via electric bicycles across the campus paved walkways.",
+     "instant_messages": true
+    },
+    "medicine": {
+     "healing": "Standard modern medicine, including a state-of-the-art campus clinic.",
+     "resurrection": "none",
+     "resurrection_means": ""
+    },
+    "laws": [
+     {
+      "id": "academy-bylaws",
+      "text": "The student code of conduct must be observed at all times outside of sanctioned match play.",
+      "enforcer": "Student Disciplinary Committee",
+      "enforcer_faction_id": "",
+      "zeal": "high",
+      "corruptible": false
+     }
+    ],
+    "norms": [],
+    "several_partners": false,
+    "unions": "held",
+    "places": [
+     {
+      "id": "apex-campus",
+      "name": "Apex Academy Grounds",
+      "kind": "region",
+      "description": "An sprawling, ultra-modern campus isolated from the outside world by high stone walls.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "grand-hall",
+      "name": "The Grand Hall of Boards",
+      "kind": "building",
+      "description": "A magnificent hall paved with marble, dominated by a massive digital leaderboard and rows of high-tech game tables.",
+      "parent_id": "apex-campus",
+      "setting": "indoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "pawn-dorms",
+        "travel_hours": 0.2,
+        "mode": "on foot"
+       },
+       {
+        "to_id": "royal-gardens",
+        "travel_hours": 0.1,
+        "mode": "on foot"
+       }
+      ]
+     },
+     {
+      "id": "pawn-dorms",
+      "name": "Pawn Dormitory Block C",
+      "kind": "building",
+      "description": "A utilitarian, crowded dormitory block housing the lowest-ranked students of the academy.",
+      "parent_id": "apex-campus",
+      "setting": "indoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "royal-gardens",
+      "name": "The Royal Gardens",
+      "kind": "wilds",
+      "description": "A beautifully manicured topiary garden where high-ranking students often play casual matches under gazebo shade.",
+      "parent_id": "apex-campus",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     }
+    ],
+    "factions": [
+     {
+      "id": "student-council",
+      "name": "The Student Council",
+      "kind": "court",
+      "description": "An elite group of top-ranked players who run the day-to-day operations of Apex Academy.",
+      "parent_id": "",
+      "leader_ids": [
+       "president-valerie"
+      ],
+      "goal": "Maintain strict adherence to the board-rank system and prevent any disruption to school order.",
+      "methods": "Using administrative challenges to suppress rebellious players.",
+      "strength": "High influence and the finest game analytical tools available.",
+      "relations": [],
+      "secrets": [],
+      "known_to_player": true
+     },
+     {
+      "id": "the-underdogs",
+      "name": "The Underdog Alliance",
+      "kind": "crew",
+      "description": "An informal network of Pawns and Knights trying to pool resources and share strategies.",
+      "parent_id": "",
+      "leader_ids": [
+       "leo-vance"
+      ],
+      "goal": "Help lower-ranked players secure decent living conditions and challenge the Student Council's monopoly.",
+      "methods": "Sharing scouting reports on elite players' opening books and playstyles.",
+      "strength": "High numbers but low individual playing strength.",
+      "relations": [],
+      "secrets": [],
+      "known_to_player": true
+     }
+    ],
+    "npcs": [
+     {
+      "id": "president-valerie",
+      "name": "Valerie Sterling",
+      "aliases": [
+       "The Ice Queen",
+       "Rank 1 King"
+      ],
+      "description": "A brilliant, cold strategist who currently holds the rank of King at the academy. She views everyone as pieces to be moved.",
+      "appearance": "Sharp eyes, silver-framed glasses, pristine academy uniform with the gold King's emblem, and dark hair tied back in a perfect bun.",
+      "age": 18,
+      "people_id": "",
+      "location_id": "grand-hall",
+      "memberships": [
+       {
+        "faction_id": "student-council",
+        "rank": "King",
+        "loyalty": 100
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "unmoved",
+        "calculating",
+        "perfectionist"
+       ],
+       "values": [
+        "efficiency",
+        "order",
+        "absolute victory"
+       ],
+       "loves": [
+        "symmetrical board states",
+        "black tea"
+       ],
+       "fears": [
+        "unpredictability",
+        "losing control of the school"
+       ],
+       "wants": [
+        "to graduate with a perfect undefeated record"
+       ],
+       "voice": "Precise, soft, yet carrying an absolute authority that demands attention."
+      },
+      "attributes": {
+       "strength": 2,
+       "speed": 3,
+       "toughness": 2,
+       "wits": 5,
+       "knowledge": 5,
+       "willpower": 5,
+       "charm": 3,
+       "nerve": 5,
+       "bearing": 5
+      },
+      "skills": [
+       {
+        "name": "Game Theory",
+        "level": "master",
+        "notes": ""
+       },
+       {
+        "name": "Psychological Manipulation",
+        "level": "expert",
+        "notes": ""
+       },
+       {
+        "name": "Positional Chess",
+        "level": "master",
+        "notes": ""
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [
+       {
+        "ladder_id": "academy-ranks",
+        "rung": "King",
+        "stage": "peak"
+       }
+      ],
+      "axes": {
+       "might": 1,
+       "influence": 5,
+       "wealth": 4,
+       "knowledge": 5,
+       "stealth": 3
+      },
+      "attitude_to_player": {
+       "affinity": 0,
+       "fear": 0,
+       "trust": 0,
+       "shown_affinity": 0,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": {
+       "goal": "Expose and expel any student who tries to bypass the strategic system through physical coercion or external help.",
+       "method": "Baiting rebels into high-stakes duels where their assets are entirely stripped.",
+       "secret": "She knows the academy computer mainframe has a minor bug that can be exploited to force draw calculations.",
+       "clock_id": ""
+      },
+      "secrets": [
+       "She is secretly terrified of facing an opponent who relies purely on chaotic, irrational play."
+      ],
+      "player_knows": "heard_of"
+     },
+     {
+      "id": "leo-vance",
+      "name": "Leo Vance",
+      "aliases": [
+       "The Gambler"
+      ],
+      "description": "An energetic, friendly classmate who survives in the middle ranks through high-risk, high-reward tactical plays.",
+      "appearance": "Messy brown hair, slightly wrinkled school uniform with loose collar, carrying a worn-out portable chess set.",
+      "age": 17,
+      "people_id": "",
+      "location_id": "pawn-dorms",
+      "memberships": [
+       {
+        "faction_id": "the-underdogs",
+        "rank": "Founder",
+        "loyalty": 80
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "hot-headed",
+        "charismatic",
+        "loyal"
+       ],
+       "values": [
+        "comradeship",
+        "chaos on the board"
+       ],
+       "loves": [
+        "tactical sacrifices",
+        "spicy street food"
+       ],
+       "fears": [
+        "being relegated back to Pawn rank permanently"
+       ],
+       "wants": [
+        "to defeat a Rook in a public match"
+       ],
+       "voice": "Loud, cheerful, and full of dramatic flair."
+      },
+      "attributes": {
+       "strength": 3,
+       "speed": 3,
+       "toughness": 3,
+       "wits": 4,
+       "knowledge": 3,
+       "willpower": 4,
+       "charm": 4,
+       "nerve": 4,
+       "bearing": 3
+      },
+      "skills": [
+       {
+        "name": "Tactical Sacrifices",
+        "level": "expert",
+        "notes": ""
+       },
+       {
+        "name": "Bravado & Bluffing",
+        "level": "expert",
+        "notes": ""
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [
+       {
+        "ladder_id": "academy-ranks",
+        "rung": "Knight",
+        "stage": "middle"
+       }
+      ],
+      "axes": {
+       "might": 1,
+       "influence": 3,
+       "wealth": 2,
+       "knowledge": 3,
+       "stealth": 2
+      },
+      "attitude_to_player": {
+       "affinity": 20,
+       "fear": 0,
+       "trust": 10,
+       "shown_affinity": 20,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "met"
+     }
+    ],
+    "clocks": [
+     {
+      "id": "the-placement-tournament",
+      "name": "The Freshman Placement Tournament",
+      "steps": [
+       "Freshmen register their baseline chess ratings.",
+       "Opening rounds begin in the Grand Hall.",
+       "Challenger brackets narrow down to the top contenders.",
+       "Final match placement determines the starting ranks of all new students."
+      ],
+      "step_every_hours": 18.0,
+      "owner_id": "",
+      "thread_id": "",
+      "known_to_player": true
+     }
+    ],
+    "threads": [
+     {
+      "id": "path-to-king",
+      "title": "Climb to the Rank of King",
+      "kind": "ambition",
+      "stakes": "The player's future, luxury dorm access, and administrative veto power are on the line.",
+      "involved_ids": [
+       "player",
+       "president-valerie"
+      ],
+      "clock_id": "the-placement-tournament",
+      "known_to_player": true
+     }
+    ],
+    "mysteries": [
+     {
+      "id": "expulsion-of-the-former-king",
+      "question": "Why was the previous Rank 1 King suddenly expelled from the academy?",
+      "answer": "Valerie framed him for digital tampering of chess game databases to secure her ascension as King and Student Council President.",
+      "clues": [
+       "A discarded encrypted flash drive found in the Royal Gardens contains altered match logs.",
+       "A server-side anomaly report from the day of the expulsion shows a manual override from Valerie's personal terminal."
+      ],
+      "thread_id": "path-to-king",
+      "known_to_player": false
+     }
+    ],
+    "known_facts": [
+     "Everything in this academy, from your dinner quality to your dorm size, is determined by your game rank.",
+     "The current top player is Valerie Sterling, who holds the undisputed rank of King."
+    ],
+    "opening": {
+     "place_id": "grand-hall",
+     "present_ids": [
+      "leo-vance",
+      "president-valerie"
+     ],
+     "positions": [],
+     "props": [],
+     "situation": "You stand in the marble-paved Grand Hall of Apex Academy, staring at the massive digital leaderboard as Valerie Sterling welcomes the newly enrolled freshmen."
+    },
+    "summary": "You have just enrolled in Apex Academy, where strategy games dictate your entire life. Starting as a lowly Pawn, you must use your chess prodigy intellect to outmanoeuvre rivals and climb to the rank of King."
+   },
+   "character": {
+    "name": "Arthur Pendelton",
+    "aliases": [],
+    "age": 17,
+    "lifespan_years": 80,
+    "people_id": "human",
+    "description": "An intense, quiet youth who perceives the world as a complex series of geometric moves and branching possibilities.",
+    "appearance": "Slim build, sharp focus in dark eyes, neatly combed black hair, wearing a slightly oversized standard academy blazer.",
+    "location_id": "grand-hall",
+    "attributes": {
+     "strength": 2,
+     "speed": 3,
+     "toughness": 2,
+     "wits": 5,
+     "knowledge": 4,
+     "willpower": 4,
+     "charm": 3,
+     "nerve": 5,
+     "bearing": 3
+    },
+    "skills": [
+     {
+      "name": "Chess Calculation",
+      "level": "expert",
+      "notes": "Capable of projecting board developments twenty moves deep."
+     },
+     {
+      "name": "Pattern Recognition",
+      "level": "expert",
+      "notes": "Spotting vulnerabilities in defensive structures instantly."
+     },
+     {
+      "name": "Cold Composure",
+      "level": "skilled",
+      "notes": "Maintaining a completely expressionless face when under intense time pressure."
+     }
+    ],
+    "traits": [
+     {
+      "name": "Prodigious Visualization",
+      "kind": "gift",
+      "description": "You can mentally play out entire game trees without needing a physical board."
+     },
+     {
+      "name": "Sedentary Constitution",
+      "kind": "flaw",
+      "description": "You tire quickly during physically demanding tasks or long walks across campus."
+     }
+    ],
+    "talents": [
+     {
+      "name": "Photographic Opening Memorisation",
+      "covers": "any chess opening sequence or tactical motif observed in play.",
+      "strength": "one_of_a_kind",
+      "general": false,
+      "reason": "An immaculate spatial memory that retains chess boards exactly as they were laid out."
+     }
+    ],
+    "powers": [],
+    "techniques": [],
+    "temperament": {
+     "traits": [
+      "calculating",
+      "focused",
+      "quiet"
+     ],
+     "values": [
+      "tactical precision",
+      "intellectual honesty"
+     ],
+     "loves": [
+      "complex pawn endgames",
+      "the sound of wooden pieces striking a board"
+     ],
+     "fears": [
+      "making a blunder under time trouble"
+     ],
+     "wants": [
+      "Climb to the rank of King"
+     ],
+     "voice": ""
+    },
+    "items": [
+     {
+      "name": "Pocket Chess Set",
+      "kind": "gear",
+      "description": "A compact magnetic board with worn wooden pieces.",
+      "quantity": 1,
+      "carried": true
+     },
+     {
+      "name": "Academy Student Handbook",
+      "kind": "document",
+      "description": "Detailing the rules, rankings, and challenge privileges.",
+      "quantity": 1,
+      "carried": true
+     }
+    ],
+    "money": 100,
+    "currency": "Academy Credits",
+    "title": "",
+    "rank": "Pawn",
+    "family_name": "",
+    "connections": [
+     {
+      "name": "Leo Vance",
+      "kind": "ally",
+      "character_id": "leo-vance",
+      "note": "A friendly classmate who showed you around the Pawn dorm block."
+     }
+    ],
+    "parent_ids": [],
+    "memberships": [
+     {
+      "faction_id": "the-underdogs",
+      "rank": "New Recruit",
+      "loyalty": 50
+     }
+    ],
+    "ladders": [
+     {
+      "ladder_id": "academy-ranks",
+      "rung": "Pawn",
+      "stage": "early"
+     }
+    ],
+    "axes": {
+     "might": 1,
+     "influence": 1,
+     "wealth": 1,
+     "knowledge": 4,
+     "stealth": 2
+    },
+    "reserves": [],
+    "goals": [
+     "Climb to the rank of King"
+    ],
+    "backstory": [
+     "You spent your childhood dominating local chess tournaments, earning the moniker of chess prodigy.",
+     "Recognising your peerless strategic mind, Apex Academy extended a full scholarship invitation.",
+     "You arrived today determined to show this hyper-competitive school that a master of the classical game can conquer any strategy they throw your way."
+    ],
+    "hidden_past": []
+   }
+  },
+  "rating": "teen",
+  "premise_id": null,
+  "physics": "fun_first",
+  "gift": null,
+  "released_rules": [],
+  "language": "en",
+  "told": []
+ }
+}

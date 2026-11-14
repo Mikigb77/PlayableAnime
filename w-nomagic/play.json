@@ -1,0 +1,711 @@
+{
+ "premise": "Everyone in this world is born with magic. I'm the only one ever born without any. But magic doesn't work on me either.",
+ "language": "en",
+ "rating": "teen",
+ "settings": {
+  "narration_length": "medium",
+  "tone": null,
+  "difficulty": "balanced",
+  "event_frequency": "normal",
+  "images": "key_moments",
+  "suggestions": true,
+  "language": "en",
+  "accent": null
+ },
+ "seed": "play/w-nomagic",
+ "state": null,
+ "scenes": [],
+ "choices": [],
+ "cost_usd": 0.1161255,
+ "draft": {
+  "premise": "Everyone in this world is born with magic. I'm the only one ever born without any. But magic doesn't work on me either.",
+  "proposal": {
+   "world": {
+    "title": "Untouchable",
+    "genre": "High Fantasy",
+    "tone": "wonder and tension",
+    "era": "A high-medieval fantasy era: magical hearths, crystal lanterns, and floating skyships powered by mana.",
+    "extraordinary": [
+     {
+      "id": "magic",
+      "kind": "spellcasting and mana manipulation",
+      "prevalence": "common",
+      "reach": "Casting spells to manipulate elements, heal wounds, or power machines, up to bending space itself."
+     }
+    ],
+    "rules": [
+     {
+      "id": "universal-magic",
+      "text": "Every living human is born with a mana core and can cast spells, except for the rare anomaly.",
+      "fixed": true,
+      "topic": "existence",
+      "about": [
+       "magic"
+      ]
+     },
+     {
+      "id": "magic-immunity",
+      "text": "Magic has no effect on a person who does not possess a mana core.",
+      "fixed": true,
+      "topic": "nature",
+      "about": [
+       "magic"
+      ]
+     },
+     {
+      "id": "mana-crystals",
+      "text": "Mana can be stored in physical crystals to power machines, skyships, and cities.",
+      "fixed": false,
+      "topic": "technology",
+      "about": [
+       "magic"
+      ]
+     }
+    ],
+    "dropped_rule_ids": [],
+    "peoples": [
+     {
+      "id": "human",
+      "name": "Human",
+      "description": "",
+      "lifespan_years": 80,
+      "gifts": [],
+      "culture": "A society deeply divided by magical aptitude and lineage, where spellcasting is the measure of worth.",
+      "relations": [],
+      "path": ""
+     }
+    ],
+    "creatures": [
+     {
+      "id": "mana-beast",
+      "name": "Mana Beast",
+      "description": "Wild animals whose bodies have been warped and empowered by ambient mana.",
+      "rung": "",
+      "habitat": "The wild forests beyond the city walls",
+      "worth": "Mana cores used for crafting",
+      "can_be_tamed": false
+     }
+    ],
+    "nature": [],
+    "ladders": [
+     {
+      "id": "magic-ranks",
+      "name": "mana ranks",
+      "axis": "might",
+      "rungs": [
+       {
+        "name": "Apprentice",
+        "description": "Can spark small flames or move light objects.",
+        "lifespan_years": null
+       },
+       {
+        "name": "Journeyman",
+        "description": "Capable of sustained casting and basic elemental manipulation.",
+        "lifespan_years": null
+       },
+       {
+        "name": "Mage",
+        "description": "Highly skilled, able to power major machinery or fight in battles.",
+        "lifespan_years": null
+       },
+       {
+        "name": "Archmage",
+        "description": "A master of the craft, capable of altering local weather or gravity.",
+        "lifespan_years": null
+       }
+      ],
+      "known_to_all": 4,
+      "sensing": false,
+      "standing_follows": true,
+      "lengthens_life": false
+     }
+    ],
+    "calendar": {
+     "style": "day_count",
+     "clock_time": false,
+     "epoch": "",
+     "start_hour": 10,
+     "months": [],
+     "start_year": 1,
+     "start_month": 1,
+     "start_day": 1,
+     "era": ""
+    },
+    "travel": {
+     "description": "People travel by foot, horse-drawn carts, or luxurious mana-powered skyships.",
+     "instant_messages": false
+    },
+    "medicine": {
+     "healing": "Magical mending can knit flesh instantly, while mundane herbs are used for the magicless.",
+     "resurrection": "none",
+     "resurrection_means": ""
+    },
+    "laws": [
+     {
+      "id": "high-law",
+      "text": "Only licensed mages are permitted to cast spells within the city limits of Lumina.",
+      "enforcer": "The City Watch",
+      "enforcer_faction_id": "the-council",
+      "zeal": "high",
+      "corruptible": false
+     }
+    ],
+    "norms": [],
+    "several_partners": false,
+    "unions": "held",
+    "places": [
+     {
+      "id": "lumina-academy",
+      "name": "Lumina Academy",
+      "kind": "building",
+      "description": "The grand spires of the empire's premiere institution for magical learning.",
+      "parent_id": "",
+      "setting": "indoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "academy-gardens",
+        "travel_hours": 0.1,
+        "mode": "on foot"
+       }
+      ]
+     },
+     {
+      "id": "academy-gardens",
+      "name": "Academy Gardens",
+      "kind": "wilds",
+      "description": "Meticulously manicured lawns and magical floating flora surrounding the academy.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "low-town",
+        "travel_hours": 1.0,
+        "mode": "on foot"
+       }
+      ]
+     },
+     {
+      "id": "low-town",
+      "name": "Low Town",
+      "kind": "village",
+      "description": "The dense, soot-choked slums at the base of the academy's floating island.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     }
+    ],
+    "factions": [
+     {
+      "id": "the-council",
+      "name": "The Archmage Council",
+      "kind": "court",
+      "description": "The ruling body of Lumina, comprised of the most powerful spellcasters in the land.",
+      "parent_id": "",
+      "leader_ids": [
+       "headmaster-vane"
+      ],
+      "goal": "",
+      "methods": "",
+      "strength": "",
+      "relations": [],
+      "secrets": [],
+      "known_to_player": true
+     },
+     {
+      "id": "house-valerius",
+      "name": "House Valerius",
+      "kind": "family",
+      "description": "An ancient noble family famous for producing high-tier elemental mages.",
+      "parent_id": "",
+      "leader_ids": [
+       "lord-valerius"
+      ],
+      "goal": "",
+      "methods": "",
+      "strength": "",
+      "relations": [],
+      "secrets": [],
+      "known_to_player": true
+     }
+    ],
+    "npcs": [
+     {
+      "id": "lord-valerius",
+      "name": "Lord Valerius",
+      "aliases": [],
+      "description": "A stern, prideful noble who views his magicless child as a stain on the family honor.",
+      "appearance": "",
+      "age": 48,
+      "people_id": "",
+      "location_id": "lumina-academy",
+      "memberships": [
+       {
+        "faction_id": "house-valerius",
+        "rank": "Head of House",
+        "loyalty": 50
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "stern",
+        "prideful",
+        "cold"
+       ],
+       "values": [
+        "legacy",
+        "magical power"
+       ],
+       "loves": [
+        "prestige"
+       ],
+       "fears": [
+        "humiliation"
+       ],
+       "wants": [
+        "to preserve the family reputation at any cost"
+       ],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 3,
+       "speed": 3,
+       "toughness": 3,
+       "wits": 4,
+       "knowledge": 4,
+       "willpower": 5,
+       "charm": 3,
+       "nerve": 4,
+       "bearing": 5
+      },
+      "skills": [],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [
+       {
+        "ladder_id": "magic-ranks",
+        "rung": "Mage",
+        "stage": "peak"
+       }
+      ],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": -50,
+       "fear": 0,
+       "trust": -30,
+       "shown_affinity": -50,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "met"
+     },
+     {
+      "id": "sister-lyra",
+      "name": "Lyra Valerius",
+      "aliases": [],
+      "description": "Your younger sister, a prodigy in wind magic who is torn between family loyalty and her love for you.",
+      "appearance": "",
+      "age": 16,
+      "people_id": "",
+      "location_id": "lumina-academy",
+      "memberships": [
+       {
+        "faction_id": "house-valerius",
+        "rank": "Daughter",
+        "loyalty": 50
+       }
+      ],
+      "parent_ids": [
+       "lord-valerius"
+      ],
+      "temperament": {
+       "traits": [
+        "compassionate",
+        "anxious",
+        "brilliant"
+       ],
+       "values": [
+        "family",
+        "truth"
+       ],
+       "loves": [
+        "reading",
+        "wind casting"
+       ],
+       "fears": [
+        "losing her brother"
+       ],
+       "wants": [
+        "to protect you from their father's wrath"
+       ],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 2,
+       "speed": 4,
+       "toughness": 2,
+       "wits": 5,
+       "knowledge": 4,
+       "willpower": 3,
+       "charm": 4,
+       "nerve": 2,
+       "bearing": 3
+      },
+      "skills": [],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [
+       {
+        "ladder_id": "magic-ranks",
+        "rung": "Journeyman",
+        "stage": "middle"
+       }
+      ],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 60,
+       "fear": 10,
+       "trust": 70,
+       "shown_affinity": 20,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "met"
+     },
+     {
+      "id": "headmaster-vane",
+      "name": "Headmaster Vane",
+      "aliases": [],
+      "description": "The enigmatic ruler of Lumina Academy, always searching for anomalies in the flow of magic.",
+      "appearance": "",
+      "age": 62,
+      "people_id": "",
+      "location_id": "lumina-academy",
+      "memberships": [
+       {
+        "faction_id": "the-council",
+        "rank": "Headmaster",
+        "loyalty": 50
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "curious",
+        "calculating",
+        "polite"
+       ],
+       "values": [
+        "knowledge",
+        "progress"
+       ],
+       "loves": [
+        "secrets"
+       ],
+       "fears": [
+        "stagnation"
+       ],
+       "wants": [
+        "to understand the source of your magic immunity"
+       ],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 2,
+       "speed": 3,
+       "toughness": 3,
+       "wits": 5,
+       "knowledge": 5,
+       "willpower": 5,
+       "charm": 4,
+       "nerve": 4,
+       "bearing": 4
+      },
+      "skills": [],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [
+       {
+        "ladder_id": "magic-ranks",
+        "rung": "Archmage",
+        "stage": "middle"
+       }
+      ],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 10,
+       "fear": 0,
+       "trust": 0,
+       "shown_affinity": 10,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "met"
+     }
+    ],
+    "clocks": [
+     {
+      "id": "the-banishing-decree",
+      "name": "The Banishing Decree",
+      "steps": [
+       "The Council begins debating your presence in Lumina.",
+       "The Council drafts the exile order.",
+       "Lord Valerius signs the family's disownment papers.",
+       "The City Watch is dispatched to escort you to the edge of the floating island."
+      ],
+      "step_every_hours": 18.0,
+      "owner_id": "",
+      "thread_id": "",
+      "known_to_player": true
+     }
+    ],
+    "threads": [
+     {
+      "id": "survive-the-academy",
+      "title": "Avoid exile from Lumina",
+      "kind": "threat",
+      "stakes": "Being cast out to the dangerous wilderness below the floating island.",
+      "involved_ids": [
+       "lord-valerius",
+       "headmaster-vane"
+      ],
+      "clock_id": "the-banishing-decree",
+      "known_to_player": true
+     }
+    ],
+    "mysteries": [
+     {
+      "id": "origin-of-the-null",
+      "question": "Why was I born without magic, yet immune to it?",
+      "answer": "The player is a descendant of the ancient Null Lineage, which possessed no internal mana but possessed a soul that actively grounds and disperses mana around them.",
+      "clues": [
+       "Ancient texts in the Academy's restricted library mentioning the Grounders.",
+       "Your mother's old locket, which is made of anti-magic iron.",
+       "A strange birthmark on your shoulder that pulses whenever high-tier spells are cast near you."
+      ],
+      "thread_id": "",
+      "known_to_player": true
+     }
+    ],
+    "known_facts": [
+     "You are the only person in Lumina born without a drop of magic.",
+     "Spells thrown directly at you simply dissolve into nothingness.",
+     "Your father, Lord Valerius, is deeply ashamed of your condition."
+    ],
+    "opening": {
+     "place_id": "lumina-academy",
+     "present_ids": [
+      "lord-valerius",
+      "sister-lyra"
+     ],
+     "positions": [],
+     "props": [],
+     "situation": "At the center of the Lumina Academy courtyard, your father commands a spell of fire to strike you, only for the sparks to vanish into thin air upon touching your skin."
+    },
+    "summary": "You are the only person in a highly magical society born without any magic. Yet, your complete lack of mana makes you entirely immune to all spellcasting, a dangerous anomaly that has drawn the suspicious eyes of the ruling Council."
+   },
+   "character": {
+    "name": "Karen",
+    "aliases": [],
+    "age": 18,
+    "lifespan_years": 80,
+    "people_id": "",
+    "description": "A focused, resilient youth with watchful eyes, carrying the quiet confidence of someone who has had to rely entirely on their own physical limits.",
+    "appearance": "Athletic build, short dark hair, wearing a simple leather training vest and trousers that contrast with the ornate robes of the academy students.",
+    "location_id": "lumina-academy",
+    "attributes": {
+     "strength": 4,
+     "speed": 4,
+     "toughness": 4,
+     "wits": 4,
+     "knowledge": 3,
+     "willpower": 5,
+     "charm": 3,
+     "nerve": 5,
+     "bearing": 3
+    },
+    "skills": [
+     {
+      "name": "Athletics",
+      "level": "skilled",
+      "notes": "Years of physical training to compensate for a lack of magic."
+     },
+     {
+      "name": "Melee Combat",
+      "level": "fair",
+      "notes": "Proficient in basic hand-to-hand and sword techniques."
+     },
+     {
+      "name": "Observation",
+      "level": "expert",
+      "notes": "You have learned to watch a mage's hands and focus to predict their spells."
+     }
+    ],
+    "traits": [
+     {
+      "name": "Iron Will",
+      "kind": "gift",
+      "description": "Resistant to fear and psychological pressure, hardened by years of being an outcast."
+     },
+     {
+      "name": "Magically Blind",
+      "kind": "flaw",
+      "description": "You cannot sense ambient mana or see invisible magical constructs with the naked eye."
+     }
+    ],
+    "talents": [
+     {
+      "name": "Null Body",
+      "covers": "any physical training or martial move you attempt to master",
+      "strength": "one_of_a_kind",
+      "general": false,
+      "reason": "Because your body is completely free of mana, your muscles, reflexes, and physical senses adapt to physical training at an unnatural speed."
+     }
+    ],
+    "powers": [
+     {
+      "id": "absolute-immunity",
+      "name": "Absolute Magic Immunity",
+      "description": "Your lack of a mana core prevents spells from interacting with or affecting your body in any way.",
+      "kind_id": "magic",
+      "gift": true,
+      "strength": "overpowered",
+      "limits": [
+       "Does not protect against indirect magical physical hazards, like a magically thrown boulder or a collapsing ceiling."
+      ],
+      "costs": [],
+      "secret": false,
+      "time": null
+     }
+    ],
+    "techniques": [],
+    "temperament": {
+     "traits": [
+      "observant",
+      "determined",
+      "guarded"
+     ],
+     "values": [
+      "self-reliance",
+      "physical competence"
+     ],
+     "loves": [
+      "quiet study",
+      "physical challenges"
+     ],
+     "fears": [
+      "being completely helpless in a physical trap"
+     ],
+     "wants": [],
+     "voice": ""
+    },
+    "items": [
+     {
+      "name": "Steel Dagger",
+      "kind": "weapon",
+      "description": "A well-balanced steel blade, entirely un-enchanted.",
+      "quantity": 1,
+      "carried": true
+     },
+     {
+      "name": "Practice Wooden Sword",
+      "kind": "weapon",
+      "description": "Chipped and worn from thousands of swings.",
+      "quantity": 1,
+      "carried": false
+     }
+    ],
+    "money": 15,
+    "currency": "silver pieces",
+    "title": "",
+    "rank": "",
+    "family_name": "Valerius",
+    "connections": [
+     {
+      "name": "Sister Lyra",
+      "kind": "family",
+      "character_id": "sister-lyra",
+      "note": "The only member of your family who still shows you genuine warmth."
+     }
+    ],
+    "parent_ids": [
+     "lord-valerius"
+    ],
+    "memberships": [
+     {
+      "faction_id": "house-valerius",
+      "rank": "Disgraced Heir",
+      "loyalty": 10
+     }
+    ],
+    "ladders": [],
+    "axes": {
+     "might": 2,
+     "influence": 1,
+     "wealth": 1,
+     "knowledge": 2,
+     "stealth": 2
+    },
+    "reserves": [],
+    "goals": [],
+    "backstory": [],
+    "hidden_past": []
+   }
+  },
+  "rating": "teen",
+  "premise_id": null,
+  "physics": "fun_first",
+  "gift": null,
+  "released_rules": [],
+  "language": "en",
+  "told": []
+ }
+}

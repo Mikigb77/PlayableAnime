@@ -1,0 +1,688 @@
+{
+ "premise": "I am an immortal god who got bored and came down to live among mortals as a traveling merchant.",
+ "language": "en",
+ "rating": "teen",
+ "settings": {
+  "narration_length": "medium",
+  "tone": null,
+  "difficulty": "balanced",
+  "event_frequency": "normal",
+  "images": "key_moments",
+  "suggestions": true,
+  "language": "en",
+  "accent": null
+ },
+ "seed": "play/w-god",
+ "state": null,
+ "scenes": [],
+ "choices": [],
+ "cost_usd": 0.1088205,
+ "draft": {
+  "premise": "I am an immortal god who got bored and came down to live among mortals as a traveling merchant.",
+  "proposal": {
+   "world": {
+    "title": "The Vagrant Divine",
+    "genre": "high fantasy slice of life",
+    "tone": "wonder",
+    "era": "Medieval era: horse-drawn wagons, parchment ledgers, and basic steel weaponry",
+    "extraordinary": [
+     {
+      "id": "divinity",
+      "kind": "celestial divinity",
+      "prevalence": "rare",
+      "reach": "Gods hold absolute dominion over natural laws, but their power is tethered to their divine domains and celestial status."
+     },
+     {
+      "id": "mortal-magic",
+      "kind": "elemental magic",
+      "prevalence": "rare",
+      "reach": "Mortals can channel ambient mana to light fires, heal small physical scrapes, or move objects over short distances."
+     }
+    ],
+    "rules": [
+     {
+      "id": "gods-immortality",
+      "text": "Gods do not age and cannot die of mortal sickness or time, remaining forever as they are.",
+      "fixed": true,
+      "topic": "existence",
+      "about": [
+       "divinity"
+      ]
+     },
+     {
+      "id": "divine-presence",
+      "text": "Unveiling a god's true celestial aura causes massive spiritual shockwaves that can blind or overwhelm nearby mortals.",
+      "fixed": true,
+      "topic": "nature",
+      "about": [
+       "divinity"
+      ]
+     },
+     {
+      "id": "divine-intervention-limit",
+      "text": "Performing overt miracles or using massive divine magic makes a god's spiritual signature burn brightly, instantly alerting the Celestial Court.",
+      "fixed": false,
+      "topic": "limits",
+      "about": [
+       "divinity"
+      ]
+     }
+    ],
+    "dropped_rule_ids": [],
+    "peoples": [
+     {
+      "id": "humans",
+      "name": "Humans",
+      "description": "The mortal populace of the Oster Valley, living simple lives of farming, trading, and craftsmanship.",
+      "lifespan_years": 80,
+      "gifts": [],
+      "culture": "A practical and deeply superstitious people who honor local spirits and fear the celestial deities.",
+      "relations": [],
+      "path": ""
+     },
+     {
+      "id": "celestial-spirits",
+      "name": "Celestial Spirits",
+      "description": "Beings of pure divine light who serve the gods as messengers, arbiters, and enforcers of heavenly law.",
+      "lifespan_years": 0,
+      "gifts": [
+       "spiritual sight",
+       "flight"
+      ],
+      "culture": "A highly ordered society bound by strict heavenly decrees and celestial hierarchy.",
+      "relations": [],
+      "path": ""
+     }
+    ],
+    "creatures": [],
+    "nature": [
+     "The laws of gravity and weather are overseen by minor, slumbering regional spirits who can be nudged by divine presence."
+    ],
+    "ladders": [],
+    "calendar": {
+     "style": "day_count",
+     "clock_time": false,
+     "epoch": "",
+     "start_hour": 8,
+     "months": [],
+     "start_year": 1,
+     "start_month": 1,
+     "start_day": 1,
+     "era": "Mortal Sojourn"
+    },
+    "travel": {
+     "description": "Travel is slow, carried out on foot, horseback, or heavy wooden wagons along muddy dirt roads.",
+     "instant_messages": false
+    },
+    "medicine": {
+     "healing": "Mortal medicine is limited to simple herbal poultices and basic bandaging. Serious diseases are often fatal without rare magical interventions.",
+     "resurrection": "none",
+     "resurrection_means": ""
+    },
+    "laws": [
+     {
+      "id": "guild-charter",
+      "text": "All merchants trading within city walls must register with the regional Merchant Guild and pay a monthly silver tax.",
+      "enforcer": "Guild Arbiters",
+      "enforcer_faction_id": "merchant-guild",
+      "zeal": "high",
+      "corruptible": true
+     }
+    ],
+    "norms": [
+     "Revealing oneself as a god to common mortals is viewed as an act of reckless destruction due to the mental toll it inflicts."
+    ],
+    "several_partners": false,
+    "unions": "held",
+    "places": [
+     {
+      "id": "oster-valley",
+      "name": "Oster Valley",
+      "kind": "region",
+      "description": "A vast, sweeping valley cradled by jagged mountains, dotted with small farming villages and dense pine forests.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "peaceful",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "village-of-kerr",
+      "name": "Village of Kerr",
+      "kind": "village",
+      "description": "A quiet farming settlement known for its sweet wheat fields and simple, hardworking mortal inhabitants.",
+      "parent_id": "oster-valley",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "rustic",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "high-road",
+        "travel_hours": 6.0,
+        "mode": "by cart"
+       }
+      ]
+     },
+     {
+      "id": "high-road",
+      "name": "The High Road",
+      "kind": "wilds",
+      "description": "A winding dirt trade route that cuts through the pine forests of the valley, connecting outlying villages to the grand city of Solitude.",
+      "parent_id": "oster-valley",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "serene",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "solitude",
+        "travel_hours": 12.0,
+        "mode": "by cart"
+       }
+      ]
+     },
+     {
+      "id": "solitude",
+      "name": "City of Solitude",
+      "kind": "city",
+      "description": "A bustling trading hub walled with white stone, where merchants from across the continent exchange spices, silks, and ores.",
+      "parent_id": "oster-valley",
+      "setting": "outdoors",
+      "controller_id": "merchant-guild",
+      "mood": "lively",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "the-golden-scales",
+      "name": "The Golden Scales",
+      "kind": "building",
+      "description": "The grand, oak-paneled headquarters of the regional Merchant Guild in Solitude, smelling of ink, wax, and expensive tobacco.",
+      "parent_id": "solitude",
+      "setting": "indoors",
+      "controller_id": "merchant-guild",
+      "mood": "formal",
+      "known_to_player": true,
+      "routes": []
+     }
+    ],
+    "factions": [
+     {
+      "id": "merchant-guild",
+      "name": "The Oster Merchant Guild",
+      "kind": "guild",
+      "description": "A wealthy association of mortal traders who regulate all commerce, tariffs, and market spaces in the region.",
+      "parent_id": "",
+      "leader_ids": [
+       "guildmaster-vance"
+      ],
+      "goal": "Maximize regional profits and squeeze out independent, tax-evading travelers.",
+      "methods": "Deploying guild arbiters to check merchant papers and confiscating unregistered cargo.",
+      "strength": "High economic leverage, backed by paid municipal guards.",
+      "relations": [],
+      "secrets": [
+       "They systematically bribe the city watch to ignore illegal spice smuggling."
+      ],
+      "known_to_player": true
+     },
+     {
+      "id": "celestial-court",
+      "name": "The Celestial Court",
+      "kind": "sect",
+      "description": "The divine bureaucracy of gods and spirits who govern natural laws and maintain cosmic order from the upper spheres.",
+      "parent_id": "",
+      "leader_ids": [],
+      "goal": "Keep all divine beings within their designated celestial domains to prevent disruption of the mortal plane.",
+      "methods": "Sending spiritual trackers and heralds to search for wayward deities.",
+      "strength": "Limitless spiritual power and divine authority.",
+      "relations": [],
+      "secrets": [
+       "They fear that a god living permanently as a mortal will permanently weaken the heavenly barrier."
+      ],
+      "known_to_player": true
+     }
+    ],
+    "npcs": [
+     {
+      "id": "elara",
+      "name": "Elara of Oster",
+      "aliases": [],
+      "description": "A sharp-eyed, practical mortal merchant who travels the high roads selling woven wool and dried medicinal herbs.",
+      "appearance": "A young woman in her mid-twenties with wind-burnt cheeks, dark braided hair, wearing a sturdy green woolen cloak and leather riding boots.",
+      "age": 26,
+      "people_id": "humans",
+      "location_id": "high-road",
+      "memberships": [
+       {
+        "faction_id": "merchant-guild",
+        "rank": "Licensed Trader",
+        "loyalty": 60
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "cheerful",
+        "observant",
+        "shrewd"
+       ],
+       "values": [
+        "hard work",
+        "honesty"
+       ],
+       "loves": [
+        "hot rabbit stew",
+        "a highly profitable trade day"
+       ],
+       "fears": [
+        "highway bandits",
+        "losing her wagon horse"
+       ],
+       "wants": [
+        "To earn enough silver to buy a permanent shopfront in Solitude's main market square."
+       ],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 3,
+       "speed": 3,
+       "toughness": 3,
+       "wits": 4,
+       "knowledge": 3,
+       "willpower": 3,
+       "charm": 4,
+       "nerve": 3,
+       "bearing": 3
+      },
+      "skills": [
+       {
+        "name": "Barter",
+        "level": "skilled",
+        "notes": "Excellent at finding the middle ground in haggling."
+       },
+       {
+        "name": "Survival",
+        "level": "fair",
+        "notes": "Knows how to camp and start fires in rainy weather."
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 2,
+       "wealth": 2,
+       "knowledge": 2,
+       "stealth": 2
+      },
+      "attitude_to_player": {
+       "affinity": 25,
+       "fear": 0,
+       "trust": 20,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "met"
+     },
+     {
+      "id": "phaeton",
+      "name": "Phaeton",
+      "aliases": [
+       "The Silver Scholar"
+      ],
+      "description": "A celestial spirit sent disguised as a human scholar to investigate anomalies and search for the missing divinity.",
+      "appearance": "An incredibly neat, pale man wearing pristine grey scholars' robes that never seem to collect road dust, carrying a heavy brass-bound ledger.",
+      "age": 600,
+      "people_id": "celestial-spirits",
+      "location_id": "solitude",
+      "memberships": [
+       {
+        "faction_id": "celestial-court",
+        "rank": "Sub-Scribe of the Third Sphere",
+        "loyalty": 95
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "meticulous",
+        "anxious",
+        "polite"
+       ],
+       "values": [
+        "cosmic order",
+        "neatness"
+       ],
+       "loves": [
+        "well-organized ledgers",
+        "the quiet of celestial libraries"
+       ],
+       "fears": [
+        "confronting powerful deities",
+        "failing his divine superiors"
+       ],
+       "wants": [
+        "To quickly find the missing god and return to the peaceful upper realms."
+       ],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 2,
+       "speed": 4,
+       "toughness": 3,
+       "wits": 4,
+       "knowledge": 5,
+       "willpower": 4,
+       "charm": 3,
+       "nerve": 2,
+       "bearing": 4
+      },
+      "skills": [
+       {
+        "name": "Investigation",
+        "level": "expert",
+        "notes": "Superb at spotting subtle magical or divine residue left on ordinary objects."
+       },
+       {
+        "name": "Divine Lore",
+        "level": "expert",
+        "notes": "Has memorized the seals and signatures of almost every major deity."
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 2,
+       "influence": 3,
+       "wealth": 1,
+       "knowledge": 5,
+       "stealth": 3
+      },
+      "attitude_to_player": {
+       "affinity": 0,
+       "fear": 40,
+       "trust": 0,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": true,
+      "agenda": {
+       "goal": "Locate the divine signature of the missing god Oros and report it immediately to the Upper Heavens.",
+       "method": "Inspect local market ledgers for goods that are too perfect to be mortal-made.",
+       "secret": "He has a tracking talisman that vibrates whenever it comes within fifty paces of a disguised deity.",
+       "clock_id": "celestial-search"
+      },
+      "secrets": [
+       "He secretly despises the field assignment and misses his celestial desk."
+      ],
+      "player_knows": "heard_of"
+     }
+    ],
+    "clocks": [
+     {
+      "id": "celestial-search",
+      "name": "The Celestial Court's Search",
+      "steps": [
+       "A quiet murmur spreads through the local temples as high priests feel a distant, missing presence.",
+       "Celestial scribe Phaeton arrives in Solitude to inspect local trading records for signs of divine luck.",
+       "Minor divine spirits are dispatched to set up spiritual checkpoints on the valley roads.",
+       "A high-ranking archon of the Celestial Court descends to personally retrieve the wayward deity."
+      ],
+      "step_every_hours": 168.0,
+      "owner_id": "celestial-court",
+      "thread_id": "divine-pursuit",
+      "known_to_player": true
+     }
+    ],
+    "threads": [
+     {
+      "id": "divine-pursuit",
+      "title": "Outrunning the Heavens",
+      "kind": "threat",
+      "stakes": "If the Celestial Court locates you, your peaceful holiday as a mortal merchant will be forcibly brought to an end.",
+      "involved_ids": [
+       "player",
+       "phaeton",
+       "celestial-court"
+      ],
+      "clock_id": "celestial-search",
+      "known_to_player": true
+     }
+    ],
+    "mysteries": [
+     {
+      "id": "the-suspicious-shipment",
+      "question": "What caused the Celestial Court to target the Oster Valley for their search?",
+      "answer": "A local shrine-keeper in Solitude was sold a bundle of linen that you accidentally infused with a trace of your divine 'hearth' aura, causing the cloth to stay perfectly clean and warm. He reported this minor miracle to the priesthood.",
+      "clues": [
+       "A rumor of a 'miraculous self-warming blanket' circulating among Solitude's high nobility.",
+       "The guild registers noting a shipment of common linens sold at ten times their normal price due to mysterious properties."
+      ],
+      "thread_id": "divine-pursuit",
+      "known_to_player": true
+     }
+    ],
+    "known_facts": [
+     "The Celestial Court monitors cosmic balances and dislikes gods leaving their stations.",
+     "The name you go by now is Aurelius, and you travel with a simple horse-drawn merchant cart."
+    ],
+    "opening": {
+     "place_id": "high-road",
+     "present_ids": [
+      "elara"
+     ],
+     "positions": [
+      "sitting comfortably on the bench of your wooden merchant wagon",
+      "walking alongside her own horse-drawn cart"
+     ],
+     "props": [
+      "The worn leather reins in your hands",
+      "A heavy wooden chest filled with common spices behind your seat"
+     ],
+     "situation": "You are trotting down the dusty High Road toward Solitude, enjoying the simple mortal scent of pine needles, when Elara points toward a distant column of smoke on the horizon."
+    },
+    "summary": "An immortal deity, utterly bored of heavenly splendor, has descended to earth to live as a humble traveling merchant named Aurelius. While enjoying the simple mortal pleasures of the open road, the bureaucracy of the heavens is fast closing in to track down their missing god."
+   },
+   "character": {
+    "name": "Aurelius",
+    "aliases": [
+     "Oros, God of Horizons"
+    ],
+    "age": 3500,
+    "lifespan_years": 0,
+    "people_id": "humans",
+    "description": "A calm, exceptionally poised merchant with an air of ancient wisdom that belies his youthful mortal appearance.",
+    "appearance": "A handsome man in his late twenties with neat brown hair, deep amber eyes, wearing a simple but well-kept gray wool tunic and a dark leather merchant's vest.",
+    "location_id": "high-road",
+    "attributes": {
+     "strength": 4,
+     "speed": 4,
+     "toughness": 5,
+     "wits": 5,
+     "knowledge": 5,
+     "willpower": 5,
+     "charm": 4,
+     "nerve": 5,
+     "bearing": 5
+    },
+    "skills": [
+     {
+      "name": "Appraisal",
+      "level": "expert",
+      "notes": "You can determine the true quality, origin, and history of any mortal item at a single glance."
+     },
+     {
+      "name": "Deception",
+      "level": "expert",
+      "notes": "Crucial for keeping your divine identity perfectly concealed under a simple mortal cover story."
+     },
+     {
+      "name": "Divine Lore",
+      "level": "expert",
+      "notes": "An intimate, personal knowledge of heavenly hierarchy, celestial law, and divine physics."
+     },
+     {
+      "name": "Barter",
+      "level": "skilled",
+      "notes": "You've quickly picked up the nuances of mortal trade, though you sometimes find their obsession with copper amusing."
+     }
+    ],
+    "traits": [
+     {
+      "name": "Eternally Serene",
+      "kind": "gift",
+      "description": "Having witnessed the rise and fall of whole civilizations, you are virtually immune to mortal panic or sudden terror."
+     }
+    ],
+    "talents": [],
+    "powers": [
+     {
+      "id": "divine-mask",
+      "name": "The Divine Mask",
+      "description": "",
+      "kind_id": "divinity",
+      "gift": false,
+      "strength": "small",
+      "limits": [
+       "Cannot completely hide your divine aura from specialized tracking talismans when within close proximity."
+      ],
+      "costs": [
+       {
+        "kind": "other",
+        "text": "Requires conscious focus to maintain when experiencing extreme physical shock."
+       }
+      ],
+      "secret": false,
+      "time": null
+     },
+     {
+      "id": "minor-miracle",
+      "name": "Minor Miracle",
+      "description": "",
+      "kind_id": "divinity",
+      "gift": true,
+      "strength": "overpowered",
+      "limits": [
+       "Using this power to alter probability, mend broken matter, or conjure items leaves a faint spiritual signature that celestial trackers can detect."
+      ],
+      "costs": [
+       {
+        "kind": "fatigue",
+        "text": "A brief moment of spiritual focus, followed by potential detection if used repeatedly in the same area."
+       }
+      ],
+      "secret": false,
+      "time": null
+     }
+    ],
+    "techniques": [],
+    "temperament": {
+     "traits": [
+      "patient",
+      "curious",
+      "unflappable"
+     ],
+     "values": [
+      "freedom",
+      "simple pleasures"
+     ],
+     "loves": [
+      "freshly brewed tea",
+      "mortal gossip",
+      "the sound of rain on a canvas wagon cover"
+     ],
+     "fears": [
+      "returning to boring celestial desk work"
+     ],
+     "wants": [
+      "To experience the simple, unpredictable ups and downs of a traveling merchant's life."
+     ],
+     "voice": ""
+    },
+    "items": [
+     {
+      "name": "Traveler's Wagon",
+      "kind": "vehicle",
+      "description": "A sturdy two-wheeled wooden cart with a white canvas cover, pulled by a reliable old draft horse named Barnaby.",
+      "quantity": 1,
+      "carried": true
+     },
+     {
+      "name": "Fine Spices and Silks",
+      "kind": "gear",
+      "description": "A selection of common trade goods, perfectly sorted and kept in neat wooden crates in the back of your wagon.",
+      "quantity": 1,
+      "carried": true
+     },
+     {
+      "name": "Brass Balance Scales",
+      "kind": "gear",
+      "description": "A standard merchant's scale for weighing coins, metals, and precious herbs.",
+      "quantity": 1,
+      "carried": true
+     }
+    ],
+    "money": 150,
+    "currency": "silver coins",
+    "title": "Independent Merchant",
+    "rank": "Unlicensed Vendor",
+    "family_name": "",
+    "connections": [
+     {
+      "name": "Elara of Oster",
+      "kind": "ally",
+      "character_id": "elara",
+      "note": "A friendly fellow merchant who showed you how to properly grease a wagon wheel when you first started."
+     }
+    ],
+    "parent_ids": [],
+    "memberships": [],
+    "ladders": [],
+    "axes": {
+     "might": 4,
+     "influence": 2,
+     "wealth": 3,
+     "knowledge": 5,
+     "stealth": 4
+    },
+    "reserves": [
+     {
+      "name": "Divine Spark",
+      "level": 100
+     }
+    ],
+    "goals": [],
+    "backstory": [
+     "For three thousand years, you sat upon a gilded throne in the high heavens, answering mundane prayers and managing the celestial bureaucracy of horizons.",
+     "Thoroughly bored of perfection, you decided to pack a single wooden cart with mortal goods, slip past the celestial gatekeepers, and wander the muddy roads of the mortal plane.",
+     "For the past few months, you have thoroughly enjoyed the simple tasks of setting up camp, sharing cheap stew with other travelers, and haggling over a handful of silver."
+    ],
+    "hidden_past": []
+   }
+  },
+  "rating": "teen",
+  "premise_id": null,
+  "physics": "fun_first",
+  "gift": null,
+  "released_rules": [],
+  "language": "en",
+  "told": []
+ }
+}
