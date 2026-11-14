@@ -1,0 +1,2181 @@
+{
+ "premise": "A beautiful courtesan and spy in the imperial capital. She can make almost anyone fall for her, and she uses it to steal secrets for the rebellion.",
+ "language": "en",
+ "rating": "mature",
+ "settings": {
+  "narration_length": "medium",
+  "tone": null,
+  "difficulty": "balanced",
+  "event_frequency": "normal",
+  "images": "key_moments",
+  "suggestions": true,
+  "language": "en",
+  "accent": null
+ },
+ "seed": "play/w-spy",
+ "state": {
+  "schema_version": 1,
+  "turn": 1,
+  "timeline_id": "main",
+  "world_s": 0,
+  "bible": {
+   "title": "Whispers of the Jade Pavilion",
+   "genre": "historical fantasy spy drama",
+   "tone": "seductive, tense, and treacherous",
+   "era": "Imperial Xijing: carriages, matchlock muskets, gas-lit teahouses, and paper mail.",
+   "extraordinary": [
+    {
+     "id": "mind-weaving",
+     "kind": "mind-weaving",
+     "prevalence": "hidden",
+     "reach": "Allows the user to subtly alter emotions, lower inhibitions, and plant suggestions through voice and touch.",
+     "rule_ids": [
+      "forbidden-arts",
+      "allure-limits",
+      "mind-weaving-exists"
+     ]
+    }
+   ],
+   "peoples": [
+    {
+     "id": "human",
+     "name": "Human",
+     "description": "",
+     "lifespan_years": 80,
+     "gifts": [],
+     "culture": "The people of Xijing value poetry, hierarchy, tea ceremonies, and strict social standing.",
+     "relations": [],
+     "path": ""
+    }
+   ],
+   "creatures": [],
+   "nature": [],
+   "physics": "fun_first",
+   "force": {
+    "tier1_joules": 10000.0,
+    "per_tier": 10.0
+   },
+   "ladders": [],
+   "calendar": {
+    "style": "day_count",
+    "time_of_day": "parts",
+    "epoch": null,
+    "start_second_of_day": 72000,
+    "months": [],
+    "start_year": 1,
+    "start_month": 1,
+    "start_day": 1,
+    "era": ""
+   },
+   "travel": {
+    "description": "Travel across the capital is mostly done on foot, by palanquin, or in horse-drawn carriages.",
+    "instant_messages": false
+   },
+   "medicine": {
+    "healing": "Traditional acupuncture, herbal elixirs, and cauterization.",
+    "resurrection": "none",
+    "resurrection_means": ""
+   },
+   "laws": [
+    {
+     "id": "anti-treason",
+     "text": "Aiding the Red Lotus Rebellion or conspiring against the Dragon Throne is high treason.",
+     "enforcer": "The Imperial Guard",
+     "enforcer_faction_id": null,
+     "zeal": "high",
+     "corruptible": true
+    },
+    {
+     "id": "magic-ban",
+     "text": "The possession or use of mind-altering substances or mental magic is outlawed.",
+     "enforcer": "The Imperial Inquisition",
+     "enforcer_faction_id": null,
+     "zeal": "high",
+     "corruptible": false
+    }
+   ],
+   "norms": [],
+   "several_partners": false,
+   "unions": "held",
+   "rules": [
+    {
+     "id": "forbidden-arts",
+     "text": "Mind-weaving is a strictly forbidden art, and anyone caught practicing it is executed by the Inquisition.",
+     "fixed": true,
+     "topic": "law"
+    },
+    {
+     "id": "allure-limits",
+     "text": "Mental influence cannot force a target to commit acts that completely violate their deepest-held morals.",
+     "fixed": false,
+     "topic": "limits"
+    },
+    {
+     "id": "imperial-travel",
+     "text": "Messages travel across the empire via carrier pigeons or mounted imperial riders.",
+     "fixed": true,
+     "topic": "travel"
+    },
+    {
+     "id": "mind-weaving-exists",
+     "text": "Mind-weaving: real, and hidden from most people.",
+     "fixed": true,
+     "topic": "existence"
+    }
+   ],
+   "mysteries": [
+    {
+     "id": "leaked-courier",
+     "question": "How did the Inquisition find the rebel courier?",
+     "answer": "Madam Yume discovered the courier visiting the pavilion backdoors and anonymously tipped off the Guard to show cooperation.",
+     "clues": [
+      "A discarded red tassel matching the pavilion guards was found near the arrest site.",
+      "A suspicious deposit of gold coins from the Ministry of Security is recorded in Madam Yume's private ledgers."
+     ],
+     "thread_id": "protect-safehouse",
+     "solved": false
+    }
+   ]
+  },
+  "player_id": "player",
+  "characters": {
+   "player": {
+    "id": "player",
+    "name": "Mei Lin",
+    "aliases": [
+     "The Jewel of the Pavilion",
+     "Agent Lotus-Six"
+    ],
+    "prominence": "key",
+    "description": "An incredibly elegant and poised woman whose presence is magnetic, with a soft voice that commands attention.",
+    "appearance": "Slender with porcelain skin, deep dark eyes, and long black hair held together by ornate jade hairpins, dressed in a flowing silk emerald qipao.",
+    "look_version": 1,
+    "age": 22,
+    "people_id": "human",
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "player-chambers",
+    "personal_offset_s": 0,
+    "memberships": [
+     {
+      "faction_id": "courtesan-guild",
+      "rank": "Prima Courtesan",
+      "loyalty": 60
+     },
+     {
+      "faction_id": "red-lotus",
+      "rank": "Infiltrator",
+      "loyalty": 95
+     }
+    ],
+    "sheet": {
+     "attributes": {
+      "strength": 2,
+      "speed": 3,
+      "toughness": 2,
+      "wits": 4,
+      "knowledge": 3,
+      "willpower": 4,
+      "charm": 5,
+      "nerve": 5,
+      "bearing": 4
+     },
+     "skills": [
+      {
+       "name": "Seduction",
+       "level": "master",
+       "notes": "Unmatched at reading desires and playing the perfect confidante."
+      },
+      {
+       "name": "Sleight of Hand",
+       "level": "expert",
+       "notes": "Capable of picking pockets, lifting keys, and palming small items unnoticed."
+      },
+      {
+       "name": "Deception",
+       "level": "expert",
+       "notes": "Excellent at maintaining covers and lying to authority figures."
+      },
+      {
+       "name": "Eavesdropping",
+       "level": "skilled",
+       "notes": "Extracting key details from muffled background conversations."
+      }
+     ],
+     "traits": [
+      {
+       "name": "Siren's Grace",
+       "kind": "gift",
+       "description": "Your striking beauty and elegant manners make others reluctant to suspect you of any wrongdoing."
+      },
+      {
+       "name": "Shadow Agent",
+       "kind": "quirk",
+       "description": "You are highly observant, always locating exits and loose floorboards in any room you enter."
+      }
+     ],
+     "talents": [
+      {
+       "id": "the-art-of-allure",
+       "name": "The Art of Allure",
+       "covers": "any action or skill involving the manipulation of someone's affection or desire.",
+       "strength": "one_of_a_kind",
+       "general": false,
+       "reason": "She has honed her unique voice, micro-expressions, and natural charm to absolute perfection."
+      }
+     ],
+     "powers": [
+      {
+       "id": "mind-allure",
+       "name": "Siren's Whisper",
+       "description": "",
+       "strength": "rare",
+       "limits": [
+        "Requires eye contact and a low, intimate tone of voice.",
+        "Does not work on targets with extreme, unwavering willpower or holy protection."
+       ],
+       "costs": [
+        {
+         "kind": "fatigue",
+         "text": "Requires an hour of rest or deep meditation if used on multiple targets in a row."
+        }
+       ],
+       "secret": false,
+       "time": null,
+       "settings": {},
+       "ready_at_personal_s": null
+      }
+     ],
+     "techniques": [
+      {
+       "id": "viper-s-kiss",
+       "name": "Viper's Kiss",
+       "style": "Subtle Seduction",
+       "effect": "Allows you to slip a powder or poison into a target's drink while kissing them or leaning in close.",
+       "cost": "None",
+       "requirements": "Target must be infatuated or highly distracted by you.",
+       "learned_from": "",
+       "power_id": null,
+       "mastery": "practiced",
+       "uses": 0
+      }
+     ],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "confident",
+        "daring",
+        "calculating",
+        "perceptive"
+       ],
+       "values": [
+        "freedom",
+        "loyalty to the oppressed"
+       ],
+       "loves": [
+        "tea",
+        "traditional lute music",
+        "outwitting arrogant nobles"
+       ],
+       "fears": [
+        "being locked in a dungeon",
+        "causing the death of innocent rebel contacts"
+       ],
+       "wants": [
+        "To steal the palace security blueprints and secure the rebellion's safety."
+       ],
+       "voice": ""
+      },
+      "attitudes": {}
+     },
+     "resources": {
+      "items": [
+       {
+        "id": "lockpicking-hairpin",
+        "name": "Lockpicking Hairpin",
+        "kind": "gear",
+        "description": "A beautiful brass hairpin that can easily be disassembled into a functional set of lockpicks.",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       },
+       {
+        "id": "vial-of-sleeping-powder",
+        "name": "Vial of Sleeping Powder",
+        "kind": "consumable",
+        "description": "A fine, odorless powder that slips into wine to put a grown man to sleep within minutes.",
+        "quantity": 2,
+        "carried": true,
+        "history": ""
+       },
+       {
+        "id": "silk-fan",
+        "name": "Silk Fan",
+        "kind": "gear",
+        "description": "A hand-painted fan used to coyly hide facial expressions and distract targets.",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       },
+       {
+        "id": "item-1",
+        "name": "Minister Gong's Brass Key",
+        "kind": "gear",
+        "description": "A small, ornate brass key that unlocks Minister Gong's personal travel lockbox.",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       }
+      ],
+      "money": 80,
+      "currency": "silver taels",
+      "title": "Prima Courtesan",
+      "rank": "Elite Hostess",
+      "family_name": "",
+      "connections": [
+       {
+        "name": "Li Wei",
+        "kind": "ally",
+        "character_id": "li-wei",
+        "note": "Your trusted contact and handler in the Red Lotus Rebellion."
+       }
+      ]
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 3,
+      "wealth": 2,
+      "knowledge": 3,
+      "stealth": 4
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": [
+      {
+       "text": "Orphaned at a young age when her home province was heavily taxed and starved by the crown, she was taken in by the Jade Pavilion.",
+       "turn": 0
+      },
+      {
+       "text": "Discovered her latent mind-weaving abilities during her early training and chose to use them to undermine the corrupt elite rather than just serve them.",
+       "turn": 0
+      },
+      {
+       "text": "Formed an alliance with the Red Lotus to use her status as a weapon for change.",
+       "turn": 0
+      }
+     ]
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": 80,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   },
+   "minister-gong": {
+    "id": "minister-gong",
+    "name": "Minister Gong",
+    "aliases": [],
+    "prominence": "key",
+    "description": "A corrupt, middle-aged imperial minister who oversees capital security. He is obsessed with the finer things in life.",
+    "appearance": "A stout man with greasing hair, dressed in expensive embroidered purple robes with heavy jade rings.",
+    "look_version": 1,
+    "age": 52,
+    "people_id": "human",
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "player-chambers",
+    "personal_offset_s": 0,
+    "memberships": [
+     {
+      "faction_id": "imperial-court",
+      "rank": "Minister of Security",
+      "loyalty": 90
+     }
+    ],
+    "sheet": {
+     "attributes": {
+      "strength": 2,
+      "speed": 2,
+      "toughness": 2,
+      "wits": 3,
+      "knowledge": 4,
+      "willpower": 2,
+      "charm": 2,
+      "nerve": 3,
+      "bearing": 4
+     },
+     "skills": [],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "greedy",
+        "gullible",
+        "lustful"
+       ],
+       "values": [
+        "status",
+        "luxury"
+       ],
+       "loves": [
+        "fine wine",
+        "exclusive company"
+       ],
+       "fears": [
+        "losing his rank",
+        "the Emperor's wrath"
+       ],
+       "wants": [
+        "To keep his high-ranking lifestyle and win Mei Lin's exclusive favor."
+       ],
+       "voice": ""
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 40,
+        "fear": 0,
+        "trust": 50,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 85,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": {
+     "goal": "Have the Emperor sign a new taxation decree that lines Gong's pockets.",
+     "method": "Bribing other court ministers.",
+     "secret": "",
+     "clock_id": null
+    },
+    "secrets": [
+     "He has been embezzling defense funds meant for the city's western garrisons."
+    ],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": 0,
+    "near_s": null,
+    "met_s": null
+   },
+   "li-wei": {
+    "id": "li-wei",
+    "name": "Li Wei",
+    "aliases": [],
+    "prominence": "key",
+    "description": "A quiet, intense young scholar who serves as the primary contact for the Red Lotus in the capital.",
+    "appearance": "Tall and lean, wearing plain gray linen scholar robes, with sharp eyes that are constantly scanning the room.",
+    "look_version": 1,
+    "age": 26,
+    "people_id": "human",
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "rebel-safehouse",
+    "personal_offset_s": 0,
+    "memberships": [
+     {
+      "faction_id": "red-lotus",
+      "rank": "Cell Leader",
+      "loyalty": 100
+     }
+    ],
+    "sheet": {
+     "attributes": {
+      "strength": 4,
+      "speed": 4,
+      "toughness": 3,
+      "wits": 4,
+      "knowledge": 5,
+      "willpower": 5,
+      "charm": 3,
+      "nerve": 5,
+      "bearing": 3
+     },
+     "skills": [],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "solemn",
+        "highly disciplined",
+        "protective"
+       ],
+       "values": [
+        "justice",
+        "loyalty"
+       ],
+       "loves": [
+        "poetry",
+        "freedom"
+       ],
+       "fears": [
+        "failing his comrades",
+        "Mei Lin's capture"
+       ],
+       "wants": [
+        "To successfully deliver the imperial guard plans to the rebel command."
+       ],
+       "voice": ""
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 70,
+        "fear": 0,
+        "trust": 80,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 40,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": {
+     "goal": "Map out the patrol routes of the Imperial Guard for an upcoming assault.",
+     "method": "Using spy reports and inside schematics.",
+     "secret": "",
+     "clock_id": null
+    },
+    "secrets": [
+     "He was once an imperial scribe before his entire family was purged by the crown."
+    ],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   },
+   "madam-yume": {
+    "id": "madam-yume",
+    "name": "Madam Yume",
+    "aliases": [],
+    "prominence": "key",
+    "description": "The shrewd, elegantly aging keeper of the Jade Pavilion who knows how to leverage every secret.",
+    "appearance": "An elegant woman wearing a dark red silk kimono with gold embroidery, holding a long lacquer smoking pipe.",
+    "look_version": 1,
+    "age": 47,
+    "people_id": "human",
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "jade-pavilion",
+    "personal_offset_s": 0,
+    "memberships": [
+     {
+      "faction_id": "courtesan-guild",
+      "rank": "Guild Madam",
+      "loyalty": 100
+     }
+    ],
+    "sheet": {
+     "attributes": {
+      "strength": 2,
+      "speed": 3,
+      "toughness": 3,
+      "wits": 5,
+      "knowledge": 4,
+      "willpower": 4,
+      "charm": 4,
+      "nerve": 4,
+      "bearing": 5
+     },
+     "skills": [],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "cunning",
+        "pragmatic",
+        "haughty"
+       ],
+       "values": [
+        "self-preservation",
+        "wealth"
+       ],
+       "loves": [
+        "secrets",
+        "perfumed oils"
+       ],
+       "fears": [
+        "ruin",
+        "the Inquisition burning her pavilion down"
+       ],
+       "wants": [
+        "To keep the Jade Pavilion profitable and safe from political crossfire."
+       ],
+       "voice": ""
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 25,
+        "fear": 0,
+        "trust": 40,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [
+     "She is secretly providing names of minor rebel sympathizers to the Inquisition to buy safety for her pavilion."
+    ],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   }
+  },
+  "factions": {
+   "imperial-court": {
+    "id": "imperial-court",
+    "name": "The Dragon Throne",
+    "kind": "court",
+    "description": "The ruling class of ministers, eunuchs, and royals who maintain absolute control over the empire.",
+    "parent_id": null,
+    "status": "intact",
+    "status_history": [],
+    "activity": "active",
+    "leader_ids": [
+     "minister-gong"
+    ],
+    "goal": "Crush the rebellion and secure the borders.",
+    "methods": "Ruthless surveillance, public executions, and heavy taxation.",
+    "strength": "Thousands of imperial guards, vast coffers, and the terrifying Inquisition.",
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "threat": 0,
+    "relations": {},
+    "survivors": [],
+    "secrets": [
+     "They are secretly running low on black powder due to sabotage."
+    ],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ]
+   },
+   "red-lotus": {
+    "id": "red-lotus",
+    "name": "The Red Lotus Rebellion",
+    "kind": "sect",
+    "description": "A secretive network of freedom fighters, disgraced scholars, and lower-class workers aiming to overthrow the dynasty.",
+    "parent_id": null,
+    "status": "intact",
+    "status_history": [],
+    "activity": "active",
+    "leader_ids": [
+     "li-wei"
+    ],
+    "goal": "Infiltrate high society to steal imperial military secrets and trigger a coup.",
+    "methods": "Espionage, assassination, and public riots.",
+    "strength": "A widespread but disconnected web of sleeper agents and street contacts.",
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "threat": 0,
+    "relations": {},
+    "survivors": [],
+    "secrets": [
+     "A high-ranking member is planning to betray the capital cells to save their own family."
+    ],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ]
+   },
+   "courtesan-guild": {
+    "id": "courtesan-guild",
+    "name": "The Sisterhood of the Jade Pavilion",
+    "kind": "family",
+    "description": "An influential guild of performers and hostesses who hold the secrets of Xijing's elite.",
+    "parent_id": null,
+    "status": "intact",
+    "status_history": [],
+    "activity": "active",
+    "leader_ids": [
+     "madam-yume"
+    ],
+    "goal": "Maintain profitable business and high-society protection at all costs.",
+    "methods": "Seduction, blackmail, and entertainment.",
+    "strength": "Unrivaled soft power and information networks across the capital's nobility.",
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "threat": 0,
+    "relations": {},
+    "survivors": [],
+    "secrets": [
+     "They keep blackmail ledgers hidden in a secret vault beneath the parlor."
+    ],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "places": {
+   "xijing": {
+    "id": "xijing",
+    "name": "Xijing Imperial Capital",
+    "kind": "city",
+    "description": "A sprawling metropolis of stone walls, grand pagodas, and gas-lit avenues reflecting in dark canals.",
+    "parent_id": null,
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "jade-pavilion": {
+    "id": "jade-pavilion",
+    "name": "The Jade Pavilion",
+    "kind": "building",
+    "description": "The capital's most exclusive pleasure house, draped in heavy silks, smelling of incense and expensive plum wine.",
+    "parent_id": "xijing",
+    "setting": "indoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": "courtesan-guild",
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "imperial-palace",
+      "travel_s": 1800,
+      "mode": "carriage"
+     },
+     {
+      "to_id": "rebel-safehouse",
+      "travel_s": 3600,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "player-chambers": {
+    "id": "player-chambers",
+    "name": "Mei Lin's Private Chambers",
+    "kind": "room",
+    "description": "A lavishly decorated room behind paper screens, featuring a plush daybed, carved vanity, and hidden floorboards.",
+    "parent_id": "jade-pavilion",
+    "setting": "indoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [
+     "player"
+    ],
+    "judged": []
+   },
+   "imperial-palace": {
+    "id": "imperial-palace",
+    "name": "The Obsidian Palace",
+    "kind": "building",
+    "description": "The heavily guarded, grand seat of the Solaris Emperor, rising high above Xijing.",
+    "parent_id": "xijing",
+    "setting": "indoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": "imperial-court",
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "jade-pavilion",
+      "travel_s": 1800,
+      "mode": "carriage"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "rebel-safehouse": {
+    "id": "rebel-safehouse",
+    "name": "The Willow District Cellar",
+    "kind": "wilds",
+    "description": "An abandoned, damp coal storage cellar converted into a clandestine planning room for the rebellion.",
+    "parent_id": "xijing",
+    "setting": "underground",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": "red-lotus",
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "jade-pavilion",
+      "travel_s": 3600,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   }
+  },
+  "deeds": {},
+  "rumors": {},
+  "bonds": {},
+  "lives": {},
+  "aged_s": null,
+  "changes": {},
+  "strife_s": {},
+  "facts": {
+   "fact-1": {
+    "id": "fact-1",
+    "text": "The Dragon Throne executes any suspected rebels in Xijing's main square.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-2": {
+    "id": "fact-2",
+    "text": "Minister Gong keeps his private keys on his belt at all times.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-3": {
+    "id": "fact-3",
+    "text": "Mind-weaving is highly effective, but using it in front of witnesses risks immediate exposure.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   }
+  },
+  "goals": {
+   "goal-1": {
+    "id": "goal-1",
+    "text": "Steal the palace guard schedules from Minister Gong",
+    "status": "active",
+    "set_turn": 0,
+    "set_s": null,
+    "lead_id": null,
+    "closed_turn": null,
+    "closed_s": null,
+    "merged_into": null,
+    "progress": "",
+    "moved_turn": null
+   },
+   "goal-2": {
+    "id": "goal-2",
+    "text": "Keep the rebellion safehouse hidden from the Inquisition",
+    "status": "active",
+    "set_turn": 0,
+    "set_s": null,
+    "lead_id": null,
+    "closed_turn": null,
+    "closed_s": null,
+    "merged_into": null,
+    "progress": "",
+    "moved_turn": null
+   }
+  },
+  "leads": {},
+  "threads": {
+   "steal-blueprints": {
+    "id": "steal-blueprints",
+    "title": "Steal the Palace Guard Schedules",
+    "kind": "quest",
+    "stakes": "The rebellion needs the internal patrol routes to sneak arms into the inner palace.",
+    "involved_ids": [
+     "player",
+     "minister-gong",
+     "li-wei"
+    ],
+    "clock_id": null,
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "status": "open",
+    "opened_turn": 0,
+    "last_active_turn": 0,
+    "taken_up_turn": null,
+    "closed_turn": null,
+    "arc": null,
+    "known_by": [
+     "player"
+    ]
+   },
+   "protect-safehouse": {
+    "id": "protect-safehouse",
+    "title": "Protect the Safehouse",
+    "kind": "threat",
+    "stakes": "If the safehouse is raided, Li Wei and the local rebel files will fall into the hands of the state.",
+    "involved_ids": [
+     "player",
+     "li-wei",
+     "madam-yume"
+    ],
+    "clock_id": "inquisition-threat",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "status": "open",
+    "opened_turn": 0,
+    "last_active_turn": 0,
+    "taken_up_turn": null,
+    "closed_turn": null,
+    "arc": null,
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "clocks": {
+   "inquisition-threat": {
+    "id": "inquisition-threat",
+    "name": "The Inquisition Closes In",
+    "steps": [
+     "The Inquisition arrests a lower-class rebel courier.",
+     "Inquisitors decode a hidden letter pointing to the Willow District.",
+     "The Inquisition places watchmen around the Willow District.",
+     "Inquisitors launch a lethal raid on the rebel safehouse."
+    ],
+    "filled": 0,
+    "advances_on": [],
+    "reverses_on": [],
+    "interval_s": 86400,
+    "next_step_s": 86400,
+    "owner_id": "imperial-court",
+    "thread_id": "protect-safehouse",
+    "status": "running",
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "pending_events": {
+   "event-1": {
+    "id": "event-1",
+    "kind": "world.clock_step",
+    "title": "The Inquisition Closes In: The Inquisition arrests a lower-class rebel courier.",
+    "due_s": 86400,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [
+     "imperial-court"
+    ],
+    "place_id": null,
+    "origin": {
+     "kind": "clock",
+     "ref_id": "inquisition-threat",
+     "text": ""
+    },
+    "payload": {
+     "clock_id": "inquisition-threat"
+    },
+    "seed": "story=play%2Fw-spy/timeline=main/turn=1/world/schedule/event-1",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-2": {
+    "id": "event-2",
+    "kind": "world.old_age",
+    "title": "Your years run short",
+    "due_s": 1856405777,
+    "timeline_id": "main",
+    "needs_player": true,
+    "status": "pending",
+    "subject_ids": [
+     "player"
+    ],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "phase": "near",
+     "who": "player",
+     "span": 80,
+     "day_s": 1937955803
+    },
+    "seed": "story=play%2Fw-spy/timeline=main/turn=1/world/schedule/event-2",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-3": {
+    "id": "event-3",
+    "kind": "world.tick",
+    "title": "The world moves on",
+    "due_s": 86400,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "last_s": 0,
+     "stride_s": 86400
+    },
+    "seed": "story=play%2Fw-spy/timeline=main/turn=1/world/schedule/event-3",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   }
+  },
+  "transfers": [
+   {
+    "name": "Minister Gong's Brass Key",
+    "quantity": 1,
+    "money": false,
+    "currency": "",
+    "item_id": null,
+    "from_id": "minister-gong",
+    "to_id": "player",
+    "how": "stolen",
+    "known_by": [
+     "player",
+     "minister-gong"
+    ],
+    "turn": 1,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": "narrator"
+   }
+  ],
+  "time_effects": [],
+  "scene": {
+   "place_id": "player-chambers",
+   "present_ids": [
+    "minister-gong"
+   ],
+   "positions": [
+    "Mei Lin sits gracefully on her daybed, the key hidden in her sleeve.",
+    "Minister Gong stands close to the daybed, offering her the silver cup."
+   ],
+   "props": [
+    "A silver cup of spiced wine",
+    "A plate of sweet plums"
+   ],
+   "ended_on": "Minister Gong holds out the spiced wine, his eyes locked onto yours as he waits for you to drink.",
+   "encounter": null
+  },
+  "director": {
+   "turns_without_stakes": 0,
+   "low_stakes_streak": 0,
+   "last_action_key": null,
+   "last_event_turn": null,
+   "last_event_size": null,
+   "last_event_s": {},
+   "last_small_s": null,
+   "recent_moments": [],
+   "recent_clock": [
+    0
+   ],
+   "frequency_drift": 0.0,
+   "recent_sources": [],
+   "auto_pictures": 1,
+   "picture_credit": 1.1,
+   "pictured": [
+    "portrait:player",
+    "portrait:player:v1"
+   ],
+   "fight": null,
+   "deck_draws": 0,
+   "road_stops": 0
+  },
+  "summary": "You are Xijing's most sought-after courtesan and a secret rebel agent. Using your forbidden mind-weaving allure, you must charm secrets out of high-ranking officials to aid the Red Lotus Rebellion before the Inquisition hunts you down.",
+  "chapters": [],
+  "id_counters": {
+   "fact": 3,
+   "goal": 2,
+   "bond": 0,
+   "event": 3,
+   "item": 1
+  },
+  "fallen": [],
+  "opening_due": false,
+  "misses_in_a_row": 0,
+  "openings": [],
+  "journey": null,
+  "untold": [
+   "goal:goal-2",
+   "person:li-wei",
+   "thread:protect-safehouse"
+  ]
+ },
+ "scenes": [
+  {
+   "turn": 1,
+   "narration": "Your slender fingers brush against the embroidered purple silk of Minister Gong's sash, moving with a ghost's light touch. While he focuses on pouring the dark, spiced wine from the silver decanter, his stout frame swaying slightly under the weight of your soft gaze, you slide the delicate brass key from his belt and slip it into the wide emerald sleeve of your qipao.\n\nThe key vanishes into the silk without a single click. When Gong turns back, his eyes are heavy, utterly captured by the lingering thread of your Siren's Whisper. He offers you the silver cup with a sluggish smile, quite unaware that the instrument to his undoing is already in your possession. That key unlocks his private lockbox—the very one currently resting inside his heavy leather carriage downstairs, which contains the inner palace guard schedules. You must decide whether to slip your sleeping powder into his wine to slip away to the carriages, or keep him charmed here while you devise a cleaner escape.",
+   "player_action": null
+  }
+ ],
+ "choices": [
+  "Slip the sleeping powder into his wine as you lean close.",
+  "Drink with him and use your allure to learn where the box is kept.",
+  "Excuse yourself to find Madam Yume and have her create a distraction."
+ ],
+ "cost_usd": 0.133482,
+ "draft": {
+  "premise": "A beautiful courtesan and spy in the imperial capital. She can make almost anyone fall for her, and she uses it to steal secrets for the rebellion.",
+  "proposal": {
+   "world": {
+    "title": "Whispers of the Jade Pavilion",
+    "genre": "historical fantasy spy drama",
+    "tone": "seductive, tense, and treacherous",
+    "era": "Imperial Xijing: carriages, matchlock muskets, gas-lit teahouses, and paper mail.",
+    "extraordinary": [
+     {
+      "id": "mind-weaving",
+      "kind": "mind-weaving",
+      "prevalence": "hidden",
+      "reach": "Allows the user to subtly alter emotions, lower inhibitions, and plant suggestions through voice and touch."
+     }
+    ],
+    "rules": [
+     {
+      "id": "forbidden-arts",
+      "text": "Mind-weaving is a strictly forbidden art, and anyone caught practicing it is executed by the Inquisition.",
+      "fixed": true,
+      "topic": "law",
+      "about": [
+       "mind-weaving"
+      ]
+     },
+     {
+      "id": "allure-limits",
+      "text": "Mental influence cannot force a target to commit acts that completely violate their deepest-held morals.",
+      "fixed": false,
+      "topic": "limits",
+      "about": [
+       "mind-weaving"
+      ]
+     },
+     {
+      "id": "imperial-travel",
+      "text": "Messages travel across the empire via carrier pigeons or mounted imperial riders.",
+      "fixed": true,
+      "topic": "travel",
+      "about": []
+     }
+    ],
+    "dropped_rule_ids": [],
+    "peoples": [
+     {
+      "id": "human",
+      "name": "Human",
+      "description": "",
+      "lifespan_years": 80,
+      "gifts": [],
+      "culture": "The people of Xijing value poetry, hierarchy, tea ceremonies, and strict social standing.",
+      "relations": [],
+      "path": ""
+     }
+    ],
+    "creatures": [],
+    "nature": [],
+    "ladders": [],
+    "calendar": {
+     "style": "day_count",
+     "clock_time": false,
+     "epoch": "",
+     "start_hour": 20,
+     "months": [],
+     "start_year": 1,
+     "start_month": 1,
+     "start_day": 1,
+     "era": "Imperial Era"
+    },
+    "travel": {
+     "description": "Travel across the capital is mostly done on foot, by palanquin, or in horse-drawn carriages.",
+     "instant_messages": false
+    },
+    "medicine": {
+     "healing": "Traditional acupuncture, herbal elixirs, and cauterization.",
+     "resurrection": "none",
+     "resurrection_means": ""
+    },
+    "laws": [
+     {
+      "id": "anti-treason",
+      "text": "Aiding the Red Lotus Rebellion or conspiring against the Dragon Throne is high treason.",
+      "enforcer": "The Imperial Guard",
+      "enforcer_faction_id": "imperial-guard",
+      "zeal": "high",
+      "corruptible": true
+     },
+     {
+      "id": "magic-ban",
+      "text": "The possession or use of mind-altering substances or mental magic is outlawed.",
+      "enforcer": "The Imperial Inquisition",
+      "enforcer_faction_id": "imperial-inquisition",
+      "zeal": "high",
+      "corruptible": false
+     }
+    ],
+    "norms": [],
+    "several_partners": false,
+    "unions": "held",
+    "places": [
+     {
+      "id": "xijing",
+      "name": "Xijing Imperial Capital",
+      "kind": "city",
+      "description": "A sprawling metropolis of stone walls, grand pagodas, and gas-lit avenues reflecting in dark canals.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "jade-pavilion",
+      "name": "The Jade Pavilion",
+      "kind": "building",
+      "description": "The capital's most exclusive pleasure house, draped in heavy silks, smelling of incense and expensive plum wine.",
+      "parent_id": "xijing",
+      "setting": "indoors",
+      "controller_id": "courtesan-guild",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "imperial-palace",
+        "travel_hours": 0.5,
+        "mode": "carriage"
+       },
+       {
+        "to_id": "rebel-safehouse",
+        "travel_hours": 1.0,
+        "mode": "on foot"
+       }
+      ]
+     },
+     {
+      "id": "player-chambers",
+      "name": "Mei Lin's Private Chambers",
+      "kind": "room",
+      "description": "A lavishly decorated room behind paper screens, featuring a plush daybed, carved vanity, and hidden floorboards.",
+      "parent_id": "jade-pavilion",
+      "setting": "indoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "imperial-palace",
+      "name": "The Obsidian Palace",
+      "kind": "building",
+      "description": "The heavily guarded, grand seat of the Solaris Emperor, rising high above Xijing.",
+      "parent_id": "xijing",
+      "setting": "indoors",
+      "controller_id": "imperial-court",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "rebel-safehouse",
+      "name": "The Willow District Cellar",
+      "kind": "wilds",
+      "description": "An abandoned, damp coal storage cellar converted into a clandestine planning room for the rebellion.",
+      "parent_id": "xijing",
+      "setting": "underground",
+      "controller_id": "red-lotus",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     }
+    ],
+    "factions": [
+     {
+      "id": "imperial-court",
+      "name": "The Dragon Throne",
+      "kind": "court",
+      "description": "The ruling class of ministers, eunuchs, and royals who maintain absolute control over the empire.",
+      "parent_id": "",
+      "leader_ids": [
+       "minister-gong"
+      ],
+      "goal": "Crush the rebellion and secure the borders.",
+      "methods": "Ruthless surveillance, public executions, and heavy taxation.",
+      "strength": "Thousands of imperial guards, vast coffers, and the terrifying Inquisition.",
+      "relations": [],
+      "secrets": [
+       "They are secretly running low on black powder due to sabotage."
+      ],
+      "known_to_player": true
+     },
+     {
+      "id": "red-lotus",
+      "name": "The Red Lotus Rebellion",
+      "kind": "sect",
+      "description": "A secretive network of freedom fighters, disgraced scholars, and lower-class workers aiming to overthrow the dynasty.",
+      "parent_id": "",
+      "leader_ids": [
+       "li-wei"
+      ],
+      "goal": "Infiltrate high society to steal imperial military secrets and trigger a coup.",
+      "methods": "Espionage, assassination, and public riots.",
+      "strength": "A widespread but disconnected web of sleeper agents and street contacts.",
+      "relations": [],
+      "secrets": [
+       "A high-ranking member is planning to betray the capital cells to save their own family."
+      ],
+      "known_to_player": true
+     },
+     {
+      "id": "courtesan-guild",
+      "name": "The Sisterhood of the Jade Pavilion",
+      "kind": "family",
+      "description": "An influential guild of performers and hostesses who hold the secrets of Xijing's elite.",
+      "parent_id": "",
+      "leader_ids": [
+       "madam-yume"
+      ],
+      "goal": "Maintain profitable business and high-society protection at all costs.",
+      "methods": "Seduction, blackmail, and entertainment.",
+      "strength": "Unrivaled soft power and information networks across the capital's nobility.",
+      "relations": [],
+      "secrets": [
+       "They keep blackmail ledgers hidden in a secret vault beneath the parlor."
+      ],
+      "known_to_player": true
+     }
+    ],
+    "npcs": [
+     {
+      "id": "minister-gong",
+      "name": "Minister Gong",
+      "aliases": [],
+      "description": "A corrupt, middle-aged imperial minister who oversees capital security. He is obsessed with the finer things in life.",
+      "appearance": "A stout man with greasing hair, dressed in expensive embroidered purple robes with heavy jade rings.",
+      "age": 52,
+      "people_id": "human",
+      "location_id": "player-chambers",
+      "memberships": [
+       {
+        "faction_id": "imperial-court",
+        "rank": "Minister of Security",
+        "loyalty": 90
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "greedy",
+        "gullible",
+        "lustful"
+       ],
+       "values": [
+        "status",
+        "luxury"
+       ],
+       "loves": [
+        "fine wine",
+        "exclusive company"
+       ],
+       "fears": [
+        "losing his rank",
+        "the Emperor's wrath"
+       ],
+       "wants": [
+        "To keep his high-ranking lifestyle and win Mei Lin's exclusive favor."
+       ],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 2,
+       "speed": 2,
+       "toughness": 2,
+       "wits": 3,
+       "knowledge": 4,
+       "willpower": 2,
+       "charm": 2,
+       "nerve": 3,
+       "bearing": 4
+      },
+      "skills": [],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 40,
+       "fear": 0,
+       "trust": 50,
+       "shown_affinity": null,
+       "attraction": 85
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": {
+       "goal": "Have the Emperor sign a new taxation decree that lines Gong's pockets.",
+       "method": "Bribing other court ministers.",
+       "secret": "",
+       "clock_id": ""
+      },
+      "secrets": [
+       "He has been embezzling defense funds meant for the city's western garrisons."
+      ],
+      "player_knows": "met"
+     },
+     {
+      "id": "li-wei",
+      "name": "Li Wei",
+      "aliases": [],
+      "description": "A quiet, intense young scholar who serves as the primary contact for the Red Lotus in the capital.",
+      "appearance": "Tall and lean, wearing plain gray linen scholar robes, with sharp eyes that are constantly scanning the room.",
+      "age": 26,
+      "people_id": "human",
+      "location_id": "rebel-safehouse",
+      "memberships": [
+       {
+        "faction_id": "red-lotus",
+        "rank": "Cell Leader",
+        "loyalty": 100
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "solemn",
+        "highly disciplined",
+        "protective"
+       ],
+       "values": [
+        "justice",
+        "loyalty"
+       ],
+       "loves": [
+        "poetry",
+        "freedom"
+       ],
+       "fears": [
+        "failing his comrades",
+        "Mei Lin's capture"
+       ],
+       "wants": [
+        "To successfully deliver the imperial guard plans to the rebel command."
+       ],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 4,
+       "speed": 4,
+       "toughness": 3,
+       "wits": 4,
+       "knowledge": 5,
+       "willpower": 5,
+       "charm": 3,
+       "nerve": 5,
+       "bearing": 3
+      },
+      "skills": [],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 70,
+       "fear": 0,
+       "trust": 80,
+       "shown_affinity": null,
+       "attraction": 40
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": {
+       "goal": "Map out the patrol routes of the Imperial Guard for an upcoming assault.",
+       "method": "Using spy reports and inside schematics.",
+       "secret": "",
+       "clock_id": ""
+      },
+      "secrets": [
+       "He was once an imperial scribe before his entire family was purged by the crown."
+      ],
+      "player_knows": "met"
+     },
+     {
+      "id": "madam-yume",
+      "name": "Madam Yume",
+      "aliases": [],
+      "description": "The shrewd, elegantly aging keeper of the Jade Pavilion who knows how to leverage every secret.",
+      "appearance": "An elegant woman wearing a dark red silk kimono with gold embroidery, holding a long lacquer smoking pipe.",
+      "age": 47,
+      "people_id": "human",
+      "location_id": "jade-pavilion",
+      "memberships": [
+       {
+        "faction_id": "courtesan-guild",
+        "rank": "Guild Madam",
+        "loyalty": 100
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "cunning",
+        "pragmatic",
+        "haughty"
+       ],
+       "values": [
+        "self-preservation",
+        "wealth"
+       ],
+       "loves": [
+        "secrets",
+        "perfumed oils"
+       ],
+       "fears": [
+        "ruin",
+        "the Inquisition burning her pavilion down"
+       ],
+       "wants": [
+        "To keep the Jade Pavilion profitable and safe from political crossfire."
+       ],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 2,
+       "speed": 3,
+       "toughness": 3,
+       "wits": 5,
+       "knowledge": 4,
+       "willpower": 4,
+       "charm": 4,
+       "nerve": 4,
+       "bearing": 5
+      },
+      "skills": [],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 25,
+       "fear": 0,
+       "trust": 40,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [
+       "She is secretly providing names of minor rebel sympathizers to the Inquisition to buy safety for her pavilion."
+      ],
+      "player_knows": "met"
+     }
+    ],
+    "clocks": [
+     {
+      "id": "inquisition-threat",
+      "name": "The Inquisition Closes In",
+      "steps": [
+       "The Inquisition arrests a lower-class rebel courier.",
+       "Inquisitors decode a hidden letter pointing to the Willow District.",
+       "The Inquisition places watchmen around the Willow District.",
+       "Inquisitors launch a lethal raid on the rebel safehouse."
+      ],
+      "step_every_hours": 24.0,
+      "owner_id": "imperial-court",
+      "thread_id": "protect-safehouse",
+      "known_to_player": true
+     }
+    ],
+    "threads": [
+     {
+      "id": "steal-blueprints",
+      "title": "Steal the Palace Guard Schedules",
+      "kind": "quest",
+      "stakes": "The rebellion needs the internal patrol routes to sneak arms into the inner palace.",
+      "involved_ids": [
+       "player",
+       "minister-gong",
+       "li-wei"
+      ],
+      "clock_id": "",
+      "known_to_player": true
+     },
+     {
+      "id": "protect-safehouse",
+      "title": "Protect the Safehouse",
+      "kind": "threat",
+      "stakes": "If the safehouse is raided, Li Wei and the local rebel files will fall into the hands of the state.",
+      "involved_ids": [
+       "player",
+       "li-wei",
+       "madam-yume"
+      ],
+      "clock_id": "inquisition-threat",
+      "known_to_player": true
+     }
+    ],
+    "mysteries": [
+     {
+      "id": "leaked-courier",
+      "question": "How did the Inquisition find the rebel courier?",
+      "answer": "Madam Yume discovered the courier visiting the pavilion backdoors and anonymously tipped off the Guard to show cooperation.",
+      "clues": [
+       "A discarded red tassel matching the pavilion guards was found near the arrest site.",
+       "A suspicious deposit of gold coins from the Ministry of Security is recorded in Madam Yume's private ledgers."
+      ],
+      "thread_id": "protect-safehouse",
+      "known_to_player": true
+     }
+    ],
+    "known_facts": [
+     "The Dragon Throne executes any suspected rebels in Xijing's main square.",
+     "Minister Gong keeps his private keys on his belt at all times.",
+     "Mind-weaving is highly effective, but using it in front of witnesses risks immediate exposure."
+    ],
+    "opening": {
+     "place_id": "player-chambers",
+     "present_ids": [
+      "minister-gong"
+     ],
+     "positions": [
+      "Mei Lin sits gracefully on her daybed.",
+      "Minister Gong stands by the vanity pouring wine."
+     ],
+     "props": [
+      "A plate of sweet plums",
+      "A silver wine decanter",
+      "A set of keys hanging from Gong's silk sash."
+     ],
+     "situation": "Minister Gong pours a cup of spiced wine, his eyes glazed with infatuation, as you slide a delicate key from his belt."
+    },
+    "summary": "You are Xijing's most sought-after courtesan and a secret rebel agent. Using your forbidden mind-weaving allure, you must charm secrets out of high-ranking officials to aid the Red Lotus Rebellion before the Inquisition hunts you down."
+   },
+   "character": {
+    "name": "Mei Lin",
+    "aliases": [
+     "The Jewel of the Pavilion",
+     "Agent Lotus-Six"
+    ],
+    "age": 22,
+    "lifespan_years": 80,
+    "people_id": "human",
+    "description": "An incredibly elegant and poised woman whose presence is magnetic, with a soft voice that commands attention.",
+    "appearance": "Slender with porcelain skin, deep dark eyes, and long black hair held together by ornate jade hairpins, dressed in a flowing silk emerald qipao.",
+    "location_id": "player-chambers",
+    "attributes": {
+     "strength": 2,
+     "speed": 3,
+     "toughness": 2,
+     "wits": 4,
+     "knowledge": 3,
+     "willpower": 4,
+     "charm": 5,
+     "nerve": 5,
+     "bearing": 4
+    },
+    "skills": [
+     {
+      "name": "Seduction",
+      "level": "master",
+      "notes": "Unmatched at reading desires and playing the perfect confidante."
+     },
+     {
+      "name": "Sleight of Hand",
+      "level": "expert",
+      "notes": "Capable of picking pockets, lifting keys, and palming small items unnoticed."
+     },
+     {
+      "name": "Deception",
+      "level": "expert",
+      "notes": "Excellent at maintaining covers and lying to authority figures."
+     },
+     {
+      "name": "Eavesdropping",
+      "level": "skilled",
+      "notes": "Extracting key details from muffled background conversations."
+     }
+    ],
+    "traits": [
+     {
+      "name": "Siren's Grace",
+      "kind": "gift",
+      "description": "Your striking beauty and elegant manners make others reluctant to suspect you of any wrongdoing."
+     },
+     {
+      "name": "Shadow Agent",
+      "kind": "quirk",
+      "description": "You are highly observant, always locating exits and loose floorboards in any room you enter."
+     }
+    ],
+    "talents": [
+     {
+      "name": "The Art of Allure",
+      "covers": "any action or skill involving the manipulation of someone's affection or desire.",
+      "strength": "one_of_a_kind",
+      "general": false,
+      "reason": "She has honed her unique voice, micro-expressions, and natural charm to absolute perfection."
+     }
+    ],
+    "powers": [
+     {
+      "id": "mind-allure",
+      "name": "Siren's Whisper",
+      "description": "",
+      "kind_id": "mind-weaving",
+      "gift": true,
+      "strength": "rare",
+      "limits": [
+       "Requires eye contact and a low, intimate tone of voice.",
+       "Does not work on targets with extreme, unwavering willpower or holy protection."
+      ],
+      "costs": [
+       {
+        "kind": "fatigue",
+        "text": "Requires an hour of rest or deep meditation if used on multiple targets in a row."
+       }
+      ],
+      "secret": false,
+      "time": null
+     }
+    ],
+    "techniques": [
+     {
+      "name": "Viper's Kiss",
+      "style": "Subtle Seduction",
+      "effect": "Allows you to slip a powder or poison into a target's drink while kissing them or leaning in close.",
+      "cost": "None",
+      "requirements": "Target must be infatuated or highly distracted by you."
+     }
+    ],
+    "temperament": {
+     "traits": [
+      "confident",
+      "daring",
+      "calculating",
+      "perceptive"
+     ],
+     "values": [
+      "freedom",
+      "loyalty to the oppressed"
+     ],
+     "loves": [
+      "tea",
+      "traditional lute music",
+      "outwitting arrogant nobles"
+     ],
+     "fears": [
+      "being locked in a dungeon",
+      "causing the death of innocent rebel contacts"
+     ],
+     "wants": [
+      "To steal the palace security blueprints and secure the rebellion's safety."
+     ],
+     "voice": ""
+    },
+    "items": [
+     {
+      "name": "Lockpicking Hairpin",
+      "kind": "gear",
+      "description": "A beautiful brass hairpin that can easily be disassembled into a functional set of lockpicks.",
+      "quantity": 1,
+      "carried": true
+     },
+     {
+      "name": "Vial of Sleeping Powder",
+      "kind": "consumable",
+      "description": "A fine, odorless powder that slips into wine to put a grown man to sleep within minutes.",
+      "quantity": 2,
+      "carried": true
+     },
+     {
+      "name": "Silk Fan",
+      "kind": "gear",
+      "description": "A hand-painted fan used to coyly hide facial expressions and distract targets.",
+      "quantity": 1,
+      "carried": true
+     }
+    ],
+    "money": 80,
+    "currency": "silver taels",
+    "title": "Prima Courtesan",
+    "rank": "Elite Hostess",
+    "family_name": "",
+    "connections": [
+     {
+      "name": "Li Wei",
+      "kind": "ally",
+      "character_id": "li-wei",
+      "note": "Your trusted contact and handler in the Red Lotus Rebellion."
+     }
+    ],
+    "parent_ids": [],
+    "memberships": [
+     {
+      "faction_id": "courtesan-guild",
+      "rank": "Prima Courtesan",
+      "loyalty": 60
+     },
+     {
+      "faction_id": "red-lotus",
+      "rank": "Infiltrator",
+      "loyalty": 95
+     }
+    ],
+    "ladders": [],
+    "axes": {
+     "might": 1,
+     "influence": 3,
+     "wealth": 2,
+     "knowledge": 3,
+     "stealth": 4
+    },
+    "reserves": [],
+    "goals": [
+     "Steal the palace guard schedules from Minister Gong",
+     "Keep the rebellion safehouse hidden from the Inquisition"
+    ],
+    "backstory": [
+     "Orphaned at a young age when her home province was heavily taxed and starved by the crown, she was taken in by the Jade Pavilion.",
+     "Discovered her latent mind-weaving abilities during her early training and chose to use them to undermine the corrupt elite rather than just serve them.",
+     "Formed an alliance with the Red Lotus to use her status as a weapon for change."
+    ],
+    "hidden_past": []
+   }
+  },
+  "rating": "mature",
+  "premise_id": null,
+  "physics": "fun_first",
+  "gift": null,
+  "released_rules": [],
+  "language": "en",
+  "told": []
+ }
+}

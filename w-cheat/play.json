@@ -1,0 +1,680 @@
+{
+ "premise": "I get hit by a truck and wake up in a fantasy world as a hero with an overpowered cheat skill.",
+ "language": "en",
+ "rating": "teen",
+ "settings": {
+  "narration_length": "medium",
+  "tone": null,
+  "difficulty": "balanced",
+  "event_frequency": "normal",
+  "images": "key_moments",
+  "suggestions": true,
+  "language": "en",
+  "accent": null
+ },
+ "seed": "play/w-cheat",
+ "state": null,
+ "scenes": [],
+ "choices": [],
+ "cost_usd": 0.0863145,
+ "draft": {
+  "premise": "I get hit by a truck and wake up in a fantasy world as a hero with an overpowered cheat skill.",
+  "proposal": {
+   "world": {
+    "title": "Rebirth of the Cheat Hero",
+    "genre": "Isekai Fantasy",
+    "tone": "Wonder and adventure",
+    "era": "Aethelgard: a medieval realm of swords, magic, and status screens",
+    "extraordinary": [
+     {
+      "id": "magic",
+      "kind": "Elemental and ritual magic",
+      "prevalence": "common",
+      "reach": "Mages can summon elemental fire, heal minor wounds, or erect defensive barriers."
+     },
+     {
+      "id": "system",
+      "kind": "The Status System",
+      "prevalence": "common",
+      "reach": "All living beings possess an interface that displays their attributes, skills, and combat rank."
+     }
+    ],
+    "rules": [
+     {
+      "id": "status-laws",
+      "text": "Every living being's potential and growth are governed by the Status System, visible through an interface.",
+      "fixed": true,
+      "topic": "nature",
+      "about": [
+       "system"
+      ]
+     },
+     {
+      "id": "cheat-exclusivity",
+      "text": "Only summoned beings from other worlds possess 'cheat skills' that completely ignore the standard laws of magic.",
+      "fixed": true,
+      "topic": "nature",
+      "about": [
+       "system",
+       "magic"
+      ]
+     },
+     {
+      "id": "mana-consumption",
+      "text": "Casting magical spells consumes mana, which requires rest, meditation, or special potions to replenish.",
+      "fixed": true,
+      "topic": "medicine",
+      "about": [
+       "magic"
+      ]
+     }
+    ],
+    "dropped_rule_ids": [],
+    "peoples": [
+     {
+      "id": "human",
+      "name": "Human",
+      "description": "The dominant inhabitants of Solaria, adaptable and governed by the Status System.",
+      "lifespan_years": 80,
+      "gifts": [
+       "Adaptability"
+      ],
+      "culture": "Structured feudal society centered around magic, chivalry, and the Royal Family.",
+      "relations": [],
+      "path": ""
+     }
+    ],
+    "creatures": [
+     {
+      "id": "demon-beast",
+      "name": "Demon Beast",
+      "description": "Corrupted predators born from wild magic.",
+      "rung": "D-Rank",
+      "habitat": "Whispering Woods",
+      "worth": "Magic cores and durable hides",
+      "can_be_tamed": false
+     }
+    ],
+    "nature": [
+     "Magic flows like underground rivers, pooling in high-concentration zones known as mana veins."
+    ],
+    "ladders": [
+     {
+      "id": "adventurer-ranks",
+      "name": "Adventurer Status Rungs",
+      "axis": "might",
+      "rungs": [
+       {
+        "name": "F-Rank",
+        "description": "Fresh novices who struggle with basic pests and slimes.",
+        "lifespan_years": null
+       },
+       {
+        "name": "D-Rank",
+        "description": "Capable of handling wild predators and minor demon beasts.",
+        "lifespan_years": null
+       },
+       {
+        "name": "C-Rank",
+        "description": "Standard professionals; the backbone of local defence forces.",
+        "lifespan_years": null
+       },
+       {
+        "name": "B-Rank",
+        "description": "Elites who can take down formidable monsters single-handedly.",
+        "lifespan_years": null
+       },
+       {
+        "name": "A-Rank",
+        "description": "Masters whose presence can turn the tide of a local battle.",
+        "lifespan_years": null
+       },
+       {
+        "name": "S-Rank",
+        "description": "Living legends of unmatched combat capability.",
+        "lifespan_years": null
+       }
+      ],
+      "known_to_all": 6,
+      "sensing": true,
+      "standing_follows": true,
+      "lengthens_life": false
+     }
+    ],
+    "calendar": {
+     "style": "day_count",
+     "clock_time": false,
+     "epoch": "",
+     "start_hour": 10,
+     "months": [],
+     "start_year": 1,
+     "start_month": 1,
+     "start_day": 1,
+     "era": "Year of Summoning"
+    },
+    "travel": {
+     "description": "Travel is conducted on foot, by horse-drawn carriage, or via rare, expensive magical teleportation gates.",
+     "instant_messages": false
+    },
+    "medicine": {
+     "healing": "Minor injuries can be healed instantly with holy magic; lost limbs require rare high-tier elixirs.",
+     "resurrection": "none",
+     "resurrection_means": ""
+    },
+    "laws": [
+     {
+      "id": "imperial-tax",
+      "text": "All registered adventurers must contribute ten percent of their dungeon earnings to the local crown representative.",
+      "enforcer": "Royal Guard",
+      "enforcer_faction_id": "kingdom-of-solaria",
+      "zeal": "high",
+      "corruptible": false
+     }
+    ],
+    "norms": [
+     "Viewing another person's status screen without their explicit permission is considered a grave breach of privacy and etiquette."
+    ],
+    "several_partners": false,
+    "unions": "held",
+    "places": [
+     {
+      "id": "capital-city",
+      "name": "Solaria Capital",
+      "kind": "city",
+      "description": "A bustling metropolis protected by high stone walls and ancient runic barriers.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "kingdom-of-solaria",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "royal-castle",
+      "name": "Solaria Royal Castle",
+      "kind": "building",
+      "description": "A grand white-stone castle that towers over the capital city.",
+      "parent_id": "capital-city",
+      "setting": "indoors",
+      "controller_id": "kingdom-of-solaria",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "summoning-chamber",
+      "name": "The Chamber of Rebirth",
+      "kind": "room",
+      "description": "A secure, subterranean ritual hall lined with glowing mana crystals and gold runes.",
+      "parent_id": "royal-castle",
+      "setting": "underground",
+      "controller_id": "kingdom-of-solaria",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "whispering-woods",
+      "name": "The Whispering Woods",
+      "kind": "wilds",
+      "description": "A vast, ancient forest thick with dense foliage and aggressive demon beasts.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "capital-city",
+        "travel_hours": 4.0,
+        "mode": "by carriage"
+       }
+      ]
+     }
+    ],
+    "factions": [
+     {
+      "id": "kingdom-of-solaria",
+      "name": "Kingdom of Solaria",
+      "kind": "kingdom",
+      "description": "The proud human realm currently besieged by demon encroachers.",
+      "parent_id": "",
+      "leader_ids": [
+       "princess-elara"
+      ],
+      "goal": "Defeat the Demon Lord and secure human survival.",
+      "methods": "Summoning otherworldly heroes to bypass magic limitations.",
+      "strength": "An army of disciplined knights and high-tier court mages.",
+      "relations": [],
+      "secrets": [],
+      "known_to_player": true
+     }
+    ],
+    "npcs": [
+     {
+      "id": "princess-elara",
+      "name": "Princess Elara Solaria",
+      "aliases": [],
+      "description": "A determined royal princess carrying the heavy burden of her kingdom's survival.",
+      "appearance": "Delicate features, long silver hair tied in a practical braid, and deep blue ceremonial robes.",
+      "age": 19,
+      "people_id": "human",
+      "location_id": "summoning-chamber",
+      "memberships": [
+       {
+        "faction_id": "kingdom-of-solaria",
+        "rank": "Crown Princess",
+        "loyalty": 100
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "resolute",
+        "compassionate",
+        "anxious"
+       ],
+       "values": [
+        "duty",
+        "the safety of her people",
+        "honesty"
+       ],
+       "loves": [
+        "reading historical legends",
+        "quiet morning walks"
+       ],
+       "fears": [
+        "failing her subjects",
+        "the loss of her home"
+       ],
+       "wants": [
+        "A hero capable of turning the tide against the demon vanguard."
+       ],
+       "voice": "Formal, clear, and slightly strained by heavy responsibility."
+      },
+      "attributes": {
+       "strength": 2,
+       "speed": 3,
+       "toughness": 2,
+       "wits": 4,
+       "knowledge": 4,
+       "willpower": 5,
+       "charm": 4,
+       "nerve": 3,
+       "bearing": 4
+      },
+      "skills": [
+       {
+        "name": "Diplomacy",
+        "level": "expert",
+        "notes": ""
+       },
+       {
+        "name": "Holy Magic",
+        "level": "fair",
+        "notes": ""
+       }
+      ],
+      "traits": [
+       {
+        "name": "Royal Grace",
+        "kind": "gift",
+        "description": "Naturally commands attention and respect when speaking."
+       }
+      ],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 6,
+       "wealth": 5,
+       "knowledge": 3,
+       "stealth": 2
+      },
+      "attitude_to_player": {
+       "affinity": 20,
+       "fear": 0,
+       "trust": 10,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": {
+       "goal": "Convince the summoned hero to fight Solaria's enemies.",
+       "method": "Offering royal resources, titles, and emotional appeals.",
+       "secret": "She used her own life force as a catalyst for the summoning ritual.",
+       "clock_id": ""
+      },
+      "secrets": [
+       "The ritual has shortened her life unless she is cured with divine elixirs."
+      ],
+      "player_knows": "met"
+     },
+     {
+      "id": "grand-mage-valerius",
+      "name": "Grand Mage Valerius",
+      "aliases": [],
+      "description": "An aging, sharp-tongued court wizard who values cold facts and results above all else.",
+      "appearance": "Wrinkled skin, sharp gray eyes, wearing dark violet robes adorned with starry constellations.",
+      "age": 68,
+      "people_id": "human",
+      "location_id": "summoning-chamber",
+      "memberships": [
+       {
+        "faction_id": "kingdom-of-solaria",
+        "rank": "Grand Court Wizard",
+        "loyalty": 80
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "shrewd",
+        "cautious",
+        "skeptical"
+       ],
+       "values": [
+        "magical efficiency",
+        "national security"
+       ],
+       "loves": [
+        "rare spell scrolls",
+        "hot tea"
+       ],
+       "fears": [
+        "uncontrollable magical anomalies"
+       ],
+       "wants": [
+        "To ensure the newly summoned hero's powers are stable and controllable."
+       ],
+       "voice": "Raspy, commanding, and analytical."
+      },
+      "attributes": {
+       "strength": 2,
+       "speed": 2,
+       "toughness": 3,
+       "wits": 5,
+       "knowledge": 5,
+       "willpower": 4,
+       "charm": 2,
+       "nerve": 4,
+       "bearing": 3
+      },
+      "skills": [
+       {
+        "name": "Elemental Arcana",
+        "level": "master",
+        "notes": ""
+       },
+       {
+        "name": "Ritual Alchemy",
+        "level": "expert",
+        "notes": ""
+       }
+      ],
+      "traits": [
+       {
+        "name": "Mana Sensitivity",
+        "kind": "gift",
+        "description": "Can immediately spot high-density mana surges in his vicinity."
+       }
+      ],
+      "powers": [],
+      "techniques": [],
+      "ladders": [
+       {
+        "ladder_id": "adventurer-ranks",
+        "rung": "A-Rank",
+        "stage": "late"
+       }
+      ],
+      "axes": {
+       "might": 5,
+       "influence": 4,
+       "wealth": 3,
+       "knowledge": 6,
+       "stealth": 2
+      },
+      "attitude_to_player": {
+       "affinity": 5,
+       "fear": 0,
+       "trust": 0,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": {
+       "goal": "Test the limits of the hero's cheat skill to ensure it poses no threat to the crown.",
+       "method": "Using diagnostic magic and structured combat trials.",
+       "secret": "He intends to bind the hero to an oath of non-aggression against the royal family.",
+       "clock_id": ""
+      },
+      "secrets": [
+       "He doubts the prophesied hero will be enough to stop the demonic army."
+      ],
+      "player_knows": "met"
+     }
+    ],
+    "clocks": [
+     {
+      "id": "demon-vanguard",
+      "name": "The Demon Vanguard Approaches",
+      "steps": [
+       "Demonic scout squads are spotted near the edges of the Whispering Woods.",
+       "The main vanguard column establishes a fortified forward camp inside the forest.",
+       "Solaria's outer wall is besieged by the Demon vanguard's monstrous forces."
+      ],
+      "step_every_hours": 24.0,
+      "owner_id": "",
+      "thread_id": "save-the-kingdom",
+      "known_to_player": true
+     }
+    ],
+    "threads": [
+     {
+      "id": "save-the-kingdom",
+      "title": "Save Solaria from the Demon Vanguard",
+      "kind": "quest",
+      "stakes": "The destruction of the human kingdom if the vanguard breaches the capital.",
+      "involved_ids": [
+       "player",
+       "princess-elara",
+       "kingdom-of-solaria"
+      ],
+      "clock_id": "demon-vanguard",
+      "known_to_player": true
+     }
+    ],
+    "mysteries": [
+     {
+      "id": "why-me",
+      "question": "Why did the summoning ritual pull me from my world?",
+      "answer": "The ritual targets high-speed soul transitions; the sudden momentum of the truck collision created the exact dimensional tear required.",
+      "clues": [
+       "A summoning manual noting that 'rapid worldly departures yield the highest dimensional friction.'",
+       "Grand Mage Valerius remarking that you arrived with residual kinetic energy still sparking from your soul."
+      ],
+      "thread_id": "save-the-kingdom",
+      "known_to_player": true
+     }
+    ],
+    "known_facts": [
+     "You were hit by a truck in your past life.",
+     "You have just been summoned into a fantasy world as a hero.",
+     "A young princess and an old mage are waiting for you to stand up."
+    ],
+    "opening": {
+     "place_id": "summoning-chamber",
+     "present_ids": [
+      "princess-elara",
+      "grand-mage-valerius"
+     ],
+     "positions": [
+      "The player is lying in the center of a glowing golden summoning circle.",
+      "Princess Elara is kneeling nearby, catching her breath.",
+      "Grand Mage Valerius is standing at the edge of the dais, staff raised."
+     ],
+     "props": [
+      "summoning-circle",
+      "glowing-crystals"
+     ],
+     "situation": "You open your eyes on a glowing stone floor, the smell of burnt rubber still lingering in your mind, to find a beautiful princess gasping in relief at your arrival."
+    },
+    "summary": "After a sudden collision with a truck, you wake up in a fantasy summoning chamber as a destined hero. Princess Elara and Grand Mage Valerius welcome you, hoping your otherworldly cheat skill will save their kingdom from an impending demonic invasion."
+   },
+   "character": {
+    "name": "Takuya",
+    "aliases": [
+     "The Summoned Hero"
+    ],
+    "age": 18,
+    "lifespan_years": 80,
+    "people_id": "human",
+    "description": "An ordinary teenager suddenly thrust into extraordinary circumstances, looking around with a mix of shock and confusion.",
+    "appearance": "Slim build, black hair, wearing slightly scuffed casual school clothes that contrast sharply with the stone chamber.",
+    "location_id": "summoning-chamber",
+    "attributes": {
+     "strength": 3,
+     "speed": 3,
+     "toughness": 3,
+     "wits": 4,
+     "knowledge": 3,
+     "willpower": 5,
+     "charm": 3,
+     "nerve": 4,
+     "bearing": 3
+    },
+    "skills": [
+     {
+      "name": "Observation",
+      "level": "fair",
+      "notes": ""
+     },
+     {
+      "name": "Adaptation",
+      "level": "novice",
+      "notes": ""
+     }
+    ],
+    "traits": [
+     {
+      "name": "Otherworldly Traveler",
+      "kind": "gift",
+      "description": "Immune to local soul-binding curses and mind-altering magic."
+     }
+    ],
+    "talents": [
+     {
+      "name": "Copycat Eye",
+      "covers": "any physical technique or magical spell you watch someone perform in your vicinity",
+      "strength": "one_of_a_kind",
+      "general": false,
+      "reason": "An overpowered cheat skill granted during your transition between worlds."
+     }
+    ],
+    "powers": [
+     {
+      "id": "absolute-replication",
+      "name": "Cheat: Absolute Replication",
+      "description": "",
+      "kind_id": "system",
+      "gift": true,
+      "strength": "overpowered",
+      "limits": [
+       "You must watch the spell or martial move being successfully performed.",
+       "Your current mana pool must be large enough to cast the replicated magic."
+      ],
+      "costs": [
+       {
+        "kind": "fatigue",
+        "text": "A brief moment of mental strain when integrating a newly copied skill."
+       }
+      ],
+      "secret": false,
+      "time": null
+     }
+    ],
+    "techniques": [],
+    "temperament": {
+     "traits": [
+      "confused",
+      "determined",
+      "practical"
+     ],
+     "values": [
+      "survival",
+      "fairness"
+     ],
+     "loves": [
+      "familiar comforts",
+      "unravelling systems"
+     ],
+     "fears": [
+      "never returning home",
+      "uncontrolled threats"
+     ],
+     "wants": [],
+     "voice": "Modern, slightly informal, trying to make sense of the world's status screens."
+    },
+    "items": [],
+    "money": 0,
+    "currency": "gold coins",
+    "title": "Summoned Hero",
+    "rank": "Unranked",
+    "family_name": "",
+    "connections": [
+     {
+      "name": "Princess Elara",
+      "kind": "ally",
+      "character_id": "princess-elara",
+      "note": "The young princess who summoned you to save her home."
+     }
+    ],
+    "parent_ids": [],
+    "memberships": [],
+    "ladders": [
+     {
+      "ladder_id": "adventurer-ranks",
+      "rung": "F-Rank",
+      "stage": "early"
+     }
+    ],
+    "axes": {
+     "might": 1,
+     "influence": 1,
+     "wealth": 1,
+     "knowledge": 1,
+     "stealth": 1
+    },
+    "reserves": [
+     {
+      "name": "Mana",
+      "level": 100
+     }
+    ],
+    "goals": [],
+    "backstory": [
+     "You were crossing the street on an ordinary afternoon when a roaring engine and blinding headlights ended your school days instantly.",
+     "Instead of darkness, your consciousness drifted through a void before assembling on a magical summoning dais in Solaria."
+    ],
+    "hidden_past": []
+   }
+  },
+  "rating": "teen",
+  "premise_id": null,
+  "physics": "fun_first",
+  "gift": null,
+  "released_rules": [],
+  "language": "en",
+  "told": []
+ }
+}

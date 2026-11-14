@@ -1,0 +1,606 @@
+{
+ "premise": "A level 1 adventurer, the weakest in the guild, with a unique skill that lets him keep leveling up without any limit.",
+ "language": "en",
+ "rating": "teen",
+ "settings": {
+  "narration_length": "medium",
+  "tone": null,
+  "difficulty": "balanced",
+  "event_frequency": "normal",
+  "images": "key_moments",
+  "suggestions": true,
+  "language": "en",
+  "accent": null
+ },
+ "seed": "play/w-level",
+ "state": null,
+ "scenes": [],
+ "choices": [],
+ "cost_usd": 0.0648015,
+ "draft": {
+  "premise": "A level 1 adventurer, the weakest in the guild, with a unique skill that lets him keep leveling up without any limit.",
+  "proposal": {
+   "world": {
+    "title": "Infinite Ascent",
+    "genre": "LitRPG Fantasy",
+    "tone": "wonder",
+    "era": "High Medieval fantasy: swords, bows, and a Guild-administered System magic.",
+    "extraordinary": [
+     {
+      "id": "the-system",
+      "kind": "the System",
+      "prevalence": "common",
+      "reach": "Governs all stats, levels, and skills of living beings."
+     },
+     {
+      "id": "magic",
+      "kind": "elemental magic",
+      "prevalence": "rare",
+      "reach": "Allows manipulation of physical elements through spells."
+     }
+    ],
+    "rules": [
+     {
+      "id": "system-bounds",
+      "text": "The System awards experience and levels only to those who defeat monsters or complete Guild-sanctioned trials.",
+      "fixed": true,
+      "topic": "nature",
+      "about": [
+       "the-system"
+      ]
+     },
+     {
+      "id": "potential-cap",
+      "text": "Every person has a natural level cap dictated by their soul's birth potential, which cannot normally be exceeded.",
+      "fixed": true,
+      "topic": "limits",
+      "about": [
+       "the-system"
+      ]
+     },
+     {
+      "id": "magic-rarity",
+      "text": "Magic spells can only be cast by those who have unlocked specific elemental classes through the System.",
+      "fixed": true,
+      "topic": "nature",
+      "about": [
+       "magic"
+      ]
+     }
+    ],
+    "dropped_rule_ids": [],
+    "peoples": [
+     {
+      "id": "humans",
+      "name": "Humans",
+      "description": "",
+      "lifespan_years": 80,
+      "gifts": [],
+      "culture": "The dominant species, organized into kingdoms and centered around adventurer guilds.",
+      "relations": [
+       "Struggling constantly against monster tides from the wild lands."
+      ],
+      "path": ""
+     }
+    ],
+    "creatures": [
+     {
+      "id": "shadow-wolf",
+      "name": "Shadow Wolf",
+      "description": "A dark, predatory beast that stalks the forest fringes.",
+      "rung": "Level 5 (Copper)",
+      "habitat": "Howling Woods",
+      "worth": "Pelt and shadow core.",
+      "can_be_tamed": false
+     }
+    ],
+    "nature": [],
+    "ladders": [
+     {
+      "id": "adventurer-levels",
+      "name": "Adventurer Levels",
+      "axis": "might",
+      "rungs": [
+       {
+        "name": "Level 1 (Novice)",
+        "description": "Fresh recruits just starting their journey.",
+        "lifespan_years": null
+       },
+       {
+        "name": "Level 5 (Copper)",
+        "description": "Experienced fighters capable of clearing minor dens.",
+        "lifespan_years": null
+       },
+       {
+        "name": "Level 10 (Bronze)",
+        "description": "Seasoned combatants trusted with village protection.",
+        "lifespan_years": null
+       },
+       {
+        "name": "Level 20 (Silver)",
+        "description": "Elite warriors who deal with high-threat monsters.",
+        "lifespan_years": null
+       },
+       {
+        "name": "Level 50 (Gold)",
+        "description": "Masters of combat, leading military campaigns.",
+        "lifespan_years": null
+       },
+       {
+        "name": "Level 100 (Legend)",
+        "description": "Mythical beings capable of reshaping kingdoms.",
+        "lifespan_years": null
+       }
+      ],
+      "known_to_all": 5,
+      "sensing": true,
+      "standing_follows": true,
+      "lengthens_life": false
+     }
+    ],
+    "calendar": {
+     "style": "day_count",
+     "clock_time": false,
+     "epoch": "",
+     "start_hour": 8,
+     "months": [],
+     "start_year": 1,
+     "start_month": 1,
+     "start_day": 1,
+     "era": ""
+    },
+    "travel": {
+     "description": "Foot, horse-drawn carriage, or rare teleportation gates between major capitals.",
+     "instant_messages": false
+    },
+    "medicine": {
+     "healing": "Minor potions and low-tier light magic heal cuts and bruises quickly; severed limbs require high-level holy spells.",
+     "resurrection": "none",
+     "resurrection_means": ""
+    },
+    "laws": [
+     {
+      "id": "guild-code",
+      "text": "Adventurers shall not use System skills to harm or rob citizens within city walls.",
+      "enforcer": "Guild Knights",
+      "enforcer_faction_id": "",
+      "zeal": "high",
+      "corruptible": false
+     }
+    ],
+    "norms": [],
+    "several_partners": false,
+    "unions": "held",
+    "places": [
+     {
+      "id": "oakhaven-region",
+      "name": "Oakhaven Region",
+      "kind": "region",
+      "description": "A temperate borderland surrounding the town of Oakhaven.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "oakhaven-town",
+      "name": "Oakhaven Town",
+      "kind": "village",
+      "description": "A bustling frontier town protected by tall wooden palisades.",
+      "parent_id": "oakhaven-region",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "guild-hall",
+      "name": "Adventurers' Guild Hall",
+      "kind": "building",
+      "description": "A noisy, cavernous hall smelling of ale, roasted meat, and sweat.",
+      "parent_id": "oakhaven-town",
+      "setting": "indoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "howling-woods",
+      "name": "Howling Woods",
+      "kind": "wilds",
+      "description": "A dense, dark forest infested with low-level monsters.",
+      "parent_id": "oakhaven-region",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "oakhaven-town",
+        "travel_hours": 2.0,
+        "mode": "on foot"
+       }
+      ]
+     }
+    ],
+    "factions": [
+     {
+      "id": "adventurers-guild",
+      "name": "The Adventurers' Guild",
+      "kind": "sect",
+      "description": "An international organization that issues quests and ranks adventurers based on their strength.",
+      "parent_id": "",
+      "leader_ids": [],
+      "goal": "",
+      "methods": "",
+      "strength": "",
+      "relations": [],
+      "secrets": [],
+      "known_to_player": true
+     },
+     {
+      "id": "iron-fangs",
+      "name": "The Iron Fangs",
+      "kind": "crew",
+      "description": "A local party of Bronze-rank bullies who dominate the low-level quest board in Oakhaven.",
+      "parent_id": "",
+      "leader_ids": [
+       "bully-karl"
+      ],
+      "goal": "",
+      "methods": "",
+      "strength": "",
+      "relations": [],
+      "secrets": [],
+      "known_to_player": true
+     }
+    ],
+    "npcs": [
+     {
+      "id": "guild-receptionist-elena",
+      "name": "Elena",
+      "aliases": [],
+      "description": "A patient, kind-hearted receptionist who handles low-rank registrations.",
+      "appearance": "A young woman with neat brown hair, wearing the blue and white uniform of the Guild.",
+      "age": 24,
+      "people_id": "",
+      "location_id": "guild-hall",
+      "memberships": [
+       {
+        "faction_id": "adventurers-guild",
+        "rank": "Receptionist",
+        "loyalty": 50
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "patient",
+        "sympathetic",
+        "orderly"
+       ],
+       "values": [
+        "fairness",
+        "safety"
+       ],
+       "loves": [
+        "tea",
+        "quiet afternoons"
+       ],
+       "fears": [
+        "unnecessary violence"
+       ],
+       "wants": [],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 3,
+       "speed": 3,
+       "toughness": 3,
+       "wits": 3,
+       "knowledge": 3,
+       "willpower": 3,
+       "charm": 3,
+       "nerve": 3,
+       "bearing": 3
+      },
+      "skills": [],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 20,
+       "fear": 0,
+       "trust": 30,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "met"
+     },
+     {
+      "id": "bully-karl",
+      "name": "Karl",
+      "aliases": [],
+      "description": "An arrogant Bronze-rank warrior who takes pleasure in belittling newcomers.",
+      "appearance": "A burly, scarred man wearing cheap steel chest armor, leaning on a heavy iron broadsword.",
+      "age": 27,
+      "people_id": "",
+      "location_id": "guild-hall",
+      "memberships": [
+       {
+        "faction_id": "iron-fangs",
+        "rank": "Leader",
+        "loyalty": 50
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "arrogant",
+        "loud-mouthed",
+        "greedy"
+       ],
+       "values": [
+        "might makes right"
+       ],
+       "loves": [
+        "ale",
+        "easy gold"
+       ],
+       "fears": [
+        "losing face",
+        "stronger adventurers"
+       ],
+       "wants": [],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 3,
+       "speed": 3,
+       "toughness": 3,
+       "wits": 3,
+       "knowledge": 3,
+       "willpower": 3,
+       "charm": 3,
+       "nerve": 3,
+       "bearing": 3
+      },
+      "skills": [],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": -30,
+       "fear": 0,
+       "trust": -10,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "met"
+     }
+    ],
+    "clocks": [
+     {
+      "id": "rent-due",
+      "name": "Pay rent or face eviction",
+      "steps": [
+       "The innkeeper demands 10 copper coins for the weekly rent.",
+       "The innkeeper locks your room and warns you have 24 hours left.",
+       "You are thrown out onto the streets of Oakhaven."
+      ],
+      "step_every_hours": 24.0,
+      "owner_id": "",
+      "thread_id": "",
+      "known_to_player": true
+     }
+    ],
+    "threads": [
+     {
+      "id": "climb-the-ranks",
+      "title": "Ascending the Ranks",
+      "kind": "ambition",
+      "stakes": "Prove you are not the weakest adventurer in Oakhaven.",
+      "involved_ids": [
+       "player",
+       "bully-karl"
+      ],
+      "clock_id": "",
+      "known_to_player": true
+     }
+    ],
+    "mysteries": [
+     {
+      "id": "origin-of-limitless",
+      "question": "How did I obtain a skill that breaks the System's potential limit?",
+      "answer": "The player was born with a fractured soul soul-root that, instead of blocking development, acts as an open vessel that never fills, bypassed only because of a cosmic administrative error in the System's local node.",
+      "clues": [
+       "An ancient text about 'Fractured Souls' in the Guild archive.",
+       "An anomalous flicker in the player's status window when leveling up."
+      ],
+      "thread_id": "",
+      "known_to_player": true
+     }
+    ],
+    "known_facts": [
+     "You are currently the weakest registered adventurer in Oakhaven.",
+     "Most people's levels stop growing once they reach their innate cap.",
+     "Your unique skill allows you to gain experience and levels infinitely."
+    ],
+    "opening": {
+     "place_id": "guild-hall",
+     "present_ids": [
+      "guild-receptionist-elena",
+      "bully-karl"
+     ],
+     "positions": [],
+     "props": [],
+     "situation": "You stand before Elena's desk at the Adventurers' Guild Hall, clutching your bronze Level 1 registration tag while Karl laughs loudly behind you."
+    },
+    "summary": "You are a level 1 adventurer, widely mocked as the weakest recruit in Oakhaven. However, you possess a secret unique skill that breaks the System's laws, allowing you to level up without any limit. Now, you must survive your first quests and begin your limitless climb."
+   },
+   "character": {
+    "name": "Ethan",
+    "aliases": [],
+    "age": 18,
+    "lifespan_years": 80,
+    "people_id": "",
+    "description": "A slender youth with quiet determination, refusing to break under the laughter of stronger men.",
+    "appearance": "Messy dark hair, thin frame, dressed in faded brown leather armor and carrying a slightly rusted shortsword.",
+    "location_id": "guild-hall",
+    "attributes": {
+     "strength": 2,
+     "speed": 3,
+     "toughness": 2,
+     "wits": 4,
+     "knowledge": 3,
+     "willpower": 5,
+     "charm": 3,
+     "nerve": 4,
+     "bearing": 2
+    },
+    "skills": [
+     {
+      "name": "Swordsmanship",
+      "level": "novice",
+      "notes": "Basic swings and parries learned from manual practice."
+     },
+     {
+      "name": "Dodge",
+      "level": "novice",
+      "notes": "A quick step back to avoid wild swings."
+     }
+    ],
+    "traits": [
+     {
+      "name": "Indomitable Will",
+      "kind": "gift",
+      "description": "Allows you to withstand pain and mockery without backing down."
+     }
+    ],
+    "talents": [
+     {
+      "name": "Limitless Ascent",
+      "covers": "any level or attribute growth under the System.",
+      "strength": "one_of_a_kind",
+      "general": false,
+      "reason": "An anomaly in your soul bypasses all innate potential barriers, allowing infinite progression."
+     }
+    ],
+    "powers": [
+     {
+      "id": "infinite-growth",
+      "name": "Limitless Growth",
+      "description": "",
+      "kind_id": "the-system",
+      "gift": true,
+      "strength": "overpowered",
+      "limits": [
+       "Requires killing blows or difficult trials to generate experience points."
+      ],
+      "costs": [],
+      "secret": false,
+      "time": null
+     }
+    ],
+    "techniques": [],
+    "temperament": {
+     "traits": [],
+     "values": [],
+     "loves": [],
+     "fears": [],
+     "wants": [],
+     "voice": ""
+    },
+    "items": [
+     {
+      "name": "Rusted Shortsword",
+      "kind": "weapon",
+      "description": "A basic, slightly dull blade.",
+      "quantity": 1,
+      "carried": true
+     },
+     {
+      "name": "Faded Leather Armor",
+      "kind": "armour",
+      "description": "Thin, worn armor that offers minimal protection.",
+      "quantity": 1,
+      "carried": true
+     }
+    ],
+    "money": 5,
+    "currency": "copper coins",
+    "title": "",
+    "rank": "F-Rank Adventurer",
+    "family_name": "",
+    "connections": [],
+    "parent_ids": [],
+    "memberships": [
+     {
+      "faction_id": "adventurers-guild",
+      "rank": "Novice",
+      "loyalty": 50
+     }
+    ],
+    "ladders": [
+     {
+      "ladder_id": "adventurer-levels",
+      "rung": "Level 1 (Novice)",
+      "stage": "early"
+     }
+    ],
+    "axes": {
+     "might": 1,
+     "influence": 1,
+     "wealth": 1,
+     "knowledge": 1,
+     "stealth": 1
+    },
+    "reserves": [],
+    "goals": [],
+    "backstory": [],
+    "hidden_past": []
+   }
+  },
+  "rating": "teen",
+  "premise_id": null,
+  "physics": "fun_first",
+  "gift": null,
+  "released_rules": [],
+  "language": "en",
+  "told": []
+ }
+}
