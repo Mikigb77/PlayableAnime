@@ -4,6 +4,7 @@ through a turn. Nobody on record is lifted (`engine.apply`)."""
 import pytest
 
 from engine import path
+from engine.contracts import CharacterChange
 from engine.contracts.intent import ActionKind, Intent, IntentStep
 from engine.samples import cultivation_world
 from graph.llm import Node, Reply
@@ -80,6 +81,19 @@ def test_the_narrators_form_says_when_a_character_comes_with_a_rung():
     # string, empty for whoever stands on no rung.
     assert "rung" in form["$defs"]["CharacterChange"]["required"]
     assert rung["type"] == "string"
+
+
+def test_the_narrators_form_always_asks_how_old_a_character_is():
+    # F3: the first live play to bring someone in left her age out, and the kiss the next
+    # turn was refused. The form asks a number of everyone, as it asks the rung.
+    form = NarratorOutput.model_json_schema()
+    change = form["$defs"]["CharacterChange"]
+
+    assert "age" in change["required"]
+    assert change["properties"]["age"]["type"] == "integer"
+    assert "their age in years" in change["properties"]["age"]["description"]
+    # Code may still leave it out.
+    assert CharacterChange(id="zhao").age is None
 
 
 def test_a_change_that_leaves_the_rung_empty_puts_nobody_anywhere(fake, make_client):

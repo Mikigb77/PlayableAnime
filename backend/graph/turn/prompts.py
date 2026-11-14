@@ -723,9 +723,9 @@ have. For a portrait, the face and expression now; for a place, how it looks now
 everyone's appearance.
 
 update: what this scene changed, for the engine to check and apply (C1):
-- characters: new characters, each with a stable snake_case id, a name, a description and an \
-appearance (an adult gets an age; their looks and usual clothes, never what they carry, which are \
-items), and changes to known ones: where they are, their condition, how they feel about the \
+- characters: new characters, each with a stable snake_case id, a name, an age, a description \
+and an appearance (their looks and usual clothes, never what they carry, which are items), and \
+changes to known ones: where they are, their condition, how they feel about the \
 player, meeting the player. Where someone is changes only for the people of the scene, when they \
 leave it for somewhere or come along: only the world moves anyone else (W10). Only the people in \
 the scene change how they feel (W4): someone elsewhere saw none of it, however much it concerns \
