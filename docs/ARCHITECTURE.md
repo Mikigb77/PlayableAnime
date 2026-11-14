@@ -1738,7 +1738,9 @@ flowchart LR
   length code can't tell). `chain._on_time` then writes it into the proposal as the clock's
   hours per step, over the steps the drafter wrote, at the first draft for the premise and at
   a change for its request, never on a read, so a deadline the player moved later is not moved
-  back. `assemble` drops a goal that is the premise word for word. `named.called`: a person
+  back. `assemble` drops a goal that is the premise word for word, unless the premise is one
+  short sentence that says an aim (`named.one_aim`: "I want to be a pirate." handed back
+  whole is still the goal, where the story used to start with none). `named.called`: a person
   is named only by their name, one word of it with a capital or all of it in any case, without
   the words someone else is called by too, so the Esposito family in a premise names nobody in
   it (`openers.own_names`); a description names nobody. `view.world_lines`,
@@ -1765,8 +1767,8 @@ flowchart LR
   character's that `Said.names` doesn't find said as an aim, on a copy, so the draft keeps
   what the drafter wrote for a later change of the player's to name. The drafter's prompt asks
   for no such aim, and the real one wrote one in ten of twenty drafts, which Memory held back
-  while every scene was told with it. `assemble` also drops a want that repeats a goal word
-  for word. `engine.visibility`
+  while every scene was told with it. `assemble` also drops a want that repeats a goal, word
+  for word or in the same words that say something (`graph.words.content`). `engine.visibility`
   leaves those out of Memory, with what the character knows about a person held back, and
   nothing a model is handed changes: the character knows them and the story is told with
   them. After each scene `openers.told_by` reads the turn's words (what the player wrote, the
