@@ -1618,6 +1618,18 @@ flowchart LR
   the player asked it at, as they read it. `view.identity` gives the character's plain fields
   as values, `view.ladder_view` the first ladder rung by rung with the character's place on
   it, and `view.kept` the count of the openers the summary keeps back.
+- **The character's screen is laid out from their sheet** (G1, G2, A4, Miki 2026-11-14).
+  `view.character_sheet(state, language, said)` is the character as the story's own Character
+  page gives them (`engine.visibility.sheet_view`, API.md's `Sheet`), under the same guard as
+  the lines: what they carry, their skills, powers, techniques, traits and temperament, and
+  their talents strongest first, each with its strength, its pace and what it covers. It leaves
+  out what a draft's screen keeps for the story (the about and description lines, the ladders,
+  which `ladder_view` gives, and how they grew). Each talent also carries `said`, the player's
+  words it was read from (`TalentP.said`), and only when the premise still holds those words
+  (`drafts.api._said_of_talents`), so the screen can show the reading beside what they wrote
+  and never quotes them words they didn't write. The app reviews a draft a screen at a time,
+  the world and then the character (`CreateStage.world`, `CreateStage.character`), and builds
+  the second from this sheet with the Character page's own widgets, how they learn first.
 - **The plain fields are changed by code, at once** (G1, G2, Miki 2026-11-10; `direct.py`). The
   story's title and tone and the character's name, age, looks and manner are plain values, so
   `chain.plan_edit` writes them into the proposal with no model call (`direct.apply`), and the

@@ -4,8 +4,17 @@ import '../../core/api/api_error.dart';
 import 'draft.dart';
 import 'draft_repository.dart';
 
-/// Where the create flow stands: writing the premise, waiting for the draft, or reviewing it.
-enum CreateStage { premise, drafting, review }
+/// Where the create flow stands: writing the premise, waiting for the draft, then reviewing it
+/// a screen at a time, the world first and the character after it (Miki, 2026-11-14).
+enum CreateStage {
+  premise,
+  drafting,
+  world,
+  character;
+
+  /// Whether the draft is under review, on either of its screens.
+  bool get isReview => this == world || this == character;
+}
 
 /// The create flow (G1, G2, S1): a premise becomes a draft, the player reviews and changes it,
 /// then starts the story. Every change sends the version last seen, and a stale draft is reloaded
@@ -97,13 +106,23 @@ class CreateFlow extends ChangeNotifier {
         language: language,
         choices: choices,
       );
-      _stage = CreateStage.review;
+      _stage = CreateStage.world;
     } on Object catch (e) {
       _error = e;
       _stage = CreateStage.premise;
     }
     _notify();
     if (!_disposed) onCharged?.call();
+  }
+
+  /// Moves between the two screens of the review. A change in flight carries on, and shows on
+  /// whichever screen it redrafts. The screen stays put while the story starts.
+  void show(CreateStage screen) {
+    assert(screen.isReview);
+    if (!_stage.isReview || _stage == screen || _starting) return;
+    _stage = screen;
+    _error = null;
+    _notify();
   }
 
   /// Saves a direct edit. Returns null when it saved, or the failure for the player to see. A

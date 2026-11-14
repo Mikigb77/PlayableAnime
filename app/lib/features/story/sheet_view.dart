@@ -483,10 +483,10 @@ class _SheetTabsState extends State<SheetTabs> {
           SectionLabel(name(tab), padding: const EdgeInsets.only(bottom: Space.md)),
         const SizedBox(height: Space.md),
         switch (tab) {
-          SheetTab.carried => _Carried(sheet: sheet),
-          SheetTab.skills => _Skills(skills: sheet.skills),
-          SheetTab.moves => _Moves(sheet: sheet),
-          SheetTab.nature => _Nature(sheet: sheet),
+          SheetTab.carried => SheetCarried(sheet: sheet),
+          SheetTab.skills => SheetSkillList(skills: sheet.skills),
+          SheetTab.moves => SheetMoves(sheet: sheet),
+          SheetTab.nature => SheetNature(sheet: sheet),
         },
       ],
     );
@@ -629,8 +629,8 @@ IconData _itemIcon(ItemKind kind) => switch (kind) {
 };
 
 /// What they hold (C10): the purse, what is on them, then what they keep elsewhere.
-class _Carried extends StatelessWidget {
-  const _Carried({required this.sheet});
+class SheetCarried extends StatelessWidget {
+  const SheetCarried({super.key, required this.sheet});
 
   final Sheet sheet;
 
@@ -683,8 +683,8 @@ class _ItemEntry extends StatelessWidget {
 
 /// What they have learned, the best first, each with its level in the world's words and the
 /// dice it throws.
-class _Skills extends StatelessWidget {
-  const _Skills({required this.skills});
+class SheetSkillList extends StatelessWidget {
+  const SheetSkillList({super.key, required this.skills});
 
   final List<SheetSkill> skills;
 
@@ -735,8 +735,8 @@ class _Skills extends StatelessWidget {
 
 /// What they can do beyond the ordinary: each power with its limits and cost, then each
 /// technique with how well they have it.
-class _Moves extends StatelessWidget {
-  const _Moves({required this.sheet});
+class SheetMoves extends StatelessWidget {
+  const SheetMoves({super.key, required this.sheet});
 
   final Sheet sheet;
 
@@ -824,11 +824,12 @@ class _TechniqueEntry extends StatelessWidget {
 }
 
 /// What they are like: their temperament in a few words, what sets them apart, and how they
-/// learn (A4).
-class _Nature extends StatelessWidget {
-  const _Nature({required this.sheet});
+/// learn (A4), unless the screen says that somewhere of its own ([learning] false).
+class SheetNature extends StatelessWidget {
+  const SheetNature({super.key, required this.sheet, this.learning = true});
 
   final Sheet sheet;
+  final bool learning;
 
   @override
   Widget build(BuildContext context) {
@@ -866,30 +867,9 @@ class _Nature extends StatelessWidget {
                   ),
             children: [if (trait.description.isNotEmpty) RecordLine(trait.description)],
           ),
-        if (sheet.talents.isNotEmpty) ...[
+        if (learning && sheet.talents.isNotEmpty) ...[
           RecordGroupLabel(l10n.sheetLearning),
-          for (final talent in sheet.talents)
-            RecordEntry(
-              icon: talent.weakness ? Icons.trending_down_rounded : Icons.trending_up_rounded,
-              title: talent.name.asHeading,
-              trailing: talent.strengthLabel.isEmpty
-                  ? null
-                  : RecordKind(
-                      talent.strengthLabel,
-                      color: talent.weakness ? colors.caution : colors.accent,
-                    ),
-              children: [
-                if (talent.paceLabel.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: Space.xxs),
-                    child: Text(
-                      talent.paceLabel,
-                      style: context.lucidText.meta.copyWith(color: colors.textSecondary),
-                    ),
-                  ),
-                if (talent.covers.isNotEmpty) RecordLine(talent.covers.asHeading),
-              ],
-            ),
+          for (final talent in sheet.talents) SheetTalentEntry(talent: talent),
           if (sheet.talentNotes.isNotEmpty)
             RecordCard(
               padding: const EdgeInsets.fromLTRB(Space.lg, Space.sm, Space.lg, Space.md),
@@ -899,6 +879,48 @@ class _Nature extends StatelessWidget {
               ),
             ),
         ],
+      ],
+    );
+  }
+}
+
+/// One talent (A4): its name, how strong it is at the far edge, the pace it gives, what it
+/// covers, and on a draft the player's own words it was read from (G2). The rarer it is, the
+/// more it stands out: one of a kind is lit and starred.
+class SheetTalentEntry extends StatelessWidget {
+  const SheetTalentEntry({super.key, required this.talent});
+
+  final SheetTalent talent;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.lucid;
+    return RecordEntry(
+      icon: switch (talent.strength) {
+        TalentStrength.slow => Icons.trending_down_rounded,
+        TalentStrength.knack || TalentStrength.genius => Icons.trending_up_rounded,
+        TalentStrength.oneOfAKind => Icons.auto_awesome_rounded,
+      },
+      lit: talent.strength.index >= TalentStrength.genius.index,
+      title: talent.name.asHeading,
+      trailing: talent.strengthLabel.isEmpty
+          ? null
+          : RecordKind(
+              talent.strengthLabel,
+              color: talent.weakness ? colors.caution : colors.accent,
+            ),
+      children: [
+        if (talent.paceLabel.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: Space.xxs),
+            child: Text(
+              talent.paceLabel,
+              style: context.lucidText.meta.copyWith(color: colors.textSecondary),
+            ),
+          ),
+        if (talent.covers.isNotEmpty) RecordLine(talent.covers.asHeading),
+        if (talent.said.isNotEmpty)
+          RecordLine(context.l10n.sheetTalentSaid(talent.said), quiet: true),
       ],
     );
   }

@@ -274,6 +274,8 @@ Draft            {id, premise, premise_id?, rating, title, genre, tone,
                   character_parts: [DraftPart],
                   character: DraftCharacter,   # the plain fields the player changes themselves
                   ladder?: DraftLadder,        # the world's ladder rung by rung; null with none
+                  sheet: Sheet,                # the character's sheet in parts, as `/status`
+                                               # gives it once the story runs (G2, see below)
                   kept: {people: int, events: int, questions: int},  # G1, see below
                   advanced: DraftAdvanced,
                   version: int,                # bumped by every saved change (T10)
@@ -330,6 +332,16 @@ DraftLadder      {name, rungs: [string], more: bool,   # the rungs everyone has 
   `character` holds the plain fields: `name`, `age`, `looks` (face, build, hair and usual
   clothes, which every picture of them is drawn from) and `manner` (how they come across), with
   their `people` and `standing` to tell them by. A text is "" when the draft has none.
+- **The character's sheet.** `sheet` is the [Sheet](#memory-and-status-c6-g16) the story's Character page shows,
+  read from the draft, so the character screen lays the character out as the story will: what
+  they carry, their skills with the dice each throws, their powers and techniques, what they
+  are like, and `talents`, how they learn, the strongest first, each with its pace (A4). On a
+  draft a talent also has `said`: the player's own words it was read from, when their premise
+  holds them word for word, and "" otherwise, so the screen can show why the draft reads the
+  character as a genius, or as nothing special. `about`, `description`, `paths`,
+  `talent_notes` and `grew` are empty on a draft: `character` and `ladder` say those. As in
+  the lines, an entry that names someone or something the character doesn't know is left out,
+  and a text of one that does is "" (C6, N7).
 - **Direct edits.** Fields left out stay as they are. The plain fields are the player's to change
   themselves (G1, G2): `title` and `character.name` (1 to 120 characters), `tone` (1 to 200),
   `character.age` (0 to 100,000) and `character.looks` and `character.manner` (1 to 600
@@ -872,9 +884,10 @@ Sheet {about: [string],                   # who they are, a few words each: "Out
                                           # (C6), and empty where the record names nobody.
        traits: [{name, kind: "gift"|"flaw"|"quirk", kind_label, description}],
        temperament: [string],
-       talents: [{name, strength, strength_label, pace_label, covers}],
+       talents: [{name, strength, strength_label, pace_label, covers, said}],
                                           # strength: slow | knack | genius | one_of_a_kind;
-                                          # "Genius", "Four times as fast" (A4)
+                                          # "Genius", "Four times as fast" (A4). said: on a
+                                          # draft, the player's words it came from; "" in play
        talent_notes: [string],            # each thing ruled on, the bridges that hold and
                                           # what lies outside, as in `lines` (A4)
        grew: [{kind, when, text, how}]}   # how they grew (A4, G17), latest first, at most 30.

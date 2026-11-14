@@ -628,7 +628,10 @@ memory page in `app/lib/features/story/`.
   `meProvider`'s limit (F8). Since 2026-11-12 the review leads with the character and marks
   every row with how it changes (typed at once, or told to the storyteller at that row), with
   the rules in the world's card and how it plays on the same screen (app/DESIGN.md, "Creating a
-  story"); the app no longer rewrites a drafted line by hand.
+  story"); the app no longer rewrites a drafted line by hand. Since 2026-11-14 the review is
+  two screens, the world and then the character (`WorldReview`, `CharacterReview`), and the
+  character's is laid out from `Draft.sheet` in the Character page's own pieces, with how they
+  learn first.
 
 ### WS16 Safety, ratings and reports (wave 3, after WS6 and WS3's PR 2)
 

@@ -5,6 +5,7 @@ library;
 import 'package:flutter/foundation.dart';
 
 import '../../core/json.dart';
+import '../story/sheet.dart';
 
 /// A story's rating (F2). Accounts under 17 get Teen only (F8).
 enum Rating {
@@ -295,6 +296,7 @@ class Draft {
     this.characterParts = const [],
     this.character = const DraftCharacter(),
     this.ladder,
+    this.sheet = const Sheet(),
     this.kept = const DraftKept(),
     this.advanced = const DraftAdvanced(),
     this.storyId,
@@ -315,6 +317,10 @@ class Draft {
     ladder: switch (json['ladder']) {
       final JsonMap ladder => DraftLadder.fromJson(ladder),
       _ => null,
+    },
+    sheet: switch (json['sheet']) {
+      final JsonMap sheet => Sheet.fromJson(sheet),
+      _ => const Sheet(),
     },
     kept: DraftKept.fromJson(json['kept'] as JsonMap? ?? const {}),
     advanced: DraftAdvanced.fromJson(json['advanced'] as JsonMap? ?? const {}),
@@ -346,6 +352,11 @@ class Draft {
 
   /// The world's first ladder, or null in a world with none.
   final DraftLadder? ladder;
+
+  /// The character's sheet in the parts the story's Character page shows (G2, G16): what they
+  /// carry, their skills, their powers, what they are like and how they learn (A4). Empty from
+  /// a server that doesn't send it.
+  final Sheet sheet;
 
   /// What the story keeps back of its start, as counts (G1).
   final DraftKept kept;
@@ -390,6 +401,7 @@ class Draft {
     characterParts: characterParts,
     character: character,
     ladder: ladder,
+    sheet: sheet,
     kept: kept,
     advanced: advanced,
     version: version,
