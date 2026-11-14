@@ -1028,3 +1028,199 @@ Now, it is a chilly November afternoon in 2028. The sun is setting early, castin
 }
 ```
 
+## Turn 6 (action), 10.9 s, $0.026
+
+> I write the final chapter of my memoirs and make my peace with the end.
+
+_From 14 November 2028, 17:23, 17:23 to 14 November 2028, 18:23, 18:23 (1.0 hours). Arthur Vance is 101, alive._
+
+**Read and decided:**
+- read as task, 'write', 3600 s: Write the final chapter of my memoirs and make my peace with the end.
+- Write the final chapter of my memoirs and make my peace with the end. [certain, success]: Nothing stands in the way.
+
+You dip your fountain pen into the inkpot, your fingers steady despite their frailty, and touch the nib to the final blank pages of your journal.
+
+You write with the elegant, cursive hand you spent decades teaching the children of Oakhaven. For an hour, the soft scratching of your pen is the only sound in the cottage besides the gentle hum of the woodstove. You chronicle the laughter of pupils, the changing faces of the town, and the quiet dignity of a life spent in service of others. As you pen the last sentence and sign your name, a profound sense of closure settles over you. You have left your mark, and your story is complete.
+
+Beside the stove, Barnaby lets out a soft, rattling purr, shifting his weight on his blanket. The dusk has fully deepened into night outside your window, cold and still. The finished memoirs lie open on your desk, the ink glinting faintly in the firelight. It is time to rest, or perhaps to share what you have done.
+
+**Suggestions:**
+1. Call Clara to let her know the memoirs are finished. (thread)
+2. Gently close the journal and prepare a warm cup of tea. (personal)
+3. Sit by the woodstove to keep old Barnaby company. (side)
+
+**Issues:**
+- unknown_response (town-memrios): not an open thread or lead
+
+**Counted:** {"goals_open": 2}
+
+## What the screens show (turn 6)
+
+### On record (the player never sees this)
+
+```json
+{
+ "world": {
+  "title": "Oakhaven's Autumn",
+  "genre": "Grounded drama",
+  "era": "Modern day Vermont: smartphones, pickup trucks, and wood-burning stoves"
+ },
+ "character": {
+  "id": "player",
+  "name": "Arthur Vance",
+  "prominence": "key",
+  "description": "A respected retired educator with a gentle, patient soul and a wealth of local memories.",
+  "appearance": "Frail build, clean-shaved but deeply lined face, thin wispy white hair, kind blue eyes behind wire-rimmed spectacles. Dressed in a thick woolen sweater.",
+  "age": 101,
+  "location_id": "player-cottage",
+  "origin": {
+   "kind": "premise"
+  },
+  "known_by": [
+   "player"
+  ],
+  "met_by": [
+   "player"
+  ],
+  "lifespan_years": 100,
+  "old_age_span": 100
+ },
+ "sheet": {
+  "attributes": {
+   "strength": 1,
+   "speed": 1,
+   "toughness": 1,
+   "wits": 4,
+   "knowledge": 4,
+   "willpower": 4,
+   "charm": 4,
+   "bearing": 4
+  },
+  "skills": [
+   {
+    "name": "Teaching",
+    "level": "master",
+    "notes": "Decades of explaining complex things with immense clarity and patience."
+   },
+   {
+    "name": "Local History",
+    "level": "expert",
+    "notes": "Deep knowledge of the town's founding families, old secrets, and folklore."
+   },
+   {
+    "name": "Storytelling",
+    "level": "expert",
+    "notes": "Capable of holding anyone's attention with gentle, captivating tales from the past."
+   }
+  ],
+  "traits": [
+   {
+    "name": "Frail Age",
+    "kind": "flaw",
+    "description": "Your physical movements are slow, deliberate, and easily tire your body."
+   },
+   {
+    "name": "Sharpened Mind",
+    "kind": "gift",
+    "description": "Despite your physical wear, your memories, wit, and analytical focus remain remarkably clear."
+   }
+  ],
+  "disposition": {
+   "temperament": {
+    "traits": [
+     "patient",
+     "contemplative",
+     "warm-hearted"
+    ],
+    "values": [
+     "education",
+     "peace",
+     "legacy"
+    ],
+    "loves": [
+     "Barnaby",
+     "hot tea",
+     "classic literature"
+    ],
+    "fears": [
+     "unresolved regrets",
+     "being unable to care for Barnaby"
+    ],
+    "wants": [
+     "A peaceful remaining time",
+     "Ensuring Barnaby is cared for"
+    ]
+   }
+  },
+  "resources": {
+   "items": [
+    {
+     "id": "thick-woolen-blanket",
+     "name": "Thick Woolen Blanket",
+     "kind": "gear",
+     "description": "An incredibly warm, hand-knit quilt that keeps the drafty Vermont wind at bay."
+    },
+    {
+     "id": "reading-glasses",
+     "name": "Reading Glasses",
+     "kind": "gear",
+     "description": "Strong wire-rimmed spectacles essential for reading small print."
+    }
+   ],
+   "money": 120,
+   "currency": "dollars",
+   "title": "Mr. Vance",
+   "rank": "Retired Teacher",
+   "connections": [
+    {
+     "name": "Clara Milton",
+     "kind": "trusts_them",
+     "character_id": "clara-milton",
+     "note": "A former student of yours who regularly stops by to check on your health."
+    }
+   ]
+  },
+  "condition": {
+   "states": [
+    {
+     "name": "weakened"
+    }
+   ]
+  }
+ },
+ "gift": "none",
+ "extraordinary": [
+  "magic or anything supernatural (none)"
+ ],
+ "peoples": [
+  {
+   "id": "humans",
+   "name": "Humans",
+   "description": "Standard mortal humans living in rural New England.",
+   "lifespan_years": 80,
+   "culture": "Cozy, tightly-knit community with a deep respect for elders and local history."
+  }
+ ],
+ "rules": [
+  "The world is entirely grounded in reality; there are no supernatural forces, ghosts, or magic.",
+  "The human body naturally wears down with advanced age, and life is ultimately finite."
+ ],
+ "others": [
+  "Barnaby, 18, peak attribute 4",
+  "Clara Milton, 58, peak attribute 4"
+ ],
+ "people_in_the_world": 2,
+ "years": {
+  "age": 101.1,
+  "lives_about": 100,
+  "the_record_says_so": true,
+  "old": true,
+  "told_the_end_is_close": true
+ },
+ "waiting": [
+  "world.tick 'The world moves on' in 23.0 hours",
+  "world.old_age 'Your years run out' in 1.2 years (stops the player)"
+ ]
+}
+```
+

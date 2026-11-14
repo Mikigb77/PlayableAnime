@@ -15,9 +15,9 @@
  "seed": "play/o-teacher",
  "state": {
   "schema_version": 1,
-  "turn": 5,
+  "turn": 6,
   "timeline_id": "main",
-  "world_s": 128856193,
+  "world_s": 128859793,
   "bible": {
    "title": "Oakhaven's Autumn",
    "genre": "Grounded drama",
@@ -424,8 +424,8 @@
     "born_s": null,
     "lifespan_years": 0,
     "old_age_span": null,
-    "seen_s": 128856193,
-    "near_s": 117160248,
+    "seen_s": 128859793,
+    "near_s": 128856193,
     "met_s": null
    },
    "clara-milton": {
@@ -488,7 +488,7 @@
         "heart_moved_s": null
        },
        "barnaby-cat": {
-        "affinity": 10,
+        "affinity": 4,
         "fear": 0,
         "trust": 0,
         "apparent_affinity": null,
@@ -554,7 +554,7 @@
     "lifespan_years": 0,
     "old_age_span": null,
     "seen_s": 51460248,
-    "near_s": 117160248,
+    "near_s": 128856193,
     "met_s": null
    }
   },
@@ -659,7 +659,13 @@
     "visited_by": [
      "player"
     ],
-    "judged": []
+    "judged": [
+     {
+      "key": "chapter end final mak memoir peac writ",
+      "what": "Write the final chapter of my memoirs and make my peace with the end.",
+      "level": 1
+     }
+    ]
    },
    "maple-diner": {
     "id": "maple-diner",
@@ -896,69 +902,6 @@
      "text": ""
     }
    },
-   "fact-30": {
-    "id": "fact-30",
-    "text": "Oakhaven Town Council works toward its own ends",
-    "kind": "observation",
-    "importance": 1,
-    "is_true": true,
-    "subject_ids": [
-     "town-council"
-    ],
-    "known_by": [],
-    "turn": 5,
-    "world_s": 90880248,
-    "timeline_id": "main",
-    "origin": {
-     "kind": "agenda",
-     "ref_id": "town-council",
-     "text": ""
-    }
-   },
-   "fact-31": {
-    "id": "fact-31",
-    "text": "Barnaby cools toward Clara Milton.",
-    "kind": "observation",
-    "importance": 1,
-    "is_true": true,
-    "subject_ids": [
-     "barnaby-cat",
-     "clara-milton"
-    ],
-    "known_by": [
-     "barnaby-cat"
-    ],
-    "turn": 5,
-    "world_s": 90880248,
-    "timeline_id": "main",
-    "origin": {
-     "kind": "agenda",
-     "ref_id": "barnaby-cat",
-     "text": ""
-    }
-   },
-   "fact-32": {
-    "id": "fact-32",
-    "text": "Clara Milton warms to Barnaby.",
-    "kind": "observation",
-    "importance": 1,
-    "is_true": true,
-    "subject_ids": [
-     "clara-milton",
-     "barnaby-cat"
-    ],
-    "known_by": [
-     "clara-milton"
-    ],
-    "turn": 5,
-    "world_s": 90880248,
-    "timeline_id": "main",
-    "origin": {
-     "kind": "agenda",
-     "ref_id": "clara-milton",
-     "text": ""
-    }
-   },
    "fact-33": {
     "id": "fact-33",
     "text": "Oakhaven Town Council works toward its own ends",
@@ -1075,6 +1018,68 @@
     ],
     "turn": 5,
     "world_s": 117160248,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "agenda",
+     "ref_id": "clara-milton",
+     "text": ""
+    }
+   },
+   "fact-39": {
+    "id": "fact-39",
+    "text": "Oakhaven Town Council works toward its own ends",
+    "kind": "observation",
+    "importance": 1,
+    "is_true": true,
+    "subject_ids": [
+     "town-council"
+    ],
+    "known_by": [],
+    "turn": 6,
+    "world_s": 128856193,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "agenda",
+     "ref_id": "town-council",
+     "text": ""
+    }
+   },
+   "fact-40": {
+    "id": "fact-40",
+    "text": "Barnaby works toward their own affairs",
+    "kind": "observation",
+    "importance": 1,
+    "is_true": true,
+    "subject_ids": [
+     "barnaby-cat"
+    ],
+    "known_by": [
+     "barnaby-cat"
+    ],
+    "turn": 6,
+    "world_s": 128856193,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "agenda",
+     "ref_id": "barnaby-cat",
+     "text": ""
+    }
+   },
+   "fact-41": {
+    "id": "fact-41",
+    "text": "Clara Milton cools toward Barnaby.",
+    "kind": "observation",
+    "importance": 1,
+    "is_true": true,
+    "subject_ids": [
+     "clara-milton",
+     "barnaby-cat"
+    ],
+    "known_by": [
+     "clara-milton"
+    ],
+    "turn": 6,
+    "world_s": 128856193,
     "timeline_id": "main",
     "origin": {
      "kind": "agenda",
@@ -1913,22 +1918,22 @@
     "id": "event-21",
     "kind": "world.tick",
     "title": "The world moves on",
-    "due_s": 130300248,
+    "due_s": 117647580,
     "timeline_id": "main",
     "needs_player": false,
-    "status": "pending",
+    "status": "applied",
     "subject_ids": [],
     "place_id": null,
     "origin": null,
     "payload": {
      "last_s": 117160248,
-     "stride_s": 13140000
+     "stride_s": 487332
     },
     "seed": "story=play%2Fo-teacher/timeline=main/turn=1/world/schedule/event-3/schedule/event-5/schedule/event-7/schedule/event-9/schedule/event-11/schedule/event-13/schedule/event-14/schedule/event-15/schedule/event-16/schedule/event-17/schedule/event-18/schedule/event-19/schedule/event-20/schedule/event-21",
     "created_turn": 5,
     "created_s": 117160248,
-    "applied_turn": null,
-    "applied_s": null
+    "applied_turn": 6,
+    "applied_s": 128856193
    },
    "event-22": {
     "id": "event-22",
@@ -1953,6 +1958,27 @@
     "created_s": 128856193,
     "applied_turn": null,
     "applied_s": null
+   },
+   "event-23": {
+    "id": "event-23",
+    "kind": "world.tick",
+    "title": "The world moves on",
+    "due_s": 128942593,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "last_s": 128856193,
+     "stride_s": 86400
+    },
+    "seed": "story=play%2Fo-teacher/timeline=main/turn=1/world/schedule/event-3/schedule/event-5/schedule/event-7/schedule/event-9/schedule/event-11/schedule/event-13/schedule/event-14/schedule/event-15/schedule/event-16/schedule/event-17/schedule/event-18/schedule/event-19/schedule/event-20/schedule/event-21/schedule/event-23",
+    "created_turn": 6,
+    "created_s": 128856193,
+    "applied_turn": null,
+    "applied_s": null
    }
   },
   "transfers": [],
@@ -1967,15 +1993,15 @@
     "Barnaby lies near the woodstove"
    ],
    "props": [
-    "leather-bound journal"
+    "finished memoirs"
    ],
-   "ended_on": "You rest your hand on your desk, feeling the slow pulse in your chest as the dusk deepens.",
+   "ended_on": "You rest your hands on the desk beside your closed memoirs, looking down at your sleeping cat.",
    "encounter": null
   },
   "director": {
-   "turns_without_stakes": 0,
-   "low_stakes_streak": 0,
-   "last_action_key": null,
+   "turns_without_stakes": 1,
+   "low_stakes_streak": 1,
+   "last_action_key": "write",
    "last_event_turn": 5,
    "last_event_size": "personal",
    "last_event_s": {
@@ -1988,15 +2014,16 @@
     1130041,
     1130071,
     51460248,
-    128856193
+    128856193,
+    128859793
    ],
-   "frequency_drift": 0.0,
+   "frequency_drift": 0.1,
    "recent_sources": [
     "deck:secret",
     "deck:visitor"
    ],
    "auto_pictures": 5,
-   "picture_credit": 1.5,
+   "picture_credit": 1.6,
    "pictured": [
     "portrait:player",
     "portrait:player:v1",
@@ -2015,10 +2042,10 @@
   "summary": "You are Arthur Vance, a 103-year-old retired schoolteacher in Oakhaven. After learning that the town council planned to demolish the historic schoolhouse, you retreated into quiet isolation in your cottage. Over the last four years, you have quietly written your memoirs while your body has grown exceedingly frail, bringing you to the twilight of your long life.",
   "chapters": [],
   "id_counters": {
-   "fact": 38,
+   "fact": 41,
    "goal": 2,
    "bond": 0,
-   "event": 22,
+   "event": 23,
    "director-event": 5,
    "rumor": 1,
    "thread": 2,
@@ -2058,14 +2085,19 @@
    "turn": 5,
    "narration": "You sit in your rocking chair, letting your hand rest on the worn leather-bound journal. Clara Milton stands outside on your porch, her light knocking fading into the quiet rustle of the June wind.\n\nYou do not rise to answer the door. Instead, you let the years slip past again like dry autumn leaves. Another winter of heavy Vermont snow blanketing your cottage gives way to spring, then summer, then the crisp chill of another autumn. Two more years of quiet isolation go by. You spend your days in the warmth of your kitchen, writing in your journal, tracing the history of Oakhaven with a steady, peaceful hand.\n\nNow, it is a chilly November afternoon in 2028. The sun is setting early, casting long, pale amber shadows across your living room. Barnaby sits by the woodstove, his breathing slow and heavy. As you sit at your desk, a sudden, deep weariness settles into your bones. It is not the simple fatigue of a long day, but a quiet, heavy realization within your chest. Your heart beats with a slow, deliberate rhythm, and you can feel the finite nature of your own mortality pressing in. You are one hundred and three years old, and you know, with absolute clarity, that your time in this world is growing very short. Outside, the bare branches of the maples sway in the dusk.",
    "player_action": "I let ten more quiet years go by, reading and writing my memoirs."
+  },
+  {
+   "turn": 6,
+   "narration": "You dip your fountain pen into the inkpot, your fingers steady despite their frailty, and touch the nib to the final blank pages of your journal.\n\nYou write with the elegant, cursive hand you spent decades teaching the children of Oakhaven. For an hour, the soft scratching of your pen is the only sound in the cottage besides the gentle hum of the woodstove. You chronicle the laughter of pupils, the changing faces of the town, and the quiet dignity of a life spent in service of others. As you pen the last sentence and sign your name, a profound sense of closure settles over you. You have left your mark, and your story is complete.\n\nBeside the stove, Barnaby lets out a soft, rattling purr, shifting his weight on his blanket. The dusk has fully deepened into night outside your window, cold and still. The finished memoirs lie open on your desk, the ink glinting faintly in the firelight. It is time to rest, or perhaps to share what you have done.",
+   "player_action": "I write the final chapter of my memoirs and make my peace with the end."
   }
  ],
  "choices": [
-  "Gather your strength and walk down to the old schoolhouse one last time.",
-  "Call Clara Milton to ask her to look after Barnaby when you are gone.",
-  "Write the final chapter of your memoirs and make peace with the end."
+  "Call Clara to let her know the memoirs are finished.",
+  "Gently close the journal and prepare a warm cup of tea.",
+  "Sit by the woodstove to keep old Barnaby company."
  ],
- "cost_usd": 0.26866034,
+ "cost_usd": 0.29433329,
  "draft": {
   "premise": "I'm a 97-year-old retired schoolteacher living my last quiet days in a small Vermont town with my cat.",
   "proposal": {

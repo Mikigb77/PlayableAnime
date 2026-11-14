@@ -15,9 +15,9 @@
  "seed": "play/w-pescador",
  "state": {
   "schema_version": 1,
-  "turn": 8,
+  "turn": 9,
   "timeline_id": "main",
-  "world_s": 268120074,
+  "world_s": 268120674,
   "bible": {
    "title": "La Sirena de Cadaqués",
    "genre": "realisme màgic mariner",
@@ -2876,19 +2876,19 @@
    "place_id": "casa-player",
    "present_ids": [],
    "positions": [
-    "Ets assegut a la cadira de boga davant de la llar de foc."
+    "Ets a la cadira de boga, amb els ulls tancats en pau eterna."
    ],
    "props": [
-    "La pipa de fusta de bruc",
-    "La llar de foc"
+    "La pipa de fusta de bruc freda",
+    "Les cendres de la llar de foc"
    ],
-   "ended_on": "El vell Pere tanca els ulls a la vora del foc amb la pipa encara calenta entre els dits.",
+   "ended_on": "El teu cos reposa immòbil a la cadira davant del caliu que s'apaga.",
    "encounter": null
   },
   "director": {
-   "turns_without_stakes": 1,
+   "turns_without_stakes": 2,
    "low_stakes_streak": 1,
-   "last_action_key": "wait",
+   "last_action_key": "rest",
    "last_event_turn": 7,
    "last_event_size": "personal",
    "last_event_s": {
@@ -2904,14 +2904,15 @@
     13190106,
     13190136,
     268116474,
-    268120074
+    268120074,
+    268120674
    ],
-   "frequency_drift": 0.1,
+   "frequency_drift": 0.2,
    "recent_sources": [
     "deck:old-friend"
    ],
    "auto_pictures": 6,
-   "picture_credit": 0.8,
+   "picture_credit": 0.9,
    "pictured": [
     "portrait:player",
     "portrait:player:v1",
@@ -2987,14 +2988,19 @@
    "turn": 8,
    "narration": "Et resignes al que ha de venir i, arrossegant els teus peus feixucs per l'artritis, t'acostes pas a pas cap a la vora de la llar de foc. Amb un sospir profund, t'asseus a la cadira de boga, col·locant les teves mans turgents sobre la fusta gastada dels braços. Saps que el darrer viatge s'apropa i ja no vols lluitar més contra la marea de la vellesa. Treus de la butxaca la teva vella pipa de fusta de bruc, l'omples amb parsimònia del tabac negre de contraban i n'encens una bona pipada, deixant que el fum espès i aromàtic comenci a planar sota el sostre emblanquinat de la cuina.\n\nEl caliu de les brases et va escalfant les cames velles mentre contemples com es consumeix el bruc. La quietud de la teva casa de pescador esdevé un refugi perfecte per a aquest adiat, on la remor suau de la mar contra la platja de Cadaqués sona com un bressol llunyà. El fum de la pipa dibuixa anelles grises que es desfan a l'aire, com tants records de xarxes plenes, de nits de tempesta i de la mirada de la sirena ferida que fa tants anys vas salvar d'aquesta mateixa taula. Sents com el batec del cor es torna més mandrós, suau i compassat, en una pau que feia gairebé una dècada que no trobaves, des que en Mateu es va tancar en el seu silenci de sorra i mar. No hi ha por en aquest repòs, només la certesa d'un vell mariner que veu la llum de la llanterna del port i sap que ha arribat a casa.",
    "player_action": "Em resigno al destí. M'assec a la vora del foc, fumo la pipa en pau i deixo que arribi l'hora."
+  },
+  {
+   "turn": 9,
+   "narration": "Tanques els ulls sota el sostre de bigues emblanquinades, aferrant la pipa freda entre els teus dits coberts d'artritis, i respires fondo per darrera vegada.\n\nLa darrera escalfor del foc de bruc es va apagant a la teva pell mentre et deixes portar per una marea invisible i suau. Ja no hi ha fiblades al pit, ni el cansament dels teus vuitanta-sis anys, ni la buidor que va deixar la partida d'en Mateu. Sota el ressò de les ones de Cadaqués que trenquen a la platja com un bressol de tota la vida, la teva ment flota cap a les profunditats de la mar d'Amunt, on les escates platejades brillen eternament en la foscor marina. En el silenci de la cuina, et desfas en pau.",
+   "player_action": "Tancar definitivament els ulls i deixar-se anar en pau."
   }
  ],
  "choices": [
-  "Tancar definitivament els ulls i deixar-se anar en pau.",
-  "Fer un darrer esforç per cremar els papers de contraban.",
-  "Deixar-se bressolar pel cant imaginat de les sirenes de la cala."
+  "Deixar que el teu esperit mariner es fongui amb el vent.",
+  "Escoltar el cant llunyà de la sirena des de l'altre món.",
+  "Deixar que el matí porti algú a trucar a la porta."
  ],
- "cost_usd": 0.45320576,
+ "cost_usd": 0.51178906,
  "draft": {
   "premise": "Sóc un pescador vell de Cadaqués, de setanta-vuit anys. Un matí trobo una sirena ferida a la xarxa.",
   "proposal": {

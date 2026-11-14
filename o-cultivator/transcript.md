@@ -1409,3 +1409,237 @@ Below, the bustling streets of Misty River Market emerge along the muddy banks, 
 }
 ```
 
+## Turn 4 (action), 16.9 s, $0.091
+
+> I fly back to Spirit-Severing Peak, swallow the Core-Assisting Pill and attempt the breakthrough to Core Formation.
+
+_From Day 1, morning, 08:00 to Day 1, night, 22:00 (14.0 hours). Han Feng is 148, alive._
+
+**Read and decided:**
+- read as travel, 'travel', 21600 s: I fly back to Spirit-Severing Peak on my flying sword.
+- read as work, 'cultivate', 28800 s: I swallow the Core-Assisting Pill and attempt the breakthrough to Core Formation.
+- I fly back to Spirit-Severing Peak on my flying sword. [certain, success]: Nothing stands in the way.
+- I swallow the Core-Assisting Pill and attempt the breakthrough to Core Formation. [ruled_out, failure]: Condensing a Golden Core requires compressing one's spiritual liquid into a solid core, a process highly lethal without protective pills.
+- heading: Fourteen hours later
+
+You step onto your worn flying sword, channeling your thin Foundation Qi. With Chen Yi rising behind you, you soar out of Misty River Market and carve through the damp mountain mists.
+
+The biting wind of the high altitude rushes past, straining your old bones as you make the long journey back up the peaks. By the time you land upon the frost-rimed stone platform of Spirit-Severing Peak, the sun has long vanished, leaving only a cold, starless night. Your body is exhausted from the flight, your joints aching.
+
+You uncork the cracked jade vial and tip the dull-red pill into your palm. But as you prepare to swallow it, you realize with sudden, chilling clarity what the rogue merchant hid beneath the scent of spiritual herbs: the pill is too low in grade, its surface cracked so deeply that the medicinal core has leaked out over weeks of neglect. To attempt a breakthrough with this degraded shell would invite the same swift, lethal backlash as trying it without a pill at all. The bottleneck remains an iron wall, mocking your dwindling years.
+
+Chen Yi steps off his sword, his breath puffing white in the freezing night, watching you with quiet desperation.
+
+**Suggestions:**
+1. Study the degraded pill to see if it can be salvaged (thread)
+2. Demand a proper pill from the Pill Refinement Hall (personal)
+3. Fly to the Black Abyss Forest to seek wild herbs (side)
+
+**Issues:**
+- read_again
+
+**Counted:** {"refused": 1, "goals_open": 1}
+
+## What the screens show (turn 4)
+
+### The Character screen
+
+```json
+{
+ "character": {
+  "name": "Han Feng",
+  "lines": [
+   "Cultivation realms: Foundation Establishment, at its peak",
+   "Unhurt",
+   "Spiritual Qi: 100%",
+   "Foundation Qi Manipulation: ready",
+   "Foundation Qi Manipulation, cost: Strains your physical body if used continuously for more than a few minutes",
+   "Misty Cloud Sword Stance (technique, practiced, 0 of 15 uses)",
+   "0 spirit stones",
+   "Low-grade Core-Assisting Pill",
+   "Low-grade Qi-Gathering Pill (3)",
+   "Worn Flying Sword"
+  ]
+ },
+ "sheet": {
+  "about": [
+   "Outer Elder, Misty Cloud Sect",
+   "Elder of the Misty Cloud Sect",
+   "148 years old"
+  ],
+  "description": "An ancient cultivator with a heavily lined face, a long grey beard, and eyes reflecting decades of patience and growing desperation.",
+  "condition": {
+   "health": "unhurt",
+   "health_label": "Unhurt",
+   "reserves": [
+    {
+     "name": "Spiritual Qi",
+     "level": 100
+    }
+   ]
+  },
+  "paths": [
+   {
+    "name": "Cultivation realms",
+    "rungs": [
+     {
+      "name": "Qi Condensation"
+     },
+     {
+      "name": "Foundation Establishment",
+      "stage": "At its peak: you can try to break through",
+      "filled": 1.0,
+      "description": "Liquefying Qi into a spiritual sea to build the foundation of immortality."
+     }
+    ],
+    "above": [
+     {
+      "name": "Core Formation",
+      "known": true,
+      "note": "Confirmed before Sect Master Liu, day 1",
+      "said": [
+       "The standard breakthrough to Core Formation has a ninety percent failure rate without a Core-Assisting Pill."
+      ],
+      "gap_below": false
+     },
+     {
+      "name": "Nascent Soul",
+      "known": false,
+      "note": "Everyone has heard of it",
+      "gap_below": false
+     }
+    ]
+   }
+  ],
+  "money_label": "0 spirit stones",
+  "items": [
+   {
+    "name": "Low-grade Core-Assisting Pill",
+    "kind": "other",
+    "description": "A cracked jade vial containing a degraded, dry red pill whose medicinal force has leaked away.",
+    "quantity": 1,
+    "carried": true
+   },
+   {
+    "name": "Low-grade Qi-Gathering Pill",
+    "kind": "consumable",
+    "kind_label": "Consumable",
+    "description": "A bitter pill that helps replenish lost spiritual energy over several hours.",
+    "quantity": 3,
+    "carried": true
+   },
+   {
+    "name": "Worn Flying Sword",
+    "kind": "weapon",
+    "kind_label": "Weapon",
+    "description": "A steel sword with a slightly dulled edge, but well-maintained and loyal to your spiritual signature.",
+    "quantity": 1,
+    "carried": true
+   }
+  ],
+  "skills": [
+   {
+    "name": "Qi Refinement",
+    "level": "expert",
+    "level_label": "Expert",
+    "dice": 4,
+    "notes": "Decades of stagnation have made your control over your existing Qi exceptionally precise."
+   },
+   {
+    "name": "Sword Cultivation",
+    "level": "skilled",
+    "level_label": "Skilled",
+    "dice": 3,
+    "notes": "Your swordsmanship is refined, though hindered by a physical body that tires quickly."
+   },
+   {
+    "name": "Herbology",
+    "level": "fair",
+    "level_label": "Fair",
+    "dice": 2,
+    "notes": "Familiarity with common spiritual herbs from years of searching for a cure."
+   }
+  ],
+  "powers": [
+   {
+    "name": "Foundation Qi Manipulation",
+    "description": "You can manifest your liquid spiritual energy to form defensive shields, project blade beams, or glide short distances.",
+    "limits": [
+     "Limited by your pool of spiritual energy.",
+     "Overexertion causes physical fatigue and strain on your meridians."
+    ],
+    "cost": "Strains your physical body if used continuously for more than a few minutes",
+    "ready": true,
+    "ready_label": "Ready",
+    "secret": false
+   }
+  ],
+  "techniques": [
+   {
+    "name": "Misty Cloud Sword Stance",
+    "style": "Misty Cloud Sword Art",
+    "effect": "Creates deceptive phantoms of your blade to confuse the opponent's spiritual sense.",
+    "cost": "Moderate Qi expenditure",
+    "mastery": "practiced",
+    "mastery_label": "Practiced",
+    "dice": 2,
+    "uses": 0,
+    "need": 15
+   }
+  ],
+  "traits": [
+   {
+    "name": "Brittle Meridians",
+    "kind": "flaw",
+    "kind_label": "Flaw",
+    "description": "Your spiritual pathways are stiff and aged, making heavy Qi circulation painful and dangerous."
+   },
+   {
+    "name": "Tempered Will",
+    "kind": "gift",
+    "kind_label": "Gift",
+    "description": "A century and a half of struggle has made your mind immune to ordinary illusions and spiritual intimidation."
+   }
+  ],
+  "temperament": [
+   "cautious",
+   "resolute",
+   "weathered"
+  ]
+ },
+ "reputation": [
+  {
+   "name": "Misty Cloud Sect",
+   "label": "Neutral"
+  }
+ ],
+ "clock": {
+  "world_s": 57600,
+  "label": "Day 1, night",
+  "timeline_id": "main"
+ },
+ "since": [
+  {
+   "text": "Gained: low-grade Core-Assisting Pill",
+   "ago_label": "moments ago"
+  },
+  {
+   "text": "Lost: 120 spirit stones",
+   "ago_label": "14 hours ago"
+  },
+  {
+   "text": "Sect Master Liu considers you a liability and will not grant you any sect-owned breakthrough resources.",
+   "ago_label": "16 hours ago"
+  },
+  {
+   "text": "The standard breakthrough to Core Formation has a ninety percent failure rate without a Core-Assisting Pill.",
+   "ago_label": "16 hours ago"
+  },
+  {
+   "text": "You have exactly two years left of your natural 150-year lifespan.",
+   "ago_label": "16 hours ago"
+  }
+ ]
+}
+```
+

@@ -382,3 +382,253 @@ Però el camí de ronda es fa infinit sota la llum grisa del migdia de tardor. A
 }
 ```
 
+## Turn 9 (action), 10.9 s, $0.055
+
+> M'arrossego fins a la platja i crido la sirena perquè m'allargui la vida.
+
+_From Day 3104, midday, 11:32 to Day 3104, midday, 12:03 (1860 s). Pere is 86, alive._
+
+**Read and decided:**
+- read as travel, 'travel', 1800 s: M'arrossego pel camí de terra fins a la platja de Portlligat.
+- read as exchange, 'persuade' on sirena, 60 s: Crido la sirena perquè m'allargui la vida.
+- M'arrossego pel camí de terra fins a la platja de Portlligat. [contested, success]: Willpower, 4 dice, against el cansament extrem i les forces fallides, a hard task, level 3; vellesa feixuga (+5); camí costerut (+5); your Xacres de la vellesa (+5): 44 against 42, passed.
+- Crido la sirena perquè m'allargui la vida. [certain, success]: Navegació a vela llatina (expert), 4 dice, against la distància i el silenci del mar, a real effort, level 2: no throw, it can't stop you.
+- dice: hand 4 (Voluntat, 4 daus), number 42, 44 of 80 against Un camí llarg i costerut amb un cos sense forces i vell.: passed
+
+T'arrossegues pel camí de terra, clavant els dits a la sorra i a les pedres del camí, empès només per una voluntat de ferro que es nega a apagar-se. El dolor del pit és un ganivet de gel, però la platja de Portlligat és la teva darrera cala i no et deturaràs. Quan els teus genolls toquen finalment la sorra humida de la vora, la mar d'Amunt s'obre davant teu, grisa i bressolada per la tramuntana. Reunes les poques forces que et queden als pulmons i crides cap a les onades, un crit que surt de la teva gola trencada pel salnitre, demanant a la sirena que recordi el vell pescador i t'allargui la vida.
+
+El teu crit es perd en el fresseig de l'aigua contra els còdols, i per un moment només hi ha el silenci immens de la platja solitària. T'envoltes amb la jaqueta de sarga, tremolant sota la llum pàl·lida del migdia, mentre sents que el cor et batega cada vegada més feble, com un motor que es queda sense oli.
+
+Llavors, de sobte, l'aigua es trenca a pocs metres de la vora sense fer soroll. Entre l'escuma blanca s'alça una silueta coneguda. La mirada profunda de la sirena es clava en la teva, tan jove i platejada com fa vuit anys, del tot aliena al pas del temps que a tu t'està consumint. S'apropa nedant amb recel, recordant el teu rostre però espantada per la teva feblesa extrema, fins que la seva cua platejada frega la sorra on tu estàs estirat. La mar profunda, regeneradora i curativa, batega darrere seu com una promesa de vida eterna.
+
+**Suggestions:**
+1. Estira la mà cap a ella i demana-li que et curi. (thread)
+2. Canta-li una vella cançó de taverna per tranquil·litzar-la. (personal)
+3. Arrossega't de tornada cap a les roques per por de la Guàrdia Civil. (side)
+
+**Issues:**
+- unrecorded_harm (M'arrossego pel camí de terra fins a la platja de Portlligat.): 1 left out
+- rejected (character sirena: meeting): the record has them elsewhere, and only the world brings them here
+- rejected (character sirena: rung sirenes): no ladder has that rung
+- rejected (character player: rung humans): no ladder has that rung
+- rejected (character sirena: presence): the record has them elsewhere, and only the world brings them here
+
+**Counted:** {"goals_open": 1}
+
+## What the screens show (turn 9)
+
+### On record (the player never sees this)
+
+```json
+{
+ "world": {
+  "title": "La Sirena de Cadaqués",
+  "genre": "realisme màgic mariner",
+  "era": "Cadaqués, anys 1930: barques de pesca de fusta, ràdios de galena i camins de carro"
+ },
+ "character": {
+  "id": "player",
+  "name": "Pere",
+  "aliases": [
+   "Vell Pere",
+   "Pere el de la barca"
+  ],
+  "prominence": "key",
+  "description": "Un pescador vell de pell colrada pel sol i mans endurides pel fil de pescar i el vent de tramuntana.",
+  "appearance": "Cabells blancs com l'escuma de la mar, esquena lleugerament corbada pels anys, armilla de llana blava gastada i pantalons de pana fosca tacats de sal.",
+  "age": 86,
+  "people_id": "humans",
+  "location_id": "platja-portlligat",
+  "memberships": [
+   {
+    "faction_id": "confraria-pescadors",
+    "rank": "Sòci històric",
+    "loyalty": 70
+   }
+  ],
+  "origin": {
+   "kind": "premise"
+  },
+  "known_by": [
+   "player"
+  ],
+  "met_by": [
+   "player"
+  ],
+  "lifespan_years": 80,
+  "old_age_span": 80
+ },
+ "sheet": {
+  "attributes": {
+   "strength": 2,
+   "speed": 2,
+   "wits": 4,
+   "knowledge": 4,
+   "willpower": 5,
+   "nerve": 4
+  },
+  "skills": [
+   {
+    "name": "Navegació a vela llatina",
+    "level": "expert",
+    "notes": "Coneixes cada corrent i cada roca de la costa de Cadaqués millor que el palmell de la teva mà."
+   },
+   {
+    "name": "Pesca tradicional",
+    "level": "expert",
+    "notes": "Saps on trobar el millor peix segons la lluna i el vent."
+   },
+   {
+    "name": "Remeis casolans",
+    "level": "novice",
+    "notes": "Coneixes algunes herbes del Cap de Creus que serveixen per curar talls o calmar el dolor."
+   }
+  ],
+  "traits": [
+   {
+    "name": "Llop de mar",
+    "kind": "gift",
+    "description": "La mar no et fa por, i saps llegir els canvis de temps molt abans que arribi la tempesta."
+   },
+   {
+    "name": "Xacres de la vellesa",
+    "kind": "flaw",
+    "description": "El fred i l'artritis et fan anar més lent del que voldries quan has de fer moviments ràpids."
+   }
+  ],
+  "disposition": {
+   "temperament": {
+    "traits": [
+     "pacient",
+     "observador",
+     "solitari"
+    ],
+    "values": [
+     "el respecte a la mar",
+     "la tranquil·litat"
+    ],
+    "loves": [
+     "el soroll de les ones contra la fusta",
+     "la pipa del vespre"
+    ],
+    "fears": [
+     "haver de deixar de navegar",
+     "que es perdi la vida marinera d'abans"
+    ],
+    "wants": [
+     "Curar la sirena ferida"
+    ]
+   }
+  },
+  "resources": {
+   "items": [
+    {
+     "id": "navalla-de-butxaca-marinera",
+     "name": "Navalla de butxaca marinera",
+     "kind": "weapon",
+     "description": "Una navalla vella de mànec de banya que fas servir per tallar cordes i xarxes."
+    },
+    {
+     "id": "pipa-de-fusta-de-bruc",
+     "name": "Pipa de fusta de bruc",
+     "kind": "gear",
+     "description": "La teva pipa de tota la vida, acompanyada d'una bosseta de tabac negre de contraban."
+    },
+    {
+     "id": "xarxa-de-pesca-de-canem",
+     "name": "Xarxa de pesca de cànem",
+     "kind": "gear",
+     "description": "La xarxa on ha quedat atrapada la sirena, ara una mica estripada pels seus moviments."
+    }
+   ],
+   "money": 15,
+   "currency": "pesetes",
+   "title": "Pescador veterà",
+   "rank": "Patró de llagut",
+   "family_name": "Cabanelles",
+   "connections": [
+    {
+     "name": "Mateu 'El Vell'",
+     "kind": "trusts_them",
+     "character_id": "mateu",
+     "note": "El teu amic més antic, amb qui has compartit taverna i temporals."
+    }
+   ]
+  },
+  "condition": {
+   "states": [
+    {
+     "name": "feble"
+    },
+    {
+     "name": "vellesa-feixuga"
+    }
+   ]
+  },
+  "axes": {
+   "influence": 2,
+   "knowledge": 3,
+   "stealth": 2
+  },
+  "backstory": [
+   {
+    "text": "Has nascut, crescut i envellit a Cadaqués."
+   },
+   {
+    "text": "Vares perdre la teva dona, la Maria, fa deu anys, i des de llavors vius sol a la teva caseta de la cala."
+   },
+   {
+    "text": "Has vist com el poble canviava a poc a poc, però tu has seguit sortint a pescar cada matí de la teva vida."
+   }
+  ]
+ },
+ "gift": "none",
+ "extraordinary": [
+  "sirenes i criatures marines de llegenda (hidden): Criatures marines antigues capaces de viure sota l'aigua i amb un cant que pot calmar les aigües o confondre els homes."
+ ],
+ "peoples": [
+  {
+   "id": "humans",
+   "name": "Humans",
+   "lifespan_years": 80,
+   "culture": "La gent de l'Empordà, tancada, treballadora i molt lligada als cicles de la tramuntana i la mar."
+  },
+  {
+   "id": "gent-del-mar",
+   "name": "Gent del Mar",
+   "lifespan_years": 150,
+   "gifts": [
+    "Respiració aquàtica",
+    "Resistència a la pressió"
+   ],
+   "culture": "Comunitats nòmades i secretes que viuen a les profunditats de la Mediterrània.",
+   "relations": [
+    "Eviten el contacte amb els humans des de fa segles."
+   ]
+  }
+ ],
+ "rules": [
+  "Les sirenes són reals, però viuen completament amagades dels humans per protegir-se.",
+  "L'aigua de la mar profunda té propietats regeneradores per a les criatures de l'oceà.",
+  "El que es troba a la mar pertany a qui ho recull, excepte si posa en perill el poble."
+ ],
+ "others": [
+  "La Sirena ferida, 30, peak attribute 5",
+  "Mateu 'El Vell', 81, peak attribute 5",
+  "Sergent Torres, 56, peak attribute 4"
+ ],
+ "people_in_the_world": 3,
+ "years": {
+  "age": 86.5,
+  "lives_about": 80,
+  "the_record_says_so": true,
+  "old": true,
+  "told_the_end_is_close": true
+ },
+ "waiting": [
+  "world.tick 'The world moves on' in 22.7 hours",
+  "world.old_age 'Your years run out' in 1.3 years (stops the player)"
+ ]
+}
+```
+

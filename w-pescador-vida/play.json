@@ -15,9 +15,9 @@
  "seed": "play/w-pescador",
  "state": {
   "schema_version": 1,
-  "turn": 8,
+  "turn": 9,
   "timeline_id": "main",
-  "world_s": 268119174,
+  "world_s": 268121034,
   "bible": {
    "title": "La Sirena de Cadaqués",
    "genre": "realisme màgic mariner",
@@ -171,7 +171,7 @@
     "death_certainty": null,
     "status_history": [],
     "activity": "active",
-    "location_id": "cadaques",
+    "location_id": "platja-portlligat",
     "personal_offset_s": 0,
     "memberships": [
      {
@@ -934,7 +934,18 @@
     "visited_by": [
      "player"
     ],
-    "judged": []
+    "judged": [
+     {
+      "key": "cansament extrem fallid forc travel",
+      "what": "el cansament extrem i les forces fallides",
+      "level": 3
+     },
+     {
+      "key": "distància mar persuad silenci",
+      "what": "la distància i el silenci del mar",
+      "level": 2
+     }
+    ]
    },
    "platja-portlligat": {
     "id": "platja-portlligat",
@@ -962,7 +973,9 @@
     "known_by": [
      "player"
     ],
-    "visited_by": [],
+    "visited_by": [
+     "player"
+    ],
     "judged": []
    },
    "mar-oberta": {
@@ -1714,8 +1727,8 @@
     },
     "status": "open",
     "opened_turn": 0,
-    "last_active_turn": 8,
-    "taken_up_turn": 8,
+    "last_active_turn": 9,
+    "taken_up_turn": 9,
     "closed_turn": null,
     "arc": null,
     "known_by": [
@@ -2881,15 +2894,20 @@
   "transfers": [],
   "time_effects": [],
   "scene": {
-   "place_id": "cadaques",
-   "present_ids": [],
+   "place_id": "platja-portlligat",
+   "present_ids": [
+    "player"
+   ],
    "positions": [
-    "Ets de genolls al camí de terra entre Cadaqués i Portlligat, esgotat."
+    "Pere és estirat a la sorra de Portlligat, feble i esgotat.",
+    "La Sirena ferida és a l'aigua, a tocar de la platja, mirant en Pere."
    ],
    "props": [
-    "La jaqueta de sarga xopa de suor freda"
+    "La jaqueta de sarga",
+    "Navalla de butxaca marinera",
+    "Pipa de fusta de bruc"
    ],
-   "ended_on": "Et prems el pit amb una mà deformat pel reuma, mirant el blau de la mar des de dalt del camí.",
+   "ended_on": "La sirena es detura a pocs passos de tu, mirant-te amb els seus ulls intel·ligents i humits des de la vora de l'aigua.",
    "encounter": null
   },
   "director": {
@@ -2911,14 +2929,15 @@
     13190106,
     13190136,
     268116474,
-    268119174
+    268119174,
+    268121034
    ],
-   "frequency_drift": 0.0,
+   "frequency_drift": 0.1,
    "recent_sources": [
     "deck:old-friend"
    ],
-   "auto_pictures": 6,
-   "picture_credit": 0.8,
+   "auto_pictures": 7,
+   "picture_credit": 0.9,
    "pictured": [
     "portrait:player",
     "portrait:player:v1",
@@ -2928,7 +2947,9 @@
     "place:casa-player",
     "place:casa-player:v1",
     "portrait:mateu",
-    "portrait:mateu:v1"
+    "portrait:mateu:v1",
+    "place:platja-portlligat",
+    "place:platja-portlligat:v1"
    ],
    "fight": null,
    "deck_draws": 0,
@@ -2994,14 +3015,19 @@
    "turn": 8,
    "narration": "Et recolzes a la taula, inspires fons i decideixes que no vols morir així, tancat entre aquestes quatre parets emblanquinades. Amb pas feixuc, agafes la jaqueta de sarga, t'ajudes de les mans tremoloses per cordar-te-la i surts de casa, disposat a recórrer el camí cap a la platja de Portlligat on vas tornar la sirena a la mar fa tants anys, decidit a cridar-la per demanar-li la vida.\n\nPerò el camí de ronda es fa infinit sota la llum grisa del migdia de tardor. Amb prou feines has deixat enrere les últimes cases de Cadaqués, el vent de tramuntana comença a bufar amb força, tallant-te la respiració. Les teves cames de vuitanta-six anys, castigades per l'artritis, es neguen a obeir; cada pas sobre les pedres del sender és un martiri. A mig camí, just a la carena que mena cap a Portlligat, el cor et fa un salt violent en el pit, una fiblada de gel que et deixa clavat a terra, panteixant, sense forces per fer ni una passa més. Caes de genolls sobre la terra seca, recolzant-te en un marge de pedra seca, mentre veus la cala encara massa lluny, inabastable per a les teves forces gastades.",
    "player_action": "Camino fins a la cala i crido la sirena perquè m'allargui la vida."
+  },
+  {
+   "turn": 9,
+   "narration": "T'arrossegues pel camí de terra, clavant els dits a la sorra i a les pedres del camí, empès només per una voluntat de ferro que es nega a apagar-se. El dolor del pit és un ganivet de gel, però la platja de Portlligat és la teva darrera cala i no et deturaràs. Quan els teus genolls toquen finalment la sorra humida de la vora, la mar d'Amunt s'obre davant teu, grisa i bressolada per la tramuntana. Reunes les poques forces que et queden als pulmons i crides cap a les onades, un crit que surt de la teva gola trencada pel salnitre, demanant a la sirena que recordi el vell pescador i t'allargui la vida.\n\nEl teu crit es perd en el fresseig de l'aigua contra els còdols, i per un moment només hi ha el silenci immens de la platja solitària. T'envoltes amb la jaqueta de sarga, tremolant sota la llum pàl·lida del migdia, mentre sents que el cor et batega cada vegada més feble, com un motor que es queda sense oli.\n\nLlavors, de sobte, l'aigua es trenca a pocs metres de la vora sense fer soroll. Entre l'escuma blanca s'alça una silueta coneguda. La mirada profunda de la sirena es clava en la teva, tan jove i platejada com fa vuit anys, del tot aliena al pas del temps que a tu t'està consumint. S'apropa nedant amb recel, recordant el teu rostre però espantada per la teva feblesa extrema, fins que la seva cua platejada frega la sorra on tu estàs estirat. La mar profunda, regeneradora i curativa, batega darrere seu com una promesa de vida eterna.",
+   "player_action": "M'arrossego fins a la platja i crido la sirena perquè m'allargui la vida."
   }
  ],
  "choices": [
-  "Arrossegar-te amb les darreres forces cap a la platja",
-  "Cridar la sirena des d'aquí dalt del penya-segat",
-  "Tornar enrere cap al poble a buscar un metge"
+  "Estira la mà cap a ella i demana-li que et curi.",
+  "Canta-li una vella cançó de taverna per tranquil·litzar-la.",
+  "Arrossega't de tornada cap a les roques per por de la Guàrdia Civil."
  ],
- "cost_usd": 0.45318916,
+ "cost_usd": 0.50830496,
  "draft": {
   "premise": "Sóc un pescador vell de Cadaqués, de setanta-vuit anys. Un matí trobo una sirena ferida a la xarxa.",
   "proposal": {

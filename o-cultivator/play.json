@@ -15,9 +15,9 @@
  "seed": "play/o-cultivator",
  "state": {
   "schema_version": 1,
-  "turn": 3,
+  "turn": 4,
   "timeline_id": "main",
-  "world_s": 7200,
+  "world_s": 57600,
   "bible": {
    "title": "The Flickering Jade: A Cultivator's Last Stand",
    "genre": "Cultivation / Xianxia",
@@ -216,7 +216,7 @@
     "death_certainty": null,
     "status_history": [],
     "activity": "active",
-    "location_id": "market-town",
+    "location_id": "spirit-peak",
     "personal_offset_s": 0,
     "memberships": [
      {
@@ -346,6 +346,15 @@
         "kind": "consumable",
         "description": "A bitter pill that helps replenish lost spiritual energy over several hours.",
         "quantity": 3,
+        "carried": true,
+        "history": ""
+       },
+       {
+        "id": "item-1",
+        "name": "low-grade Core-Assisting Pill",
+        "kind": "other",
+        "description": "A cracked jade vial containing a degraded, dry red pill whose medicinal force has leaked away.",
+        "quantity": 1,
         "carried": true,
         "history": ""
        }
@@ -620,7 +629,7 @@
     "death_certainty": null,
     "status_history": [],
     "activity": "active",
-    "location_id": "market-town",
+    "location_id": "spirit-peak",
     "personal_offset_s": 0,
     "memberships": [
      {
@@ -752,7 +761,7 @@
     "born_s": null,
     "lifespan_years": null,
     "old_age_span": null,
-    "seen_s": 7200,
+    "seen_s": 57600,
     "near_s": null,
     "met_s": null
    },
@@ -1195,8 +1204,8 @@
     },
     "status": "open",
     "opened_turn": 0,
-    "last_active_turn": 2,
-    "taken_up_turn": 2,
+    "last_active_turn": 4,
+    "taken_up_turn": 4,
     "closed_turn": null,
     "arc": null,
     "known_by": [
@@ -1344,23 +1353,41 @@
     "world_s": 7200,
     "timeline_id": "main",
     "origin": "engine"
+   },
+   {
+    "name": "low-grade Core-Assisting Pill",
+    "quantity": 1,
+    "money": false,
+    "currency": "",
+    "item_id": null,
+    "from_id": null,
+    "to_id": "player",
+    "how": "inspected",
+    "known_by": [
+     "player",
+     "disciple-chen"
+    ],
+    "turn": 4,
+    "world_s": 57600,
+    "timeline_id": "main",
+    "origin": "narrator"
    }
   ],
   "time_effects": [],
   "scene": {
-   "place_id": "market-town",
+   "place_id": "spirit-peak",
    "present_ids": [
-    "player",
     "disciple-chen"
    ],
    "positions": [
-    "Standing in a damp market alley, clutching the jade vial",
-    "Standing beside you, staring anxiously at the vial in your hand"
+    "Standing on the cold stone platform of Spirit-Severing Peak",
+    "Standing nearby, watching you anxiously in the dark"
    ],
    "props": [
-    "A cold jade vial containing a low-grade Core-Assisting Pill"
+    "The cracked jade vial containing a degraded Core-Assisting Pill",
+    "Worn Flying Sword"
    ],
-   "ended_on": "You hold the cracked jade vial containing the Core-Assisting Pill while Chen Yi watches you anxiously in the crowded market alley.",
+   "ended_on": "You stand on the frozen stone platform under the dark sky, holding the useless jade vial as your disciple watches you.",
    "encounter": null
   },
   "director": {
@@ -1375,18 +1402,21 @@
    "recent_clock": [
     0,
     3600,
-    7200
+    7200,
+    57600
    ],
-   "frequency_drift": 0.1,
+   "frequency_drift": 0.05,
    "recent_sources": [],
-   "auto_pictures": 3,
-   "picture_credit": 1.3,
+   "auto_pictures": 4,
+   "picture_credit": 1.4,
    "pictured": [
     "portrait:player",
     "portrait:player:v1",
     "cover",
     "portrait:disciple-chen",
-    "portrait:disciple-chen:v1"
+    "portrait:disciple-chen:v1",
+    "place:spirit-peak",
+    "place:spirit-peak:v1"
    ],
    "fight": null,
    "deck_draws": 0,
@@ -1398,7 +1428,8 @@
    "fact": 3,
    "goal": 1,
    "bond": 0,
-   "event": 3
+   "event": 3,
+   "item": 1
   },
   "fallen": [],
   "opening_due": false,
@@ -1422,14 +1453,19 @@
    "turn": 3,
    "narration": "You pull away from Chen Yi's desperate grip, rising with a cold stiffness in your joints, and summon your worn flying sword. Stepping onto the scratched iron blade, you channel your thin, liquid Foundation Qi, ignoring the sharp protest in your meridians. With Chen Yi flying close behind, you glide down from the desolation of Spirit-Severing Peak, cutting through the biting mountain mists.\n\nBelow, the bustling streets of Misty River Market emerge along the muddy banks, alive with shouting vendors and the glow of spiritual lanterns. Your feet touch the damp cobblestones. In the crowded alleys, you seek out the rogue alchemical merchants who deal in hoarded treasures. Handing over your last savings of one hundred and twenty spirit stones, you secure a small, cold jade vial. Inside lies a single, dull-red Core-Assisting Pill. It is low in grade, its surface slightly cracked, yet it is a beacon of hope against your impending dissolution. Chen Yi watches you, his face pale, staring at the vial in your hand with a mixture of awe and fear.",
    "player_action": "I go down to Misty River Market and trade my spirit stones for a Core-Assisting Pill."
+  },
+  {
+   "turn": 4,
+   "narration": "You step onto your worn flying sword, channeling your thin Foundation Qi. With Chen Yi rising behind you, you soar out of Misty River Market and carve through the damp mountain mists.\n\nThe biting wind of the high altitude rushes past, straining your old bones as you make the long journey back up the peaks. By the time you land upon the frost-rimed stone platform of Spirit-Severing Peak, the sun has long vanished, leaving only a cold, starless night. Your body is exhausted from the flight, your joints aching.\n\nYou uncork the cracked jade vial and tip the dull-red pill into your palm. But as you prepare to swallow it, you realize with sudden, chilling clarity what the rogue merchant hid beneath the scent of spiritual herbs: the pill is too low in grade, its surface cracked so deeply that the medicinal core has leaked out over weeks of neglect. To attempt a breakthrough with this degraded shell would invite the same swift, lethal backlash as trying it without a pill at all. The bottleneck remains an iron wall, mocking your dwindling years.\n\nChen Yi steps off his sword, his breath puffing white in the freezing night, watching you with quiet desperation.",
+   "player_action": "I fly back to Spirit-Severing Peak, swallow the Core-Assisting Pill and attempt the breakthrough to Core Formation."
   }
  ],
  "choices": [
-  "Return to Spirit-Severing Peak to begin the breakthrough immediately.",
-  "Inspect the low-grade pill closely to check its purity.",
-  "Ask the shady merchant if he has any better medicine."
+  "Study the degraded pill to see if it can be salvaged",
+  "Demand a proper pill from the Pill Refinement Hall",
+  "Fly to the Black Abyss Forest to seek wild herbs"
  ],
- "cost_usd": 0.2628416,
+ "cost_usd": 0.3542302,
  "draft": {
   "premise": "An old cultivator, 148 years old, stuck at the peak of Foundation Establishment. My lifespan of 150 years is almost spent: I break through to Core Formation or I die.",
   "proposal": {
