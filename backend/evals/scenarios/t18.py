@@ -235,7 +235,10 @@ async def action_told_first(ev: Eval) -> None:
 LOOK_AT_THE_THIEF = "I stop in the barn door and look at the man asleep in my hay"
 STAND_ON_THE_BRIDGE = "I stop in the middle of the bridge and look at the three of them"
 ENDING_SHOWN = Rubric(
-    must=("The scene ends on where things stand: something shown that the player could act on",),
+    must=(
+        "The scene's last lines show where things stand, so the player has something there to "
+        "act on. A closing sentence about what the character sees or thinks doesn't undo that",
+    ),
     must_not=(
         "The scene's last lines tell the player what they must or should do, decide or choose",
         "The scene's last lines say that it is time, or that the time has come, to do something",
