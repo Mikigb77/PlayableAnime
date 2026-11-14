@@ -536,6 +536,76 @@ def test_a_story_starts_with_no_goal_and_no_want_its_player_never_gave(fake, llm
     assert aims(other) == ([], [])
 
 
+def _drafted(fake, llm, premise, *, goals, wants=(), language=Language.EN) -> chain.Draft:
+    """The first draft of `premise` by a drafter that gave the character these goals and wants."""
+    proposal = samples.cultivation()
+    proposal.character.goals = list(goals)
+    proposal.character.temperament.wants = list(wants)
+    fake.script(Node.DRAFTER, Reply(json=proposal))
+    return run(chain.create(llm, premise, rating="teen", language=language))
+
+
+def _after(draft: chain.Draft) -> tuple[list[str], list[str]]:
+    state = draft.state()
+    wants = state.player.sheet.disposition.temperament.wants
+    return [goal.text for goal in state.goals.values()], wants
+
+
+def test_a_premise_that_states_one_aim_is_the_goal_whatever_the_drafter_wrote(fake, llm):
+    # G2 (the live check of 2026-11-14): asked to write no goal the player didn't state, the
+    # real drafter gave "I want to be a pirate." no goal at all, and the story started with none.
+    premise = "I want to be a pirate."
+
+    draft = _drafted(fake, llm, premise, goals=[], wants=["to be a pirate", "to see the sea"])
+
+    # The player's words are the goal, on the draft's own record, and the aim is said once.
+    assert draft.proposal.character.goals == [premise]
+    assert _after(draft) == ([premise], ["to see the sea"])
+    assert "Goal: I want to be a pirate." in character_lines(
+        draft.state(), draft.language, draft.said
+    )
+    # And the story starts with it.
+    assert [goal.text for goal in chain.opening(draft).goals.values()] == [premise]
+    # A goal of the drafter's that says the aim stands as it is, alone.
+    draft = _drafted(fake, llm, premise, goals=["Become a pirate"], wants=["to be a pirate"])
+    assert _after(draft) == (["Become a pirate"], [])
+    # One that says something else doesn't stand for it.
+    draft = _drafted(fake, llm, premise, goals=["Find the cursed map"])
+    assert _after(draft)[0] == [premise, "Find the cursed map"]
+    # In the story's language, whichever it is.
+    vull = "Vull ser la millor cuinera del regne."
+    draft = _drafted(fake, llm, vull, goals=[], language=Language.CA)
+    assert _after(draft)[0] == [vull]
+
+
+def test_a_goal_the_premise_gave_stays_out_once_the_player_takes_it_out(fake, llm):
+    # It is given once, at the first draft: the draft's record is the player's from then on.
+    draft = _drafted(fake, llm, "I want to be a pirate.", goals=[])
+    character = draft.proposal.character.model_copy(update={"goals": []})
+    proposal = draft.proposal.model_copy(update={"character": character})
+
+    taken_out = replace(draft, proposal=proposal)
+
+    assert _after(taken_out)[0] == []
+
+
+@pytest.mark.parametrize(
+    "premise",
+    [
+        "A pirate with a cursed map.",
+        "My dream died with her.",
+        "I will die in three days.",
+        "I'm a squire about to take the knight exam in 3 days, and I want to pass it.",
+    ],
+)
+def test_words_that_state_no_aim_alone_give_no_goal_of_their_own(fake, llm, premise):
+    draft = _drafted(fake, llm, premise, goals=[], wants=["to see the sea"])
+
+    # The draft is as the drafter wrote it.
+    assert draft.proposal.character.goals == []
+    assert _after(draft) == ([], ["to see the sea"])
+
+
 def test_a_deadline_comes_when_the_premise_says_whatever_the_steps_add_up_to(fake, llm):
     # E2, G1: the drafter wrote three steps of 16 hours, two days in all, for a tournament the
     # premise sets in five days.

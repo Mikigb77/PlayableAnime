@@ -1021,7 +1021,7 @@ is drawn once and kept in the pending event's payload, which no scene, screen or
 | `engine/contracts/delta.py`, `engine/apply.py` | `CharacterChange.lifespan_years` is the narrator's word that the scene lengthened a life. `_Applier.longer_life` holds it to `AGELESS_YEARS`, ignores anything no longer than `old_age.span`, refuses someone the scene doesn't reach (a `lifespan` rejection, as for any change from afar) and writes `Character.lifespan_years`. The next `ensure_old_age` finds another span. |
 | `graph/turn/` | `context._player_view` adds `old_age` (`_OLD_AGE`) only for someone `last_years.shown` finds who is old or was told, so a brief before it is no longer (K1): it reads them as old (`_OLD`) or, once told, as near the end (`_NEAR_THE_END`), gives their age against the span and never a number of years left, and `old_age_span` is record noise. Someone told for a span the record doesn't give reads `_OLD_AGE_ASKED` in its place, the stop's question again, in every scene until the record says how long they live. `narration_brief` hands a death of old age `prompts.OLD_AGE_TASK` in place of `DEATH_TASK` (`lives.of_old_age`). `ending.ending_of` never reads such a death as by their own hand. `nodes.resolve` drops the intent, with a `died_first` issue, when the turn's opening `catch_up` applied an overdue day: nothing they set out to do happens. |
 | `engine/visibility.py`, `engine/director/titles.py` | The sheet's age line is the plain age for everyone (`_Knowledge.about`): how long someone like them lives is never on it, and nothing in `visibility` reads `last_years`. The three titles, `NEAR_TITLE`, `ASKED_TITLE` and `TAKES_TITLE`, are in the director's book in Spanish and Catalan. |
-| `graph/drafting/` | `CharacterProposal.age` and `lifespan_years` are always asked for (`_says_their_years`). `assemble._lifespan` writes the protagonist's: `AGELESS_YEARS` for 0, None for a span they have already outlived (the world then leaves them alone). |
+| `graph/drafting/` | `CharacterProposal.age` and `lifespan_years` are always asked for (`_says_their_years`). `assemble._lifespan` writes the protagonist's: `AGELESS_YEARS` for 0, None for a span they have already outlived (the world then leaves them alone). Their age and years are the one countdown to the end of their life, so `assemble.drafted_clocks` leaves out a drafted clock that counts it (`own_years`): one the drafter marks (`ClockP.own_lifespan`), or one called a lifespan or old age in the three languages that belongs to no faction or key character and runs for a year or more, or on no time of its own. Told never to write one, the real drafter still did. |
 
 `evals/scenarios/t17_old_age.py` plays it end to end as `t17.own-old-age`, in
 `worlds.millbrook_at_sixty`: the stop when the end is close, the death and a peach that gives
@@ -1747,7 +1747,13 @@ flowchart LR
   a change for its request, never on a read, so a deadline the player moved later is not moved
   back. `assemble` drops a goal that is the premise word for word, unless the premise is one
   short sentence that says an aim (`named.one_aim`: "I want to be a pirate." handed back
-  whole is still the goal, where the story used to start with none). `named.called`: a person
+  whole is still the goal, where the story used to start with none). Where such a premise
+  opens on the aim (`named.stated_aim`: "I want to", "I must", "My dream is", in the three
+  languages) and no goal of the drafter's says it (`aimed`), `chain.create` makes the premise
+  the first goal itself (`_stating`), and drops a want that says the same aim again: on the
+  real models the drafter, asked to write no goal the player didn't state, also wrote none
+  for it. It is written into the proposal once, at the first draft, so a goal the player
+  takes out later stays out. `named.called`: a person
   is named only by their name, one word of it with a capital or all of it in any case, without
   the words someone else is called by too, so the Esposito family in a premise names nobody in
   it (`openers.own_names`); a description names nobody. `view.world_lines`,

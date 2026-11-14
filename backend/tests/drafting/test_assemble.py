@@ -4,7 +4,7 @@ G18, G22, C6, W15). The model proposes; these rules decide."""
 import pytest
 
 from engine import bonds
-from engine.base import HOUR
+from engine.base import HOUR, YEAR
 from engine.context import Language
 from engine.invariants import check_state
 from engine.resolve.powers import growth
@@ -969,6 +969,56 @@ def test_the_clocks_a_proposal_gives_are_the_states_in_its_order():
     # A clock with no steps is none, and each of the others is the state's clock in its place.
     assert [clock.id for clock in kept] == ["The Tournament!", "tournament"]
     assert list(state.clocks) == ["the-tournament", "tournament"]
+
+
+def _years_clock(world, **said):
+    """A clock of the sample world's, nobody's and running two years in all unless `said` says
+    otherwise."""
+    hours = 2 * YEAR / HOUR / len(world.clocks[0].steps)
+    years = {"id": "years", "step_every_hours": hours, "owner_id": ""}
+    return world.clocks[0].model_copy(update=years | said)
+
+
+@pytest.mark.parametrize(
+    "said",
+    [
+        # The drafter says so itself, whatever it called the clock.
+        {"name": "Two winters left", "own_lifespan": True},
+        # What the real drafter called them, with the player character as the owner or nobody.
+        {"name": "Lifespan Depletion", "owner_id": "player"},
+        {"name": "The Lifespan Limit (2 Years Left)"},
+        {"name": "Old age comes for you", "owner_id": "nobody-on-record"},
+        {"name": "La vejez te alcanza"},
+        {"name": "L'esperança de vida s'acaba", "step_every_hours": None},
+    ],
+)
+def test_a_clock_that_counts_the_characters_own_years_is_none_of_the_states(said):
+    # W6, E2: the record's age and years are the one countdown to the end of a life.
+    world = samples.cultivation_world()
+    world.clocks = [_years_clock(world, **said), *world.clocks]
+
+    state = assemble(world, samples.cultivation_character(), DraftOptions(premise="A story."))
+
+    assert [clock.id for clock in drafted_clocks(world)] == [c.id for c in world.clocks[1:]]
+    assert "years" not in state.clocks and len(state.clocks) == len(world.clocks) - 1
+    assert check_state(state) == []
+
+
+def test_a_clock_of_someone_elses_years_or_of_days_stays():
+    world = samples.cultivation_world()
+    theirs = world.npcs[0].id
+    world.clocks = [
+        # Someone else's old age is a clock of the story's: who follows the old emperor.
+        _years_clock(world, id="emperor", name="The old emperor's lifespan", owner_id=theirs),
+        # A thing called after a lifespan that comes in days.
+        _years_clock(world, id="auction", name="The Lifespan Pill auction", step_every_hours=60),
+        # Years that count something else.
+        _years_clock(world, id="lease", name="The lease on the forge runs out"),
+    ]
+
+    state = assemble(world, samples.cultivation_character(), DraftOptions(premise="A story."))
+
+    assert list(state.clocks) == ["emperor", "auction", "lease"]
 
 
 def test_clocks_step_in_world_time_with_no_turns():
