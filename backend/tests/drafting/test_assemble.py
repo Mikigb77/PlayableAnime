@@ -899,6 +899,23 @@ def test_a_goal_is_an_aim_never_the_premise_handed_back():
     assert [goal.text for goal in state.goals.values()] == ["Become the pirate king."]
 
 
+def test_an_aim_is_said_once_as_the_goal_it_is():
+    # G2 (the first plays on the real models, 2026-11-14): the drafter wrote each goal again,
+    # word for word, as what the character wants, and a summary would give it twice.
+    character = samples.cultivation_character()
+    character.goals = ["Break through to Core Formation or I die."]
+    character.temperament.wants = ["break through to Core Formation, or I die", "to climb"]
+    world = samples.cultivation_world()
+    world.npcs[0].temperament.wants = list(character.goals)
+
+    state = assemble(world, character, DraftOptions(premise="A premise."))
+
+    assert state.player.sheet.disposition.temperament.wants == ["to climb"]
+    # Only the player's own are read against their goals: what someone else wants stays theirs.
+    rival = state.characters[world.npcs[0].id]
+    assert rival.sheet.disposition.temperament.wants == character.goals
+
+
 def test_the_clocks_a_proposal_gives_are_the_states_in_its_order():
     world = samples.cultivation_world()
     tournament = world.clocks[0]

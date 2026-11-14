@@ -1,10 +1,12 @@
 """What the story has yet to tell the player of its own start (G1, C6).
 
-A drafted story begins with people the character already knows, goals of theirs and threads
-already running. The draft's screen shows one only when the player's own words name it (G1): the
-rest is the story's surprise. It is on the record all the same, the character knows it and the
-story is told with it, so nothing here changes what a model is handed. Only the player's
-screens hold it back, until the story tells it.
+A drafted story begins with people the character already knows and threads already running.
+The draft's screen shows one only when the player's own words name it (G1): the rest is the
+story's surprise. It is on the record all the same, the character knows it and the story is
+told with it, so nothing here changes what a model is handed. Only the player's screens hold it
+back, until the story tells it. A goal is the player's to say (N2), so a story starts with none
+of the drafter's own; one started before 2026-11-14 may hold such a goal back as it does the
+rest.
 
 `WorldState.untold` lists what is held back, by key (`key`): a person, a goal or a thread. A key
 leaves the list, for good, when what the player reads names what it stands for

@@ -716,10 +716,12 @@ ask for the next part while it plays, until `parts`.
 
 Only what the player character knows, in the world's words. Hidden truth never appears. A
 drafted story also holds back what its draft kept a surprise: the people the character knew
-before it began, a goal of theirs and the threads already running are left out of `people`,
-`goals` and `threads`, and what the character knows about such a person out of `/status`'s
-`since`, until a scene names them (G1, C6). The app needs nothing for it: an entry is there
-from the turn that told it.
+before it began and the threads already running are left out of `people` and `threads`, and
+what the character knows about such a person out of `/status`'s `since`, until a scene names
+them (G1, C6). The app needs nothing for it: an entry is there from the turn that told it. A
+story starts with the goals its player's own words gave and no other (N2), so `goals` is
+empty until they state one; a story started before 2026-11-14 may hold a drafted goal back
+the same way.
 
 ```text
 MemoryView {character: {name, lines: [string], portrait_url?},

@@ -781,7 +781,9 @@ MEETS_THE_RIVAL = {
         "gives the character no goal, an aim a premise says is their goal there, a premise "
         "that names none is shown no deadline, nobody, no goal and no want it doesn't speak "
         "of, the story's Memory starts without them too and lists someone only once a scene "
-        "has named them, and the rival the player then asks for by name shows from then on. "
+        "has named them, the story itself starts with the aim a premise says and with no goal "
+        "and no want of the drafter's own, and the rival the player then asks for by name "
+        "shows from then on. "
         "A premise that sets up no romance gives the character none and draws nobody to "
         "them, whoever among the cast is a couple (G1, G2, E2, C6, W17)"
     ),
@@ -818,7 +820,14 @@ async def start_is_a_surprise(ev: Eval) -> None:
         goals = [part.text for part in character if part.kind is PartKind.GOAL]
         return world, goals, [part.text for part in world + character]
 
-    couples = 0
+    def sought(state) -> list[str]:
+        """What the character is after on record: their goals and what they want."""
+        return [
+            *(goal.text for goal in state.goals.values()),
+            *state.player.sheet.disposition.temperament.wants,
+        ]
+
+    couples = made_up = 0
 
     def no_romance(draft, language: Language) -> None:
         """W17: none of these premises sets up a romance, so the character starts with none
@@ -887,6 +896,12 @@ async def start_is_a_surprise(ev: Eval) -> None:
             f"{language.value}: the draft's goals "
             f"{[goal.text for goal in draft.state().goals.values()]}, the summary {lines}",
         )
+        # N2: an aim the player gave is the story's from its first moment.
+        ev.check(
+            "and the story starts with it",
+            bool(opening(draft).goals),
+            f"{language.value}: the story starts after {sought(opening(draft))}",
+        )
         await ev.judge_summary(
             f"a premise that says what the character is after ({language.value})",
             Rubric(
@@ -929,6 +944,15 @@ async def start_is_a_surprise(ev: Eval) -> None:
         )
         # C6: what the summary kept a surprise, the story's own Memory keeps back too.
         start = opening(draft)
+        # N2: what the character is after is no such surprise. A goal or a want the premise
+        # never said is the drafter's guess, and the story starts without it.
+        made_up += len(sought(state)) - len(sought(start))
+        ev.check(
+            "the story starts with no goal and no want the premise didn't say",
+            not sought(start),
+            f"{language.value}: the story starts after {sought(start)}; the drafter wrote "
+            f"{sought(state)}",
+        )
         memory = memory_view(start, language)
         strangers = [p.name for p in memory.people if f"person:{p.id}" not in named]
         ev.check(
@@ -1002,5 +1026,6 @@ async def start_is_a_surprise(ev: Eval) -> None:
             ),
         )
     ev.metric("drafts with a couple among the cast", couples)
+    ev.metric("aims the drafter made up for the bare premises, dropped at the start", made_up)
     ev.metric("openers of the bare premises shown", shown)
     ev.metric("openers of the bare premises kept a surprise", hidden)

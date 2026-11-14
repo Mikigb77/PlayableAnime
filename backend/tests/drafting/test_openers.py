@@ -5,6 +5,7 @@ premise and scene is made up."""
 
 from engine.base import DAY, WEEK
 from engine.context import Language
+from engine.state import GoalStatus
 from graph.drafting import samples
 from graph.drafting.assemble import DraftOptions, assemble
 from graph.drafting.openers import (
@@ -17,6 +18,7 @@ from graph.drafting.openers import (
     of_clock,
     of_want,
     openers,
+    own_aims,
     own_names,
     told_by,
 )
@@ -152,52 +154,93 @@ def test_a_time_goes_to_the_one_deadline_it_says_most_of():
     assert clock_times(state, "The ranking is in five days.", EN) == {}
 
 
-def _holding(state, premise, told=frozenset()):
-    return state.model_copy(update={"untold": kept_back(state, EN, Said(premise, told))})
+def _holding(state, premise, told=frozenset(), also=()):
+    held = sorted([*kept_back(state, EN, Said(premise, told)), *also])
+    return state.model_copy(update={"untold": held})
+
+
+def _aims(state) -> tuple[list[str], list[str]]:
+    """What the character is after on record: their goals, and what they want."""
+    goals = [goal.text for goal in state.goals.values()]
+    return goals, state.player.sheet.disposition.temperament.wants
+
+
+def test_a_story_starts_with_the_aims_the_players_words_say_and_no_other():
+    # G1, G2, N2 (the first plays on the real models, 2026-11-14: "Win the miller's wife's
+    # heart" for a smith in love with her, kept out of sight and steering every scene). The
+    # bare premise says no aim, so the goal and the want the drafter wrote are no surprise the
+    # story keeps: it starts without them.
+    state = _cultivation()
+    assert _aims(state) == (["Survive the ranking tournament."], ["to climb"])
+
+    assert _aims(own_aims(state, EN, Said(samples.CULTIVATION_PREMISE))) == ([], [])
+    # The draft's own state is never changed.
+    assert _aims(state) == (["Survive the ranking tournament."], ["to climb"])
+
+    # An aim their premise says is theirs, and the rest still goes.
+    sworn = Said(f"{samples.CULTIVATION_PREMISE} I must survive the ranking tournament.")
+    assert _aims(own_aims(state, EN, sworn)) == (["Survive the ranking tournament."], [])
+    # So is one a change they asked for named, which the draft keeps by its key.
+    asked = Said(samples.CULTIVATION_PREMISE, frozenset({"want:to climb"}))
+    assert _aims(own_aims(state, EN, asked)) == ([], ["to climb"])
+    # A state whose every aim is theirs comes back as it is.
+    both = Said(sworn.premise, asked.told)
+    assert own_aims(state, EN, both) is state
+
+    # What happened is no aim: the Naples premise keeps its open question and gives no goal.
+    naples = own_aims(_naples(), EN, Said(samples.NAPLES_PREMISE))
+    assert _aims(naples) == ([], [])
+    assert [m.question for m in naples.bible.mysteries] == [
+        m.question for m in _naples().bible.mysteries
+    ]
+
+
+def test_a_goal_that_is_over_is_not_an_aim_to_drop():
+    # Only what the character is after now is read: a goal on record as over stays there.
+    state = _cultivation()
+    state.goals["goal-1"].status = GoalStatus.ABANDONED
+
+    assert list(own_aims(state, EN, Said(samples.CULTIVATION_PREMISE)).goals) == ["goal-1"]
 
 
 def test_a_story_holds_back_what_the_players_words_never_named():
-    # The bare premise names nobody and nothing that is coming: the rival, the elder, the goal
-    # about the tournament and the tournament's thread are all the story's to tell.
+    # The bare premise names nobody and nothing that is coming: the rival, the elder and the
+    # tournament's thread are all the story's to tell. A goal is never held back: the story
+    # starts with the player's own alone (`own_aims`).
     state = _cultivation()
     assert kept_back(state, EN, Said(samples.CULTIVATION_PREMISE)) == [
-        "goal:goal-1",
         "person:elder-mo",
         "person:zhao",
         "thread:tournament",
     ]
 
-    # A premise that names the tournament has named its thread and the goal about it, and one
-    # that calls the rival by name has named him.
+    # A premise that names the tournament has named its thread, and one that calls the rival
+    # by name has named him.
     spoken = "I must survive the ranking tournament, and Zhao Kun wants me gone before it."
     assert kept_back(state, EN, Said(spoken)) == ["person:elder-mo"]
 
     # A change they asked for counts as their words do, by the keys the draft kept of it.
     asked = Said(samples.CULTIVATION_PREMISE, frozenset({"person:elder-mo", "clock:tournament"}))
-    assert kept_back(state, EN, asked) == ["goal:goal-1", "person:zhao"]
+    assert kept_back(state, EN, asked) == ["person:zhao"]
 
 
 def test_a_thread_is_named_by_the_question_it_carries():
     # "Someone inside the family killed my father" is the open question of the Naples thread,
-    # which shows from the start. The two men don't, and neither does the goal the drafter made
-    # of it: the premise says what happened, not what the character is after.
+    # which shows from the start. The two men don't.
     state = _naples()
 
     assert kept_back(state, EN, Said(samples.NAPLES_PREMISE)) == [
-        "goal:goal-1",
         "person:bartender",
         "person:carmine",
     ]
-    # Said as an aim, the goal is in Memory from the start too.
-    sworn = Said(f"{samples.NAPLES_PREMISE} I will find out who.")
-    assert kept_back(state, EN, sworn) == ["person:bartender", "person:carmine"]
     # Someone the character doesn't know is never on the list: Memory doesn't show them anyway.
     state.characters["bartender"].known_by = []
-    assert kept_back(state, EN, sworn) == ["person:carmine"]
+    assert kept_back(state, EN, Said(samples.NAPLES_PREMISE)) == ["person:carmine"]
 
 
 def test_a_scene_tells_what_its_own_words_name():
-    state = _holding(_cultivation(), samples.CULTIVATION_PREMISE)
+    # A story started before 2026-11-14 holds back the goal its drafter wrote, too.
+    state = _holding(_cultivation(), samples.CULTIVATION_PREMISE, also=["goal:goal-1"])
 
     def told(scene: str) -> list[str]:
         return told_by(state, scene, EN)

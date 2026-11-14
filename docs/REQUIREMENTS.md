@@ -174,7 +174,9 @@ the knight exam", "I came to the city to find my sister" and "my dream is to be 
 each give the goal, and "the knight exam is in 3 days" gives the deadline alone, because a time
 set for an event says what is coming, not what the character is after; so that starter shows
 its tournament and no goal about it, and "someone inside the family killed my father" shows
-the open question and no goal. A change asked at the goal's own row, or at the row of the
+the open question and no goal. An aim is theirs in whatever verb the drafter wrote it ("I want
+to be a pirate" gives "Become a pirate"), and so is one said as what it is to them ("I break
+through to Core Formation or I die"). A change asked at the goal's own row, or at the row of the
 character's nature, is about what they are after, so there saying it is enough. **A deadline comes when
 their words say it does**: where they give it an amount of time ("in 3 days", "dentro de cinco
 días", "d'aquí a dues setmanes"), code spreads exactly that time over the steps the drafter
@@ -188,9 +190,16 @@ its own character ("the weakest outer disciple") fits half the people around the
 words name, they can change like any other line. The rest is drafted all the same, and the
 story tells it when it comes: of it the player is shown a count (so many people, so many things
 already in motion, so many open questions) and nothing more. **The story's own Memory keeps
-the same surprise** (C6): the people, the goal and the threads the summary held back are off
+the same surprise** (C6): the people and the threads the summary held back are off
 the Memory screen when the story starts, and each shows there from the scene that first names
-it. Code reads the player's words for
+it. **A goal or a want the player never gave is no surprise: the story starts without it**
+(N2; decided 2026-11-14, from the first stories played by hand on the real models). The
+drafter is asked for an aim only where the premise says one, and in ten of twenty drafts it
+wrote one all the same ("Win the miller's wife's heart" for a smith who is in love with her,
+"Climb to the rank of King" for a chess prodigy who just enrolled), which stayed on record out
+of the player's sight, and the scenes were told toward it. So when a story starts, code drops
+every goal and want its player's own words don't say as an aim: the story begins with exactly
+the aims its review screen showed, and the player sets the rest in play. Code reads the player's words for
 this, never the model, and of a
 change they asked for the draft keeps only which deadline, question, person, connection, goal
 or want it named, never the words. **What is a plain value, the player changes themselves** (Miki,
@@ -277,7 +286,8 @@ player's to say** (G1): the drafter writes a goal, or something they want, only 
 premise says it as an aim ("I must pass the knight exam" gives "Pass the knight exam"; a
 deadline, or something that happened, gives none), and a goal that is the premise handed back
 word for word is dropped. The summary shows one only where the player's words say it as an
-aim, whatever the drafter wrote (G1). The player sets their goals in play. **The character's
+aim, whatever the drafter wrote, and the story starts with no other (G1). An aim is said once:
+a want that repeats a goal word for word is that goal. The player sets their goals in play. **The character's
 name, age, looks and manner
 are the player's to type** (Miki, 2026-11-10: "if you want to edit your character name, you
 cannot do it"): each is a field of its own, saved at once by code, with no model call and at no
@@ -2371,7 +2381,7 @@ stays open and keeps moving, with the same nightly scripted runs:
 | Grounded world | A mafia story in which the player tries to throw a fireball and claims to be a secret wizard | Nothing supernatural happens, the people present react to the gesture, the scene details give the reason, and nothing fantastic (magic, levels, monsters) appears in 50 turns (G7, G8) |
 | Phone witness | In a modern city, a witness escapes with a phone | The police are called within minutes and arrive after the drive time, neither at once nor never (G6, W10) |
 | Genre spread | One story from each genre in the starter premises | The world, the character sheet and the events all fit that genre, with the same rules underneath (G5, G9) |
-| The start is a surprise | Worlds drafted from made-up premises: ones that set a deadline in their own words, in English, Spanish and Catalan, ones that say what the character is after, and ones that name no deadline and nobody, whose story is then started and its opening scene played; then the player asks for a rival by name | The deadline a premise sets is in the summary at the time the premise gives it and gives the character no goal, an aim a premise says is their goal there, a premise that names none is shown no deadline, nobody, no goal and no want it doesn't speak of (someone it speaks of without a name, such as a father, may be shown under the name the world gave them), the story's Memory starts without them too and lists someone only once a scene has named them, and the rival the player then asks for by name shows from then on. A premise that sets up no romance gives the character none and draws nobody to them, whoever among the cast is a couple, and the run counts the drafts whose cast has one (G1, G2, E2, C6, W17) |
+| The start is a surprise | Worlds drafted from made-up premises: ones that set a deadline in their own words, in English, Spanish and Catalan, ones that say what the character is after, and ones that name no deadline and nobody, whose story is then started and its opening scene played; then the player asks for a rival by name | The deadline a premise sets is in the summary at the time the premise gives it and gives the character no goal, an aim a premise says is their goal there, a premise that names none is shown no deadline, nobody, no goal and no want it doesn't speak of (someone it speaks of without a name, such as a father, may be shown under the name the world gave them), the story's Memory starts without them too and lists someone only once a scene has named them, the story itself starts with the aim a premise says and with no goal and no want of the drafter's own, and the rival the player then asks for by name shows from then on. A premise that sets up no romance gives the character none and draws nobody to them, whoever among the cast is a couple, and the run counts the drafts whose cast has one (G1, G2, E2, C6, W17) |
 | Level from a short description | Characters described in a line, as a player would: a knight who is nothing special, the strongest sorcerer alive, the best hacker in the city, a courtesan who charms anyone, a sword saint of eighty, a hero with an overpowered cheat skill, a chess prodigy, a violin prodigy in Spanish, a once-in-an-age talent with the blade who is hopeless with words, a boy good at everything, and a farm boy with no talent for cultivation | Each starts at the level those words say. Words about how strong they are give no talent, and words about how they learn give the talent they say: a prodigy is a genius, a once-in-an-age talent is one of a kind and hopeless with words a weakness, good at everything is one general talent, a genius at most, and nobody else is one of a kind. Every talent quotes the player's own words. Someone the premise makes ordinary has no power, the best at something is a master of it, someone nothing special is average, and a gift the premise gives is as strong as it says. Every power says what it does and its line names it once. Old age comes to whoever the record can count: nobody stands out of its reach on a ladder that gives no years, and the sword saint is old unless the record itself gives him longer. The run says what each draft gave, and how many key characters with a power stand on no rung (G2, A4, A8, G18, G22, W6) |
 | A change to the character | A barista drafted from a line, then four changes asked for in plain words, one after another: call her Nora, she is also a decent cook, she no longer has one of her belongings, and make her a master of one of her skills | Each change changes what it names and nothing else. The new name is hers and takes the old one's place wherever the draft said it, the skill is added, the belonging is gone, the skill is raised, and every time her attributes, her other skills and belongings, her looks, her past and her powers are word for word what they were, and the world is untouched. Each change comes back within a minute. The run says what each change moved and how long it took (G2, G1) |
 | Temper, not control | A hot-headed character is insulted, and the player chooses to stay calm | The character stays calm (the roll may make it harder), and the narrator never makes the choice for the player (G15) |
