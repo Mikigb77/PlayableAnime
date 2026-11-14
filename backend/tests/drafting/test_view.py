@@ -366,6 +366,19 @@ def test_a_powers_cost_is_shown_so_the_player_can_change_it():
     assert "(three heartbeats per use; a breath to recharge). Cost: Leaves him drained." in stop
 
 
+def test_a_power_the_draft_only_named_is_shown_by_its_name_once():
+    # In the first live drafts most powers said nothing of what they do, and the summary
+    # then read "Infinity: Infinity (...)".
+    character = samples.cultivation_character()
+    said = character.powers[0].description
+    character.powers[0].description = ""
+    lines = character_lines(_cultivation(character=character))
+
+    stop = next(line for line in lines if line.startswith("Time stop"))
+    assert said and stop.startswith("Time stop (three heartbeats per use;")
+    assert "Time stop: Time stop" not in stop
+
+
 def test_a_power_with_no_cost_shows_none():
     character = samples.cultivation_character()
     for power in character.powers:

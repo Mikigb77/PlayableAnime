@@ -39,8 +39,11 @@ has included, however far above the character they are. known_to_all says how ma
 rungs, counted from the lowest, everyone in the world has heard of: the player is told those \
 at the start, and learns of each one above only when the story names it. lengthens_life says \
 whether a higher rung means a longer life, as with cultivation realms: then every rung gives \
-lifespan_years, how long someone who has reached it lives. Ranks that only measure skill or \
-standing lengthen no life.
+lifespan_years, how long someone who has reached it lives. Ranks, grades and levels that only \
+measure skill, strength or standing lengthen no life, and neither does a ladder that gives no \
+years: lengthens_life is false. Everyone who has the power a ladder measures stands on it, so \
+give each key character who has it their rung as well as the player character: the world \
+then knows who outranks whom. Only someone with none of that power has no rung.
 - Two to ten places, each with the place it lies within (parent_id) and its setting: outdoors, \
 indoors, underground or underwater (R8). Draw the map between them (W7, W10): link the \
 places people travel between through routes, a farm to its village, a town to the next town, a \
@@ -84,9 +87,10 @@ at hand, and the moment itself in one sentence. The premise is a situation, not 
 THE CHARACTER
 - Draft the player character from the premise and the world: attributes (3 is an average \
 person, 5 the peak of what a person can be, 6 to 10 beyond human only where the world allows it), \
-skills, traits (gifts and flaws), powers only where the world has them, temperament, equipment, \
-money, standing, connections, condition and their rung on a ladder. A strong start is fine \
-when the premise calls for it. \
+skills, traits (gifts and flaws), temperament, equipment, money, standing, connections, \
+condition and their rung on a ladder. A strong start is fine when the premise calls for it. \
+Give them the level the premise's words say, no more and no less: "nothing special" is an \
+average person, and "the best in the kingdom" is at the top of what the world allows. \
 Their money is money and currency, such as 12 and "copper coins", never an item, so the engine \
 can count what they pay and lose (C10).
 - What the character is after is the player's to say. Write a goal, or something they want \
@@ -96,25 +100,39 @@ for what it names ("Pass the knight exam"), never the premise repeated. What is 
 what has happened, is no aim: "the knight exam is in 3 days" gives a clock and no goal, and \
 "someone killed my father" gives a mystery and no goal. A premise that says no aim leaves both \
 empty: the player sets their goals in play.
-- Talents say how fast the character learns, and only where the premise says so: most \
-characters have none. Write each from the player's own words, with a short name, what it covers \
-in one plain sentence, and its strength: slow (a weakness, such as "hopeless at fighting": half \
-the pace), knack (twice as fast), genius (four times) or one_of_a_kind (eight times). One of a \
-kind always names one specific thing, with the reason behind it: a subject, such as the sword, \
-or a faculty, such as extreme perception or a copycat eye, which covers whatever reaches them \
-through it (any move they can watch someone do). Three one of a kind talents at most. Someone \
-gifted at everything is one talent with general=true, a genius at most: nobody is one of a kind \
-at everything. A talent of the body, such as great coordination, covers the moves that use it. \
-A talent is how fast they learn, never what they can already do: that goes in skills, traits, \
-powers and techniques, as well as the talent where the premise gives both.
-- Each power names the extraordinary kind it comes from (kind_id), with its limits. Its costs \
+- Talents say how fast the character learns, never how good they already are. What they can \
+already do is their attributes, skills, powers, techniques and rung: "the strongest sorcerer \
+alive", "the best hacker in the city", "a legendary swordsman" and "an overpowered skill" say \
+that and give no talent. Most characters have none. Write a talent only where the player's own \
+words speak of how they learn, of a talent or of a lack of one, and copy those words into said. \
+Take its strength from those words, never from how strong the character is: slow for a \
+weakness ("hopeless at fighting", "no talent for it": half the pace), knack for talented, \
+gifted, a natural or a quick learner (twice as fast), genius for a genius or a prodigy (four \
+times), and one_of_a_kind (eight times) only where their words put the talent beyond anyone \
+else's, such as "a once-in-an-age talent with the sword" or "the greatest gift for magic ever \
+born". Between two strengths take the lower: the player can raise it in plain words. Give \
+each a short name in the player's words and what it covers in one plain sentence. One of a \
+kind is always at the one thing the player named, with the reason behind it, three such \
+talents at most. A power, an eye, a body or a skill of their own is no talent, however rare: \
+it is a power or a trait, and a talent as well only where the player says they learn through \
+it (an eye that copies any move it watches then covers whatever they watch someone do). A \
+talent that covers most of what a person might learn ("good at everything", "picks anything \
+up") is one talent with general=true, a genius at most: nobody is one of a kind at \
+everything. A talent of the body, such as great coordination, covers the moves that use it.
+- Powers only where the world has them, and only where the premise gives the character one \
+or anyone in their place in this world would have it, as a sorcerer has sorcery where sorcerers \
+are real. Charm, skill, wits and a reputation are attributes, skills and traits, never a \
+power: someone the premise makes ordinary stays ordinary, however good they are at what they \
+do. Each power says what it does in a sentence or two the player reads (description) and \
+names the extraordinary kind it comes from (kind_id), with its limits. Its costs \
 come from the world and the premise, never from nowhere: what the world's rules say that kind of \
 power takes (qi spent, a mage's fatigue, a price in blood or years), or what the premise gives \
 it. A power the world charges nothing for has no cost: keen senses, a sharp mind or a feel for \
 the wind cost nothing unless the world or the premise says so. Never invent pain, sickness or \
 harm as a cost. Write each cost as when it is paid ("a night's sleep to recover after a full \
-stop"). Mark the character's special gift with gift=true and its strength: small (an edge), rare \
-(a real talent) or overpowered (such as time stop or a cheat system). Decide how a power works \
+stop"). Where the character has a special gift, mark it with gift=true and its strength: small \
+(an edge), rare (few people have it) or overpowered (such as time stop or a cheat system). A \
+premise that gives them no gift leaves them without one. Decide how a power works \
 yourself; the player finds out its details in play. Time stop lasts three heartbeats and needs a \
 breath to recharge unless the premise says otherwise.
 - A character reborn or waking in another body keeps their past life's memories; what others \
@@ -136,7 +154,8 @@ faction, clock, thread and person.
 
 IDS
 Use short lowercase ids such as "carmine" or "outer-court", and refer to records by them. The \
-player character's id is "{PLAYER_ID}".
+player character's id is "{PLAYER_ID}". An id is never a name: write every name as people say \
+it, with its spaces and capitals ("Pirate Lord", "Theory of magic").
 
 CONTENT
 Every person and organisation is fictional: a real city or real history can be the backdrop, but \

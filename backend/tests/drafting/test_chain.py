@@ -1026,14 +1026,42 @@ def test_the_drafter_is_asked_for_the_whole_ladder_and_the_rungs_everyone_knows(
     # W6, G19: whether climbing it lengthens life, and how long each rung then lives.
     assert "lengthens_life says whether a higher rung means a longer life" in SYSTEM
     assert "then every rung gives lifespan_years" in SYSTEM
-    assert "Ranks that only measure skill or standing lengthen no life." in SYSTEM
+    assert "that only measure skill, strength or standing lengthen no life" in SYSTEM
+    assert "neither does a ladder that gives no years" in SYSTEM
+    # G18: whoever has the ladder's power stands on it, so the world knows who outranks whom.
+    assert "Everyone who has the power a ladder measures stands on it" in SYSTEM
+    assert "Only someone with none of that power has no rung." in SYSTEM
 
 
 def test_the_drafter_is_asked_for_talents_only_from_the_players_own_words():
-    """A4: how fast the character learns each thing, written when they are made."""
-    assert "- Talents say how fast the character learns, and only where the premise says so" in (
+    """A4, G2: how fast the character learns each thing, written when they are made, and
+    never read off how strong they are. In the first live drafts half the characters were one
+    of a kind at something: the strongest sorcerer alive at perception, a chess prodigy at
+    openings, a boy good at everything at everything."""
+    assert "- Talents say how fast the character learns, never how good they already are." in (
         SYSTEM
     )
-    assert "One of a kind always names one specific thing, with the reason behind it" in SYSTEM
-    assert "Three one of a kind talents at most." in SYSTEM
+    assert '"the strongest sorcerer alive"' in SYSTEM and "give no talent" in SYSTEM
+    assert "Write a talent only where the player's own words speak of how they learn" in SYSTEM
+    assert "copy those words into said" in SYSTEM
+    assert "never from how strong the character is" in SYSTEM
+    assert "genius for a genius or a prodigy" in SYSTEM
+    assert "only where their words put the talent beyond anyone else's" in SYSTEM
+    assert "Between two strengths take the lower" in SYSTEM
+    assert "One of a kind is always at the one thing the player named" in SYSTEM
+    assert "three such talents at most" in SYSTEM
+    assert "A power, an eye, a body or a skill of their own is no talent, however rare" in SYSTEM
     assert "nobody is one of a kind at everything" in SYSTEM
+
+
+def test_the_drafter_gives_a_power_only_where_the_premise_does_and_says_what_it_does():
+    """A8, G22: someone the premise makes ordinary stays ordinary. In the first live drafts
+    a courtesan who charms people got a power over minds, and most powers said nothing of
+    what they do."""
+    assert "only where the premise gives the character one or anyone in their place" in SYSTEM
+    assert "someone the premise makes ordinary stays ordinary" in SYSTEM
+    assert "Each power says what it does in a sentence or two the player reads" in SYSTEM
+    assert "A premise that gives them no gift leaves them without one." in SYSTEM
+    assert "Give them the level the premise's words say, no more and no less" in SYSTEM
+    # A name is never written the way an id is.
+    assert "An id is never a name" in SYSTEM

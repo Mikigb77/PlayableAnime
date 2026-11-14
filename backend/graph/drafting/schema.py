@@ -181,8 +181,9 @@ class LadderP(Proposal):
     )
     lengthens_life: bool | None = Field(
         default=None,
-        description="Whether reaching a higher rung lengthens life, as cultivation realms do "
-        "and adventurer ranks don't. When it does, every rung gives lifespan_years.",
+        description="Whether reaching a higher rung lengthens life, as cultivation realms do. "
+        "False for ranks, grades and levels that measure skill, strength or standing. When "
+        "true, every rung gives lifespan_years: a ladder with no years lengthens no life.",
     )
 
 
@@ -300,25 +301,46 @@ class TraitP(Proposal):
     description: str = ""
 
 
+def _says_whose_words(schema: dict[str, Any]) -> None:
+    """A4, G2. Gemini answers only what a schema requires as often as not, so a talent is
+    always asked for the player's words behind it, and asked first: in the first live drafts
+    half the characters were one of a kind at something, most from a premise that only said
+    how strong they were. The model's answer may still leave it out."""
+    schema["required"] = list(dict.fromkeys(["said", *schema.get("required", [])]))
+
+
 class TalentP(Proposal):
     """A4. How fast the character learns one thing, from the player's own words."""
 
+    model_config = ConfigDict(extra="ignore", json_schema_extra=_says_whose_words)
+
+    said: str = Field(
+        default="",
+        description="The player's own words that say how they learn this, copied from the "
+        "premise or their request: 'a prodigy', 'no talent for it', 'a once-in-an-age talent "
+        "with the sword'. Words for how strong or skilled they already are ('the strongest', "
+        "'the best', 'a master') say no talent: then there is none to write.",
+    )
     name: str = Field(
-        description="A short name in the player's words: 'The sword', 'Extreme perception', "
-        "'Genius architect', 'Hopeless at fighting'."
+        description="A short name in the player's words: 'Chess', 'Genius architect', "
+        "'Hopeless at fighting'."
     )
     covers: str = Field(
         default="",
-        description="What it covers, in one plain sentence the player can check: 'any move "
-        "they can watch someone do', 'anything fought with a blade'.",
+        description="What it covers, in one plain sentence the player can check: 'anything "
+        "fought with a blade', 'chess and every game of strategy'.",
     )
     strength: TalentStrength = Field(
         default=TalentStrength.KNACK,
-        description="slow: a weakness, half the pace. knack: twice as fast. genius: four "
-        "times. one_of_a_kind: eight times, always for one specific thing.",
+        description="From the player's words. slow: a weakness, half the pace. knack: "
+        "talented, gifted, a quick learner, twice as fast. genius: a genius or a prodigy, "
+        "four times. one_of_a_kind: eight times, only where their words put the talent "
+        "beyond anyone else's, and always at one specific thing. The lower of two when unsure.",
     )
     general: bool = Field(
-        default=False, description="True only when it covers everything they learn."
+        default=False,
+        description="True when it covers most of what they might learn, such as 'good at "
+        "everything': then a genius at most.",
     )
     reason: str = Field(
         default="", description="For one of a kind: the reason behind it, from the premise."
@@ -343,10 +365,24 @@ class TimeP(Proposal):
     )
 
 
+def _says_what_it_does(schema: dict[str, Any]) -> None:
+    """A8, G2. Gemini answers only what a schema requires as often as not, so a power is
+    always asked what it does: in the first live drafts fourteen powers of fifteen had a name,
+    limits and costs and no word of what they do, which left the story to guess it from the
+    name. The model's answer may still leave it out."""
+    schema["required"] = list(dict.fromkeys([*schema.get("required", []), "description"]))
+
+
 class PowerP(Proposal):
+    model_config = ConfigDict(extra="ignore", json_schema_extra=_says_what_it_does)
+
     id: str
     name: str
-    description: str = ""
+    description: str = Field(
+        default="",
+        description="What it does, in one or two plain sentences the player reads: what the "
+        "character can do with it, as far as they know.",
+    )
     kind_id: str = Field(
         description="The id of the extraordinary kind this power comes from. A power must "
         "come from a kind the world has (G8)."
@@ -478,7 +514,12 @@ class NpcP(Proposal):
     traits: list[TraitP] = Field(default_factory=list)
     powers: list[PowerP] = Field(default_factory=list)
     techniques: list[TechniqueP] = Field(default_factory=list)
-    ladders: list[LadderPositionP] = Field(default_factory=list)
+    ladders: list[LadderPositionP] = Field(
+        default_factory=list,
+        description="G18: their rung on each ladder they climb. Everyone who has the power a "
+        "ladder measures stands on it: a sorcerer in a world that grades its sorcerers has a "
+        "grade. Empty only for someone with none of that power.",
+    )
     axes: AxesP = Field(default_factory=AxesP)
     attitude_to_player: AttitudeP = Field(default_factory=AttitudeP)
     bond_with_player: BondAtStart | None = Field(
@@ -775,8 +816,9 @@ class CharacterProposal(Proposal):
     traits: list[TraitP] = Field(default_factory=list)
     talents: list[TalentP] = Field(
         default_factory=list,
-        description="A4: how fast they learn each thing, only where the premise says so. Six "
-        "at most, three of them one of a kind.",
+        description="A4: how fast they learn each thing, only where the player's words speak "
+        "of how they learn. Empty for most characters, however strong they are. Six at "
+        "most, three of them one of a kind.",
     )
     powers: list[PowerP] = Field(default_factory=list)
     techniques: list[TechniqueP] = Field(default_factory=list)
