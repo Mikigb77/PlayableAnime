@@ -414,6 +414,9 @@ class SheetTalent(EngineModel):
     strength_label: str
     pace_label: str
     covers: str = ""
+    said: str = ""
+    """On a draft only: the player's own words the talent came from, when their premise holds
+    them word for word (G2, `graph.drafting.view.character_sheet`)."""
 
 
 class SheetView(EngineModel):
@@ -2399,6 +2402,11 @@ def clock_view(state: WorldState, language: Language = EN) -> ClockView:
         label=clock_label(state.bible.calendar, state.world_s, language),
         timeline_id=state.timeline_id,
     )
+
+
+def sheet_view(state: WorldState, language: Language = EN) -> SheetView:
+    """G13, G16: the player character's sheet in sections, as `/status` gives it."""
+    return _Knowledge(state, language).sheet(state.player)
 
 
 def status_view(state: WorldState, language: Language = EN) -> StatusView:

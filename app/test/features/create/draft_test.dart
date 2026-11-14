@@ -2,6 +2,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:playable_anime/features/create/draft_widgets.dart';
 import 'package:playable_anime/features/create/draft.dart';
+import 'package:playable_anime/features/story/sheet.dart';
 
 /// The draft model and what each change costs, by the server's own rules (docs/API.md, "Direct
 /// edits"; the backend's `chain.plan_edit`).
@@ -39,6 +40,30 @@ void main() {
       'more': true,
       'at': 1,
       'stage': 'early',
+    },
+    'sheet': {
+      'money_label': '3 shillings',
+      'items': [
+        {'name': 'Oilskin coat', 'kind': 'armour', 'carried': true},
+      ],
+      'skills': [
+        {'name': 'Knots', 'level_label': 'Skilled', 'dice': 3},
+      ],
+      'temperament': ['dry', 'watchful'],
+      'talents': [
+        {
+          'name': 'The sea',
+          'strength': 'one_of_a_kind',
+          'strength_label': 'One of a kind',
+          'pace_label': 'Eight times as fast',
+          'covers': 'tides, weather and boats',
+          'said': 'nobody reads the sea like her',
+        },
+        {'name': 'Lamps', 'strength': 'genius', 'strength_label': 'Genius'},
+        {'name': 'Rope work', 'strength': 'knack'},
+        {'name': 'Letters', 'strength': 'slow'},
+        {'name': 'Something new', 'strength': 'a strength a later server tells of'},
+      ],
     },
     'kept': {'people': 2, 'events': 1, 'questions': 3},
     'advanced': {
@@ -97,6 +122,33 @@ void main() {
       expect(draft.kept.isEmpty, isFalse);
     });
 
+    test('reads the character\'s sheet, with how they learn and the words it came from', () {
+      // G2, A4: the sheet the story's Character page will show, read from the draft.
+      final sheet = draft.sheet;
+      expect(sheet.moneyLabel, '3 shillings');
+      expect(sheet.carried.single.name, 'Oilskin coat');
+      expect(sheet.skills.single.dice, 3);
+      expect(sheet.temperament, ['dry', 'watchful']);
+      expect(
+        [for (final talent in sheet.talents) talent.strength],
+        [
+          TalentStrength.oneOfAKind,
+          TalentStrength.genius,
+          TalentStrength.knack,
+          TalentStrength.slow,
+          // A strength this app doesn't know is the mildest one.
+          TalentStrength.knack,
+        ],
+      );
+      expect(sheet.talents.first.said, 'nobody reads the sea like her');
+      expect(sheet.talents.first.paceLabel, 'Eight times as fast');
+      expect(sheet.talents[1].said, isEmpty);
+      expect(
+        [for (final talent in sheet.talents) talent.weakness],
+        [false, false, false, true, false],
+      );
+    });
+
     test('what the premise named of the start comes in the order the summary tells it', () {
       expect(draft.openers, [
         (
@@ -112,9 +164,15 @@ void main() {
         'id': 'd',
         'language': 'ca',
         'character': {'name': 'Ona'},
+        'sheet': {
+          'talents': [
+            {'name': 'Song', 'strength': 'genius'},
+          ],
+        },
         'kept': {'people': 1},
       }).started('story_9');
       expect(started.storyId, 'story_9');
+      expect(started.sheet.talents.single.name, 'Song');
       expect(started.language, 'ca');
       expect(started.character.name, 'Ona');
       expect(started.kept.people, 1);
@@ -136,6 +194,9 @@ void main() {
       expect(odd.character.name, '');
       expect(odd.character.age, isNull);
       expect(odd.ladder, isNull);
+      // A server from before the sheet came with the draft sends none.
+      expect(odd.sheet.talents, isEmpty);
+      expect(odd.sheet.items, isEmpty);
       expect(odd.kept.isEmpty, isTrue);
       expect(odd.openers, isEmpty);
     });

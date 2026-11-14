@@ -2,7 +2,7 @@
 
 The Flutter client: Riverpod for state, go_router for routes, Material 3 with the app's own design
 system. The look, the components and their rules are in [DESIGN.md](DESIGN.md). Screens on the fake
-API: [play and account](docs/screenshots/screens.jpg), [Discover and creating a
+API: [play and account](docs/screenshots/screens.jpg), [creating a
 story](docs/screenshots/create.jpg), [changing a draft](docs/screenshots/create-changes.jpg), and
 [the library and memory](docs/screenshots/library-memory.jpg).
 

@@ -8,6 +8,7 @@ import 'package:playable_anime/features/account/out_of_credits_sheet.dart';
 import 'package:playable_anime/features/create/create_story_screen.dart';
 import 'package:playable_anime/features/create/draft_widgets.dart';
 import 'package:playable_anime/features/discover/discover_screen.dart';
+import 'package:playable_anime/features/story/sheet_view.dart';
 import 'package:playable_anime/features/story/story_screen.dart';
 
 import '../../helpers.dart';
@@ -57,6 +58,15 @@ void main() {
     await tapAndSettle(tester, find.text(l10n.createDraftAction), frames: 12);
   }
 
+  /// From the world's screen on to the character's, and back by its step.
+  Future<void> toCharacter(WidgetTester tester, [AppLocalizations? words]) =>
+      tapAndSettle(tester, find.text((words ?? l10n).reviewNext), frames: 10);
+  Future<void> toWorld(WidgetTester tester) =>
+      tapAndSettle(tester, find.byKey(const ValueKey('review.step.world')), frames: 10);
+
+  /// The button that asks for a different world, in plain words.
+  Finder askWorld() => find.textContaining(l10n.reviewAskWorld, findRichText: true);
+
   const realPerson =
       'The person you named is a real person, and stories only have fictional people. '
       'Try someone made up instead.';
@@ -96,57 +106,31 @@ void main() {
       'language': 'en',
     });
 
-    // The review: the title, the character first, then the world.
+    // The review opens on the world, and only the world: the character waits a step on.
     expect(find.text(l10n.reviewTitle), findsOneWidget);
     expect(find.text('A story of your own'), findsOneWidget);
+    expect(find.text(l10n.reviewStepWorld), findsOneWidget);
+    expect(find.text(l10n.reviewStepCharacter), findsOneWidget);
     expect(find.text(l10n.reviewLegendDirect), findsOneWidget);
     expect(find.text(l10n.reviewLegendAsk), findsOneWidget);
-    expect(find.text('Rowan'), findsOneWidget);
-    expect(find.text(l10n.reviewYearsOld(19)), findsOneWidget);
-    expect(
-      tester.getTopLeft(find.text(l10n.reviewYou.toUpperCase())).dy,
-      lessThan(tester.getTopLeft(find.text(l10n.reviewWorld.toUpperCase())).dy),
-    );
+    expect(find.text('Rowan'), findsNothing);
+    expect(find.text(l10n.giftLabel.toUpperCase()), findsNothing);
+    expect(find.text(l10n.reviewStart), findsNothing);
+    expect(find.text(l10n.reviewNextNote), findsOneWidget);
 
-    // The name and the age are typed, saved at once, and free.
+    // The title is typed, saved at once, and free.
     int meReads() => app.sent('GET', (p) => p == '/v1/me').length;
     var reads = meReads();
-    await tapAndSettle(tester, find.text('Rowan'), frames: 6);
-    expect(find.text(l10n.nameSheetTitle), findsOneWidget);
-    expect(inSheet(find.text(l10n.costFree)), findsOneWidget);
-    await tester.enterText(inSheet(find.widgetWithText(TextField, l10n.nameLabel)), 'Mara Quill');
-    await tester.enterText(inSheet(find.widgetWithText(TextField, l10n.ageLabel)), '23');
-    await tester.pump();
-    await tapAndSettle(tester, inSheet(find.text(l10n.save)));
-    expect(patches(app).single.json, {
-      'character': {'name': 'Mara Quill', 'age': 23},
-      'expected_version': 1,
-    });
-    expect(meReads(), reads, reason: 'a free change spends nothing');
-    expect(find.byType(BottomSheet), findsNothing);
-    expect(find.text(l10n.reviewSaved), findsOneWidget);
-    expect(find.text('Mara Quill'), findsOneWidget);
-    expect(find.text(l10n.reviewYearsOld(23)), findsOneWidget);
-
-    // So are the looks, which every picture is drawn from, and the title.
-    await tapAndSettle(tester, find.text(looks), frames: 6);
-    expect(find.text(l10n.looksSheetTitle), findsOneWidget);
-    expect(inSheet(find.text(l10n.looksHelp)), findsOneWidget);
-    await tester.enterText(inSheet(find.byType(TextField)), 'Tall, with a burn across one hand.');
-    await tester.pump();
-    await tapAndSettle(tester, inSheet(find.text(l10n.save)));
-    expect(patches(app).last.json, {
-      'character': {'looks': 'Tall, with a burn across one hand.'},
-      'expected_version': 2,
-    });
-    expect(find.text('Tall, with a burn across one hand.'), findsOneWidget);
-
     await tapAndSettle(tester, find.text('A story of your own'), frames: 6);
     expect(find.text(l10n.titleSheetTitle), findsOneWidget);
+    expect(inSheet(find.text(l10n.costFree)), findsOneWidget);
     await tester.enterText(inSheet(find.byType(TextField)), 'The Door in the Sea');
     await tester.pump();
     await tapAndSettle(tester, inSheet(find.text(l10n.save)));
-    expect(patches(app).last.json, {'title': 'The Door in the Sea', 'expected_version': 3});
+    expect(patches(app).single.json, {'title': 'The Door in the Sea', 'expected_version': 1});
+    expect(meReads(), reads, reason: 'a free change spends nothing');
+    expect(find.byType(BottomSheet), findsNothing);
+    expect(find.text(l10n.reviewSaved), findsOneWidget);
     expect(find.text('The Door in the Sea'), findsOneWidget);
 
     // A row the storyteller wrote opens the box where the player says what to change, already
@@ -167,13 +151,97 @@ void main() {
       'target': 'world',
       'instruction': 'Add a fourth, in hiding',
       'about': 'faction',
-      'expected_version': 4,
+      'expected_version': 2,
     });
     expect(find.byType(BottomSheet), findsNothing);
     expect(find.text(l10n.reviewWorldRedrafted), findsOneWidget);
     expect(find.text('$factions A fourth, in hiding.'), findsOneWidget);
 
-    // Asking for a different character as a whole, in plain words.
+    // How it plays is the world's too. Strict physics is free: picked, it is saved.
+    await scrollTo(tester, find.text(l10n.physicsStrict));
+    reads = meReads();
+    await tapAndSettle(tester, find.text(l10n.physicsStrict));
+    expect(find.byType(BottomSheet), findsNothing);
+    expect(meReads(), reads, reason: 'a free change spends nothing');
+    expect(patches(app).last.json, {
+      'advanced': {'physics': 'strict'},
+      'expected_version': 3,
+    });
+    expect(find.text(l10n.physicsStrictBody), findsOneWidget);
+
+    // On to the character, and only the character: who they are leads, as the story's own
+    // Character page opens.
+    await toCharacter(tester);
+    expect(find.text(l10n.reviewTitle), findsOneWidget);
+    expect(find.text('Rowan'), findsOneWidget);
+    expect(find.text(l10n.reviewYearsOld(19)), findsOneWidget);
+    expect(find.text('The Door in the Sea'), findsNothing);
+    expect(find.text(l10n.reviewNext), findsNothing);
+    expect(find.text(l10n.reviewStart), findsOneWidget);
+
+    // The name and the age are typed, saved at once, and free.
+    reads = meReads();
+    await tapAndSettle(tester, find.text('Rowan'), frames: 6);
+    expect(find.text(l10n.nameSheetTitle), findsOneWidget);
+    expect(inSheet(find.text(l10n.costFree)), findsOneWidget);
+    await tester.enterText(inSheet(find.widgetWithText(TextField, l10n.nameLabel)), 'Mara Quill');
+    await tester.enterText(inSheet(find.widgetWithText(TextField, l10n.ageLabel)), '23');
+    await tester.pump();
+    await tapAndSettle(tester, inSheet(find.text(l10n.save)));
+    expect(patches(app).last.json, {
+      'character': {'name': 'Mara Quill', 'age': 23},
+      'expected_version': 4,
+    });
+    expect(meReads(), reads, reason: 'a free change spends nothing');
+    expect(find.text('Mara Quill'), findsOneWidget);
+    expect(find.text(l10n.reviewYearsOld(23)), findsOneWidget);
+
+    // So are the looks, which every picture is drawn from.
+    await tapAndSettle(tester, find.text(looks), frames: 6);
+    expect(find.text(l10n.looksSheetTitle), findsOneWidget);
+    expect(inSheet(find.text(l10n.looksHelp)), findsOneWidget);
+    await tester.enterText(inSheet(find.byType(TextField)), 'Tall, with a burn across one hand.');
+    await tester.pump();
+    await tapAndSettle(tester, inSheet(find.text(l10n.save)));
+    expect(patches(app).last.json, {
+      'character': {'looks': 'Tall, with a burn across one hand.'},
+      'expected_version': 5,
+    });
+    expect(find.text('Tall, with a burn across one hand.'), findsOneWidget);
+
+    // What the storyteller drafted is laid out as the Character page lays it out: skills
+    // with the dice each throws, what they are like as chips, what they carry.
+    await scrollTo(tester, find.text('Getting out of trouble'));
+    expect(find.text('Fair · ${l10n.sheetDice(2)}'), findsOneWidget);
+    await scrollTo(tester, find.text('Restless'));
+    expect(find.text('Owes a favour to the wrong person'), findsOneWidget);
+
+    // A section's wand asks about that section, with what the draft says of it.
+    await scrollTo(tester, find.byKey(const ValueKey('review.ask.skills')));
+    await tapAndSettle(tester, find.byKey(const ValueKey('review.ask.skills')), frames: 6);
+    expect(find.text(l10n.reviseCharacterTitle), findsOneWidget);
+    expect(inSheet(find.text(l10n.reviseAbout(l10n.sheetSkills))), findsOneWidget);
+    expect(
+      inSheet(find.text('Fair: getting out of trouble. Novice: staying out of it.')),
+      findsOneWidget,
+    );
+    expect(inSheet(find.text(l10n.costCharacter)), findsOneWidget);
+    await tester.enterText(inSheet(find.byType(TextField)), 'Add sailing');
+    await tester.pump();
+    await tapAndSettle(tester, inSheet(find.text(l10n.reviseAction)));
+    expect(app.sent('POST', (p) => p.endsWith('/revise')).last.json, {
+      'target': 'character',
+      'instruction': 'Add sailing',
+      'about': 'skills',
+      'expected_version': 6,
+    });
+    expect(find.text(l10n.reviewCharacterRedrafted), findsOneWidget);
+    await scrollTo(tester, find.text('Sailing'));
+
+    // Asking for a different character as a whole, in plain words, at the foot of the screen,
+    // once the word that the last change saved has gone from over it.
+    await tester.pump(const Duration(seconds: 5));
+    await settle(tester);
     final ask = find.textContaining(l10n.reviewAskCharacter, findRichText: true);
     await scrollTo(tester, ask);
     await tapAndSettle(tester, ask, frames: 6);
@@ -185,36 +253,29 @@ void main() {
     expect(app.sent('POST', (p) => p.endsWith('/revise')).last.json, {
       'target': 'character',
       'instruction': 'Make me older, with a scar',
-      'expected_version': 5,
+      'expected_version': 7,
     });
     expect(find.text(l10n.reviewCharacterRedrafted), findsOneWidget);
 
-    // How it plays is on the same screen. Strict physics is free: picked, it is saved.
-    await scrollTo(tester, find.text(l10n.physicsStrict));
-    reads = meReads();
-    await tapAndSettle(tester, find.text(l10n.physicsStrict));
-    expect(find.byType(BottomSheet), findsNothing);
-    expect(meReads(), reads, reason: 'a free change spends nothing');
-    expect(patches(app).last.json, {
-      'advanced': {'physics': 'strict'},
-      'expected_version': 6,
-    });
-    expect(find.text(l10n.physicsStrictBody), findsOneWidget);
-
-    // Lowering the rating to Teen redrafts both parts, and says so first.
+    // The world is one tap back. Lowering the rating to Teen redrafts both parts, and says so
+    // first.
+    await toWorld(tester);
+    expect(find.text('The Door in the Sea'), findsOneWidget);
+    expect(find.text('Mara Quill'), findsNothing);
     await scrollTo(tester, find.widgetWithText(ChoiceChip, l10n.ratingTeen));
     await tapAndSettle(tester, find.widgetWithText(ChoiceChip, l10n.ratingTeen), frames: 6);
     expect(inSheet(find.text(l10n.ratingTeenBody)), findsOneWidget);
     expect(inSheet(find.text(l10n.costBoth)), findsOneWidget);
     expect(patches(app), hasLength(4));
     await tapAndSettle(tester, inSheet(find.text(l10n.choiceChange)));
-    expect(patches(app).last.json, {'rating': 'teen', 'expected_version': 7});
+    expect(patches(app).last.json, {'rating': 'teen', 'expected_version': 8});
     expect(find.text(l10n.reviewBothRedrafted), findsOneWidget);
 
-    // Starting opens the play screen.
+    // The story starts from the character's screen.
+    await toCharacter(tester);
     await tapAndSettle(tester, find.text(l10n.reviewStart), frames: 14);
     final start = app.sent('POST', (p) => p.endsWith('/start')).single;
-    expect(start.json, {'expected_version': 8});
+    expect(start.json, {'expected_version': 9});
     expect(find.byType(StoryScreen), findsOneWidget);
     expect(app.location(tester), startsWith('/story/story_'));
     expect(tester.takeException(), isNull);
@@ -353,6 +414,7 @@ void main() {
     final app = AppHarness();
     await app.launch(tester, location: '/create');
     await draft(tester);
+    await toCharacter(tester);
     await tapAndSettle(tester, find.text('Rowan'), frames: 6);
     final name = inSheet(find.widgetWithText(TextField, l10n.nameLabel));
     FilledButton save() => tester.widget(inSheet(find.widgetWithText(FilledButton, l10n.save)));
@@ -389,6 +451,7 @@ void main() {
     await app.launch(tester, location: '/create?premise=naples-vendetta');
     await scrollTo(tester, find.text(l10n.createDraftAction));
     await tapAndSettle(tester, find.text(l10n.createDraftAction), frames: 12);
+    await toCharacter(tester);
     expect(find.text('Luca Esposito'), findsOneWidget);
     await tapAndSettle(tester, find.text('Luca Esposito'), frames: 6);
     await tester.enterText(
@@ -399,7 +462,10 @@ void main() {
     await tapAndSettle(tester, inSheet(find.text(l10n.save)));
     expect(find.text('Nico Esposito'), findsOneWidget);
     expect(find.textContaining('Luca'), findsNothing);
-    // The family keeps its name.
+    // The family keeps its name, in the world too.
+    expect(find.textContaining('Esposito family'), findsOneWidget);
+    await toWorld(tester);
+    expect(find.textContaining('Luca'), findsNothing);
     await scrollTo(tester, find.textContaining('The Esposito family'));
     expect(find.textContaining('The Esposito family'), findsOneWidget);
   });
@@ -417,23 +483,130 @@ void main() {
       'rating': 'teen',
       'language': 'en',
     });
-    // The character leads, with the world's ladder and their own rung on it (G18).
-    expect(find.text('Lin Feng'), findsOneWidget);
-    expect(find.textContaining('Outer disciple of the Azure Cloud Sect'), findsOneWidget);
-    await scrollTo(tester, find.text(l10n.reviewRungsBeyond));
-    expect(find.text('Foundation Establishment'), findsOneWidget);
-    expect(
-      find.byWidgetPredicate(
-        (widget) =>
-            widget is Semantics &&
-            widget.properties.label == 'Qi Condensation, ${l10n.reviewRungHere}',
-      ),
-      findsOneWidget,
-    );
-    // The starter's own words name the tournament, so it shows; nobody else is named.
+    // The world leads, under the starter's cover. The starter's own words name the
+    // tournament, so it shows; nobody else is named.
+    expect(find.text('The Last Outer Disciple'), findsOneWidget);
+    expect(find.text('Lin Feng'), findsNothing);
     await scrollTo(tester, find.text(l10n.reviewKeptBody));
     expect(find.text('The ranking tournament: in 2 days'), findsOneWidget);
     expect(find.textContaining('Zhao'), findsNothing);
+
+    // Then the character, with their path drawn as the Character page draws it: the rungs
+    // everyone has heard of, their own lit with its stage, and what lies above unknown (G18).
+    await toCharacter(tester);
+    expect(find.text('Lin Feng'), findsOneWidget);
+    expect(find.textContaining('Outer disciple of the Azure Cloud Sect'), findsOneWidget);
+    await scrollTo(tester, find.text('Qi Condensation'));
+    expect(find.byType(SheetPathCard), findsOneWidget);
+    expect(find.text('Early stage'), findsOneWidget);
+    expect(find.text('Foundation Establishment'), findsOneWidget);
+    expect(find.text(l10n.pathAbove), findsOneWidget);
+    // The starter names no goal of theirs, so none shows.
+    expect(find.textContaining('Keep your place'), findsNothing);
+  });
+
+  testWidgets('the character screen says how they learn, from the player\'s own words (A4, G2)', (
+    tester,
+  ) async {
+    final app = AppHarness();
+    await app.launch(tester, location: '/create');
+    await draft(tester, premise: 'I am a squire with no family name, a genius with the sword.');
+    await toCharacter(tester);
+
+    // How they learn comes before anything else the storyteller drafted, with the strength it
+    // read, the pace that gives, what it covers and the words it read it from.
+    final learning = find.text(l10n.sheetLearning.toUpperCase());
+    await scrollTo(tester, learning);
+    expect(
+      tester.getTopLeft(learning).dy,
+      lessThan(tester.getTopLeft(find.text(l10n.sheetSkills.toUpperCase())).dy),
+    );
+    expect(find.text('The sword'), findsOneWidget);
+    expect(find.text('GENIUS'), findsOneWidget);
+    expect(find.text('Four times as fast'), findsOneWidget);
+    expect(find.text('Anything fought with a blade'), findsOneWidget);
+    expect(find.text(l10n.sheetTalentSaid('a genius with the sword')), findsOneWidget);
+    expect(find.byKey(const ValueKey('review.learning.ordinary')), findsNothing);
+    // What each strength is worth is said once, for a player who has never heard of them.
+    expect(find.text(l10n.learnScale), findsOneWidget);
+
+    // A chip starts the player's words for them, at how they learn.
+    await scrollTo(tester, find.text(l10n.learnSeedUnique));
+    await tapAndSettle(tester, find.text(l10n.learnSeedUnique), frames: 6);
+    expect(inSheet(find.text(l10n.reviseAbout(l10n.sheetLearning))), findsOneWidget);
+    final box = tester.widget<TextField>(inSheet(find.byType(TextField)));
+    expect(box.controller!.text, l10n.learnSeedUniqueText);
+    expect(box.controller!.selection.baseOffset, l10n.learnSeedUniqueText.length);
+    await tester.enterText(inSheet(find.byType(TextField)), 'I am one of a kind at the spear');
+    await tester.pump();
+    await tapAndSettle(tester, inSheet(find.text(l10n.reviseAction)));
+    expect(app.sent('POST', (p) => p.endsWith('/revise')).single.json, {
+      'target': 'character',
+      'instruction': 'I am one of a kind at the spear',
+      'about': 'talents',
+      'expected_version': 1,
+    });
+    await scrollTo(tester, find.text('ONE OF A KIND'));
+    expect(find.text('Eight times as fast'), findsOneWidget);
+  });
+
+  testWidgets('a character nobody called gifted is told they learn at the ordinary pace (A4)', (
+    tester,
+  ) async {
+    final app = AppHarness();
+    await app.launch(tester, location: '/create');
+    await draft(tester);
+    await toCharacter(tester);
+    await scrollTo(tester, find.byKey(const ValueKey('review.learning.ordinary')));
+    expect(find.text(l10n.learnOrdinary), findsOneWidget);
+    expect(find.text(l10n.learnOrdinaryBody), findsOneWidget);
+    expect(find.text(l10n.learnScale), findsOneWidget);
+    // Nothing to take away, so no chip offers it.
+    expect(find.text(l10n.learnSeedGenius), findsOneWidget);
+    expect(find.byKey(const ValueKey('review.seed.none')), findsNothing);
+
+    // The gift sits with their powers, and a stronger one says what it costs first.
+    await scrollTo(tester, find.widgetWithText(ChoiceChip, l10n.giftRare));
+    await tapAndSettle(tester, find.widgetWithText(ChoiceChip, l10n.giftRare), frames: 6);
+    expect(inSheet(find.text(l10n.giftRareBody)), findsOneWidget);
+    expect(inSheet(find.text(l10n.costCharacter)), findsOneWidget);
+    await tapAndSettle(tester, inSheet(find.text(l10n.choiceChange)));
+    expect(patches(app).single.json, {
+      'advanced': {'gift_strength': 'rare'},
+      'expected_version': 1,
+    });
+    expect(find.text(l10n.reviewCharacterRedrafted), findsOneWidget);
+    await scrollTo(tester, find.text('A rare talent'));
+  });
+
+  testWidgets('back from the character is the world, and a goal of theirs is on their screen', (
+    tester,
+  ) async {
+    final app = AppHarness();
+    await app.launch(tester, location: '/create?premise=outer-disciple');
+    await tester.enterText(
+      find.byType(TextField).first,
+      'I am the weakest outer disciple of the Azure Cloud Sect. My goal is to stay.',
+    );
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pump(const Duration(seconds: 1));
+    await scrollTo(tester, find.text(l10n.createDraftAction));
+    await tapAndSettle(tester, find.text(l10n.createDraftAction), frames: 12);
+    // The goal is the character's: the world's screen doesn't show it.
+    await scrollTo(tester, find.text(l10n.reviewKeptBody));
+    expect(find.textContaining('Keep your place'), findsNothing);
+    await toCharacter(tester);
+    final goal = find.text('Goal: Keep your place on the mountain.');
+    await scrollTo(tester, goal);
+    expect(find.text(l10n.openerGoal.toUpperCase()), findsOneWidget);
+
+    // Back leaves nothing: it is the world's screen again, with the draft as it was.
+    await tester.tap(find.byType(BackButton));
+    await settle(tester, frames: 10);
+    expect(find.text(l10n.reviewLeaveTitle), findsNothing);
+    expect(find.text(l10n.reviewNext), findsOneWidget);
+    expect(find.text('The Last Outer Disciple'), findsOneWidget);
+    expect(app.sent('POST', (p) => p == '/v1/drafts'), hasLength(1));
   });
 
   for (final (language, heard) in [('es', 'es-ES'), ('ca', 'ca-ES')]) {
@@ -456,7 +629,7 @@ void main() {
         await tapAndSettle(tester, find.text(words.createDraftAction), frames: 12);
         expect(app.sent('POST', (p) => p == '/v1/drafts').single.json['language'], language);
 
-        await scrollTo(tester, find.text(words.reviewStart));
+        await toCharacter(tester, words);
         await tapAndSettle(tester, find.text(words.reviewStart), frames: 12);
         expect(find.byType(StoryScreen), findsOneWidget);
         final id = Uri.decodeComponent(app.location(tester).split('/').last);
@@ -558,6 +731,7 @@ void main() {
     spendAll(app);
 
     // A typed field is free, so it saves with no credits left.
+    await toCharacter(tester);
     await tapAndSettle(tester, find.text(looks), frames: 6);
     await tester.enterText(inSheet(find.byType(TextField)), 'Short, with a broken nose.');
     await tester.pump();
@@ -566,6 +740,7 @@ void main() {
     expect(find.text('Short, with a broken nose.'), findsOneWidget);
 
     // A change the storyteller makes is not.
+    await toWorld(tester);
     await scrollTo(tester, find.text(factions));
     await tapAndSettle(tester, find.text(factions), frames: 6);
     await tester.enterText(inSheet(find.byType(TextField)), 'Add a fourth, in hiding');
@@ -603,8 +778,8 @@ void main() {
     final app = AppHarness();
     await app.launch(tester, location: '/create');
     await draft(tester);
-    await scrollTo(tester, find.text(l10n.reviewAskWorld));
-    await tapAndSettle(tester, find.text(l10n.reviewAskWorld), frames: 6);
+    await scrollTo(tester, askWorld());
+    await tapAndSettle(tester, askWorld(), frames: 6);
     await tester.enterText(inSheet(find.byType(TextField)), 'Add rain [fail:rate_limited]');
     await tester.pump();
     await tapAndSettle(tester, inSheet(find.text(l10n.reviseAction)));
@@ -617,8 +792,8 @@ void main() {
     final app = AppHarness();
     await app.launch(tester, location: '/create');
     await draft(tester);
-    await scrollTo(tester, find.text(l10n.reviewAskWorld));
-    await tapAndSettle(tester, find.text(l10n.reviewAskWorld), frames: 6);
+    await scrollTo(tester, askWorld());
+    await tapAndSettle(tester, askWorld(), frames: 6);
     await tester.enterText(inSheet(find.byType(TextField)), 'Add a storm [fail:version_conflict]');
     await tester.pump();
     await tapAndSettle(tester, inSheet(find.text(l10n.reviseAction)));

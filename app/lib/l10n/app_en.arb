@@ -265,7 +265,7 @@
   "reviewLegendAsk": "You tell the storyteller",
   "reviewYou": "You",
   "reviewYours": "From your own words",
-  "reviewYoursNone": "Your idea names no date, no goal and nobody, so nothing of the start is shown. All of it is waiting in the story.",
+  "reviewYoursNone": "Your idea names no date, no open question and nobody, so nothing of how the story starts is shown. All of it is waiting in the story.",
   "reviewKept": "The story keeps the rest",
   "reviewKeptBody": "Your first scene, the people in your life and what is already in motion are the story's to tell.",
   "keptPeople": "{count, plural, =1{person to meet} other{people to meet}}",
@@ -348,8 +348,32 @@
   "reviewEditTone": "Change the tone",
   "reviewEditName": "Change your name and age",
   "reviewAskHere": "Ask the storyteller to change this",
-  "reviewRungHere": "You are here",
   "reviewRungsBeyond": "and beyond",
+  "reviewStepWorld": "The world",
+  "reviewStepCharacter": "Your character",
+  "reviewNext": "Next: your character",
+  "reviewNextNote": "You can come back to the world before you start.",
+  "reviewRules": "Its rules",
+  "learnOrdinary": "No special talent",
+  "learnOrdinaryBody": "You learn everything at the ordinary pace, like most people.",
+  "learnScale": "A knack learns twice as fast, a genius four times as fast and one of a kind eight times as fast.",
+  "learnAskLabel": "Not what you meant? Tell the storyteller:",
+  "learnSeedGenius": "A genius at…",
+  "learnSeedGeniusText": "I'm a genius at ",
+  "learnSeedUnique": "One of a kind at…",
+  "learnSeedUniqueText": "I'm one of a kind at ",
+  "learnSeedKnack": "A knack for…",
+  "learnSeedKnackText": "I have a knack for ",
+  "learnSeedNone": "Nothing special",
+  "learnSeedNoneText": "I have no special talent: I learn everything at the ordinary pace.",
+  "sheetTalentSaid": "From your words: “{words}”",
+  "@sheetTalentSaid": {
+    "placeholders": {
+      "words": {
+        "type": "String"
+      }
+    }
+  },
   "choiceChange": "Change",
   "save": "Save",
   "reviseWorldTitle": "A different world",

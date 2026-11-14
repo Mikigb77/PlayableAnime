@@ -474,7 +474,8 @@ class _NameSheetState extends State<_NameSheet> {
 
 /// Ask for something different in plain words, such as "add hidden vampires" (G1, G2). Asked at
 /// a row of the summary ([about], with the row's [aboutLabel] and its text), the change is told
-/// which part it is about, so "more of this" says what "this" is.
+/// which part it is about, so "more of this" says what "this" is. A [seed] starts the player's
+/// words for them, such as "They are a genius at ", for them to finish.
 Future<void> showReviseSheet(
   BuildContext context, {
   required CreateFlow flow,
@@ -482,6 +483,7 @@ Future<void> showReviseSheet(
   LineKind? about,
   String? aboutLabel,
   String? aboutText,
+  String seed = '',
 }) {
   final l10n = context.l10n;
   return _changeSheet(
@@ -496,6 +498,7 @@ Future<void> showReviseSheet(
       about: about,
       aboutLabel: aboutLabel,
       aboutText: aboutText,
+      seed: seed,
     ),
   );
 }
@@ -507,6 +510,7 @@ class _ReviseSheet extends StatefulWidget {
     this.about,
     this.aboutLabel,
     this.aboutText,
+    this.seed = '',
   });
 
   final CreateFlow flow;
@@ -514,13 +518,20 @@ class _ReviseSheet extends StatefulWidget {
   final LineKind? about;
   final String? aboutLabel;
   final String? aboutText;
+  final String seed;
 
   @override
   State<_ReviseSheet> createState() => _ReviseSheetState();
 }
 
 class _ReviseSheetState extends State<_ReviseSheet> {
-  final _text = TextEditingController();
+  // A seed is theirs to finish, so the caret waits at its end.
+  late final _text = TextEditingController.fromValue(
+    TextEditingValue(
+      text: widget.seed,
+      selection: TextSelection.collapsed(offset: widget.seed.length),
+    ),
+  );
   late final _tracker = InputModeTracker(_text);
   Object? _error;
 

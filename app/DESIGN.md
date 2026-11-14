@@ -272,33 +272,64 @@ dark figure.
 
 ## Creating a story
 
-`/create` is two steps (G1, G2): the idea, then the drafted story to change or start
-(`features/create/`).
+`/create` is three screens (G1, G2): the idea, then the drafted story to change a screen at a
+time, the world and then the character, and start (`features/create/`).
+
+![The idea, the world's screen and its rules, and the character's screen with how they learn and
+their path](docs/screenshots/create.jpg)
 
 - **The idea** is one box, typed or dictated. Under it a card says what a premise can decide
   before the story starts, each with an example in plain words (who you are, what makes you
   special, what is coming, who is in your life), and ends on the rule: what you name, you see
   before you start, and everything you leave out stays a surprise. An empty page also offers
   whole ideas to start from, which go once there are words a tap would replace.
-- **The drafted story leads with the character**, then the world with its rules, then "From
-  your own words" (what the premise named of how the story starts), "The story keeps the rest"
-  (a count of the people, the things in motion and the open questions it holds back, and
-  nothing more), and how it plays.
+- **The draft is reviewed in two screens** (Miki, 2026-11-14: "one is just for the world where
+  the user can tweak stuff, and on the next screen is just for the character"). Both open on
+  the same two steps, "The world" and "Your character", the one on show lit and the other one
+  tap away (`ReviewSteps`), and end on one filled button in a bar (`ReviewBar`): "Next: your
+  character" under the world, "Start the story" under the character. Back from the character
+  is the world, and nothing asks whether to leave.
+- **The world's screen** (`WorldReview`) opens on the starter's cover, the genre and rating,
+  the title and the tone. Then "The world" row by row (when and where, ranks, peoples, who
+  holds power), "Its rules", "From your own words" (a deadline, an open question or a person
+  the premise named), "The story keeps the rest" (a count of the people, the things in motion
+  and the open questions it holds back, and nothing more), and how it plays.
+- **The character's screen** (`CharacterReview`) is the story's own Character page before the
+  story starts, built from the same pieces (`sheet_view.dart`), so what the player approves is
+  what they find in play: the portrait with the name, the age, the people and the standing,
+  then the looks and how they come across, typed by the player. Under those, a section for
+  each thing the storyteller drafted, each named as the Character page names it, with a wand
+  at the end of its name that asks about that section: how you learn, your path (the world's
+  ladder with their rung lit and what lies above unknown), skills with the dice each throws,
+  powers with the gift, traits, and what they carry. A goal or a connection the premise named
+  closes the screen under "From your own words", above the box that asks for a change to the
+  character as a whole.
+- **How you learn comes first of what was drafted** (A4; Miki, 2026-11-14: "they don't know
+  this part where there is distinguish between genius, one of a kind"). Each talent is a card
+  with its strength at the far edge, the pace it gives, what it covers, and "From your words"
+  with the player's own words the draft read it from, when the premise holds them; one of a
+  kind is lit and starred, a weakness points down. A character nobody called gifted gets a
+  card that says so: no special talent, everything at the ordinary pace. Under the cards one
+  line says what each strength is worth, for a player who has never heard of them, and chips
+  start the words that change it ("A genius at…", "One of a kind at…", "A knack for…",
+  "Nothing special"): a tap opens the box with those words in it, for the player to finish.
 - **Every row says how it changes** (Miki, 2026-11-10: "it's very difficult to edit stuff"),
   with a mark at its end and a legend above the cards. A pencil is a plain value the player
   types: the title, the tone, the name and age, the looks, how they come across, a rule. It is
   saved at once and is free. A wand is something the storyteller wrote: a tap opens the box
   where the player says what to change, already pointed at that row ("About: Good at"), with
   what it costs said first. Each card ends on the same box for the part as a whole.
-- **Rules** sit in the world's card in two groups, "Never changes" with a shut lock and "True
-  for now" with an open one. A rule's sheet holds its words and one switch, "Holds for the
+- **Rules** sit in a card of their own in two groups, "Never changes" with a shut lock and
+  "True for now" with an open one. A rule's sheet holds its words and one switch, "Holds for the
   whole story": flipping it is free, and new words redraft the world.
-- **How it plays** is on the same screen as chips with the chosen one's meaning under them. A
-  choice that redrafts nothing is saved as it is picked; one that does (lowering the rating to
-  Teen, a new gift) opens a sheet that says what it means and costs first. Mature is locked
-  for an account under 17, with when it opens.
-- **While a part is redrafted** its card shows skeleton lines and what is happening, and when
-  the change ends a snackbar says how: only the latest outcome, never a queue of older ones.
+- **How it plays** closes the world's screen as chips with the chosen one's meaning under
+  them: the rating, difficulty, world events and physics. The gift is the character's, and
+  sits with their powers. A choice that redrafts nothing is saved as it is picked; one that
+  does (lowering the rating to Teen, a new gift) opens a sheet that says what it means and
+  costs first. Mature is locked for an account under 17, with when it opens.
+- **While a part is redrafted** its cards show skeleton lines and what is happening (on the
+  character's screen, one card in place of every drafted section), and when the change ends a
+  snackbar says how: only the latest outcome, never a queue of older ones.
 
 ## The play screen
 
