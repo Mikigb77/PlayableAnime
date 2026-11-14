@@ -457,6 +457,13 @@ RISEN_COURIER = (
     "who walk never age. I died two hundred years ago, and I have carried the city's letters "
     "ever since."
 )
+# A made-up premise for the real drafter: years that are running out, in the player's words.
+# The first one played by hand (2026-11-14) got a countdown "Lifespan Depletion" of the drafter's
+# own beside the record's age and years, so two clocks ran to one death.
+SPENT_CULTIVATOR = (
+    "An old cultivator, 148 years old, stuck at the peak of Foundation Establishment. My "
+    "lifespan of 150 years is almost spent: I break through to Core Formation or I die."
+)
 THE_END_IS_CLOSE = Rubric(
     must=(
         "The scene shows that Tomas is old, in his own body or in how he moves or tires",
@@ -590,7 +597,9 @@ def elf_scene() -> dict:
         "loss, says the record doesn't say and asks first, and once the scene answers that he "
         "lives centuries no old age comes to him. A human in that world is asked too, told "
         "for a human life, and dies of old age going on. Live, the real drafter is given "
-        "someone old age never takes to play, and the world it writes has no old age for them"
+        "someone old age never takes to play, and the world it writes has no old age for "
+        "them, and a cultivator whose years are almost spent, whose age and years are on "
+        "record as the premise gives them with no countdown of the drafter's own beside them"
     ),
 )
 async def own_old_age(ev: Eval) -> None:
@@ -882,6 +891,28 @@ async def own_old_age(ev: Eval) -> None:
         "the world the drafter writes has no old age for them",
         last_years.years_of(world, world.world_s) is None,
         f"age {you.age}, lifespan {you.lifespan_years}, span {old_age.span(world, you)}",
+    )
+    # W6, E2: the record's age and years are the one countdown to the end of a life.
+    world = await ev.drafted(SPENT_CULTIVATOR)
+    you = world.player
+    theirs = [clock.name for clock in world.clocks.values() if clock.owner_id == you.id]
+    ev.metric(
+        "years that are running out, as the real drafter wrote them",
+        {
+            "age": you.age,
+            "lifespan_years": you.lifespan_years,
+            "clocks": [clock.name for clock in world.clocks.values()],
+        },
+    )
+    ev.check(
+        "years the premise says are running out are the record's age and years",
+        you.age == 148 and old_age.span(world, you) == 150,
+        f"age {you.age}, lifespan {you.lifespan_years}, span {old_age.span(world, you)}",
+    )
+    ev.check(
+        "and no countdown of the character's own runs beside them",
+        not theirs,
+        str(theirs),
     )
 
 
