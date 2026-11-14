@@ -8,20 +8,32 @@ pending `clock_end` event at its time (unless one is already set), and when that
 the clock ends. If the player isn't there, it happens without them: the exam takes place, and a
 thread of ambition, quest, threat or debt tied to it is resolved without the player. Mysteries,
 rivalries and romances stay open, since the people in them remain.
+
+Where it ends is where its event says, else where its owner is. A clock nobody owns, with no
+place on record, is the story's own countdown ("the commander arrives at your door", "winter
+closes the pass"): when the player character knows of it, or its thread involves them, its end
+comes to them wherever they are (`comes_to_player`), with the people its thread involves and
+those its own words name (`comes_with`). The first plays on the real models (2026-11-14) had
+thirteen clocks of sixteen drafted that way, and every one that ran out did so in silence, a
+search of the player's own house among them.
 """
 
+from engine.naming import named_in
 from engine.state.records import (
     Clock,
     ClockStatus,
     Deed,
+    EventStatus,
     Fact,
     FactKind,
     Origin,
     OriginKind,
     PendingEvent,
+    Thread,
     ThreadKind,
     ThreadStatus,
 )
+from engine.state.world import WorldState
 from engine.world.geography import characters_at, faction_seat, is_within
 from engine.world.norms import canonical
 from engine.world.rumors import start_rumor
@@ -33,17 +45,17 @@ ENDS_WITHOUT_PLAYER = frozenset(
 NEWS_HOPS = 3
 
 
+def _ends(event: PendingEvent, clock_id: str) -> bool:
+    """Whether an event is the end of this clock."""
+    return event.payload.get("clock_id") == clock_id or (
+        event.origin is not None
+        and event.origin.kind is OriginKind.CLOCK
+        and event.origin.ref_id == clock_id
+    )
+
+
 def _end_events(w: World, clock: Clock) -> list[PendingEvent]:
-    return [
-        e
-        for e in pending(w.state, Kind.CLOCK_END)
-        if e.payload.get("clock_id") == clock.id
-        or (
-            e.origin is not None
-            and e.origin.kind is OriginKind.CLOCK
-            and e.origin.ref_id == clock.id
-        )
-    ]
+    return [e for e in pending(w.state, Kind.CLOCK_END) if _ends(e, clock.id)]
 
 
 def ensure_clock_events(w: World) -> None:
@@ -176,9 +188,65 @@ def player_there(w: World, place_id: str | None) -> bool:
     return place_id is not None and is_within(w.state, w.state.player.location_id, place_id)
 
 
+def thread_of(state: WorldState, clock: Clock) -> Thread | None:
+    """The thread a clock belongs to: the one it names, else the one that names it."""
+    if clock.thread_id and clock.thread_id in state.threads:
+        return state.threads[clock.thread_id]
+    return next((t for t in by_id(state.threads.values()) if t.clock_id == clock.id), None)
+
+
+def comes_to_player(state: WorldState, event: PendingEvent, clock: Clock) -> bool:
+    """E2: whether a clock's end comes to the player character wherever they are. It does when
+    the record gives it nowhere else to happen (its event names no place, and nobody on record
+    owns it) and it is theirs: they know of the clock, or its thread involves them. A clock
+    with an owner ends where the owner is, with the player only if they are there, and one
+    that is neither known to them nor about them is the world's own business (C6)."""
+    if event.place_id is not None:
+        return False
+    if clock.owner_id in state.factions or clock.owner_id in state.characters:
+        return False
+    thread = thread_of(state, clock)
+    return state.player_id in clock.known_by or (
+        thread is not None and state.player_id in thread.involved_ids
+    )
+
+
+def comes_with(state: WorldState, clock: Clock, thread: Thread | None) -> list[str]:
+    """W10: who a countdown that comes to the player brings, among the living on record: the
+    people its thread involves, and those its own words name, since the drafter doesn't always
+    put them in the thread ("The Bailiff steps in to charge you" ran on a romance's thread
+    that held only the lovers). Its last step is read as a sentence is. Its name is a title,
+    where any word may have a capital, so only a name of several words counts there ("La
+    vigilància del Sergent Torres"), never the "Royal" of "The Royal Envoy's Search" for a
+    Royal Guard."""
+    others = [c.id for c in by_id(state.characters.values()) if c.alive and c.id != state.player_id]
+    involved = set(thread.involved_ids) if thread is not None else set()
+    named = {
+        *named_in(state, [clock.steps[-1]], others, anywhere=True),
+        *named_in(state, [clock.name.lower()], others),
+    }
+    return [i for i in others if i in involved or i in named]
+
+
+def ended_with_player(state: WorldState, clock_id: str) -> PendingEvent | None:
+    """The end of this clock as it happened, when it happened with the player character: the
+    applied event, which says on which turn. None when it has yet to end, or ended without
+    them."""
+    for event in state.pending_events.values():
+        if (
+            event.kind == Kind.CLOCK_END
+            and event.status is EventStatus.APPLIED
+            and event.needs_player
+            and event.timeline_id == state.timeline_id
+            and _ends(event, clock_id)
+        ):
+            return event
+    return None
+
+
 def on_clock_end(w: World, event: PendingEvent) -> bool:
-    """A clock's end arrives: it happens, with the player if they are there, else without them.
-    Returns whether it needs the player."""
+    """A clock's end arrives: it happens, with the player if they are there or it comes to them
+    (`comes_to_player`), else without them. Returns whether it needs the player."""
     state = w.state
     clock_id = event.payload.get("clock_id") or (event.origin.ref_id if event.origin else None)
     clock = state.clocks.get(str(clock_id)) if clock_id else None
@@ -191,9 +259,18 @@ def on_clock_end(w: World, event: PendingEvent) -> bool:
     clock.filled = len(clock.steps)
     clock.status = ClockStatus.ENDED
     where = where_it_ends(w, event, clock)
+    thread = thread_of(state, clock)
+    if where is None and comes_to_player(state, event, clock):
+        # It happens where they are, and its people come with it: they are the event's own,
+        # so the scene has them (W10, `director.due.brings`).
+        where = state.player.location_id
+        event.needs_player = True
+        coming = comes_with(state, clock, thread)
+        event.subject_ids = list(dict.fromkeys([*event.subject_ids, *coming]))
+        # The scene's event says which countdown ran out, as well as how (`due.world_event`).
+        event.payload.setdefault("event", {"brief": f"{clock.name}: {clock.steps[-1]}"})
     with_player = event.needs_player or player_there(w, where)
     if not with_player:
-        thread = state.threads.get(clock.thread_id) if clock.thread_id else None
         if thread is not None and not thread.status.closed and thread.kind in ENDS_WITHOUT_PLAYER:
             thread.status = ThreadStatus.RESOLVED_WITHOUT_PLAYER
             thread.closed_turn = w.ctx.turn

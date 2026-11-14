@@ -22,6 +22,7 @@ from engine.contracts import (
     StepFacts,
     StepResolution,
 )
+from engine.director import due
 from engine.invariants import check_transition
 from engine.rng import SeededRng
 from engine.samples import cultivation_world, grounded_world
@@ -29,6 +30,7 @@ from engine.state import (
     Activity,
     Character,
     CharacterStatus,
+    Clock,
     ClockStatus,
     Connection,
     ConnectionKind,
@@ -38,6 +40,7 @@ from engine.state import (
     Faction,
     FactionStatus,
     Law,
+    Origin,
     OriginKind,
     PassingState,
     PendingEvent,
@@ -46,16 +49,19 @@ from engine.state import (
     Route,
     StatusChange,
     StepResult,
+    Thread,
+    ThreadKind,
+    ThreadStatus,
     Trace,
     TraceKind,
     Visibility,
     WorldState,
 )
 from engine.visibility import memory_view
-from engine.world import Kind, carriers, hearsay, tick
+from engine.world import Kind, carriers, clocks, hearsay, tick
 from engine.world.answers import Answer, choose_answer
 from engine.world.discovery import name_the_doer
-from engine.world.geography import travel_s
+from engine.world.geography import faction_seat, travel_s
 from engine.world.knowledge import faction_learns
 from engine.world.norms import assess_severity, is_crime
 from engine.world.rumors import start_rumor
@@ -962,6 +968,148 @@ def test_a_clock_given_only_an_interval_starts_moving_from_now():
 
     assert after.clocks["tournament"].filled == 1
     assert after.clocks["tournament"].next_step_s == 32 * HOUR
+
+
+def countdown(state: WorldState, *, known: bool = True, thread: bool = True, **clock) -> None:
+    """A clock as the real drafter writes most of them: nobody owns it and no place holds it."""
+    state.clocks["envoy"] = Clock(
+        id="envoy",
+        name="The envoy's search",
+        steps=["Scouts reach the foot of the mountain.", "The envoy arrives at your door."],
+        interval_s=DAY,
+        next_step_s=DAY,
+        thread_id="summons" if thread else None,
+        known_by=["lin"] if known else [],
+        **clock,
+    )
+    if thread:
+        state.threads["summons"] = Thread(
+            id="summons",
+            title="The summons",
+            kind=ThreadKind.THREAT,
+            involved_ids=["lin", "zhao"],
+            clock_id="envoy",
+            origin=Origin(kind=OriginKind.PREMISE),
+            known_by=["lin"] if known else [],
+        )
+
+
+def end_of(state: WorldState, clock_id: str) -> PendingEvent:
+    (end,) = (
+        e
+        for e in state.pending_events.values()
+        if e.kind == Kind.CLOCK_END and e.origin is not None and e.origin.ref_id == clock_id
+    )
+    return end
+
+
+def test_a_countdown_nobody_owns_ends_where_the_player_is():
+    # E2: thirteen clocks of sixteen in the first live plays had no owner and no place, and
+    # every one that ran out did so in silence ("Commander Reynold arrives at your cabin door").
+    state = cultivation_world()
+    countdown(state)
+
+    after, fired = idle(state, 2 * DAY + HOUR)
+
+    end = end_of(after, "envoy")
+    assert end.status is EventStatus.APPLIED and end.applied_s == 2 * DAY
+    assert end.needs_player and end.id in {e.id for e in fired}
+    # The people its thread involves come with it, and the scene's event names the countdown.
+    assert end.subject_ids == ["zhao"]
+    planned = due.world_event(end)
+    assert planned.cast_ids == ["zhao"]
+    assert planned.brief == "The envoy's search: The envoy arrives at your door."
+    assert after.clocks["envoy"].status is ClockStatus.ENDED
+    # It is theirs to play out: nothing resolved it without them.
+    assert after.threads["summons"].status is ThreadStatus.OPEN
+    assert clocks.ended_with_player(after, "envoy") is not None
+    # They saw it happen (C6): it is no rumor to them.
+    told = [r for r in after.rumors.values() if r.text.startswith("The envoy's search")]
+    assert told and "lin" in told[0].seen_by
+
+
+def test_a_hidden_countdown_about_the_player_comes_to_them_too():
+    # "Your house and boat are officially searched": a threat they never knew was closing in.
+    state = cultivation_world()
+    countdown(state, known=False)
+
+    after, _ = idle(state, 2 * DAY + HOUR)
+
+    assert end_of(after, "envoy").needs_player
+    assert after.threads["summons"].status is ThreadStatus.OPEN
+
+
+def test_a_countdown_of_their_own_with_no_thread_comes_to_them_and_brings_nobody():
+    state = cultivation_world()
+    countdown(state, thread=False)
+
+    after, _ = idle(state, 2 * DAY + HOUR)
+
+    end = end_of(after, "envoy")
+    assert end.needs_player and end.subject_ids == []
+
+
+def test_the_people_a_countdowns_words_name_come_with_it():
+    # "The Bailiff steps in to charge you" ran on a thread that held only the lovers, and "La
+    # vigilància del Sergent Torres" names the sergeant in the clock's name alone.
+    state = cultivation_world()
+    countdown(state, thread=False)
+    state.clocks["envoy"].steps[-1] = "Mo arrives at your door."
+    assert end_of(idle(state, 2 * DAY + HOUR)[0], "envoy").subject_ids == ["elder-mo"]
+
+    state = cultivation_world()
+    countdown(state)
+    state.clocks["envoy"].name = "The Watch of Elder Mo"
+    assert end_of(idle(state, 2 * DAY + HOUR)[0], "envoy").subject_ids == ["elder-mo", "zhao"]
+
+
+def test_one_word_of_a_countdowns_title_names_nobody():
+    # A title has a capital on any word: "The Elder Road" is not Elder Mo.
+    state = cultivation_world()
+    countdown(state, thread=False)
+    state.clocks["envoy"].name = "The Elder Road"
+
+    after, _ = idle(state, 2 * DAY + HOUR)
+
+    assert end_of(after, "envoy").subject_ids == []
+
+
+def test_the_dead_do_not_come_with_a_countdown():
+    state = cultivation_world()
+    countdown(state)
+    state.characters["zhao"].status = CharacterStatus.DEAD
+    state.characters["zhao"].death_certainty = DeathCertainty.CONFIRMED
+
+    after, _ = idle(state, 2 * DAY + HOUR)
+
+    end = end_of(after, "envoy")
+    assert end.needs_player and end.subject_ids == []
+
+
+def test_a_countdown_that_is_not_theirs_ends_without_them():
+    # Neither known to them nor about them: the world's own business (C6).
+    state = cultivation_world()
+    countdown(state, known=False)
+    state.threads["summons"].involved_ids = ["zhao"]
+
+    after, fired = idle(state, 2 * DAY + HOUR)
+
+    end = end_of(after, "envoy")
+    assert end.status is EventStatus.APPLIED and not end.needs_player
+    assert end.subject_ids == []
+    assert after.threads["summons"].status is ThreadStatus.RESOLVED_WITHOUT_PLAYER
+
+
+def test_a_clock_with_an_owner_still_ends_where_the_owner_is():
+    # The exam happens without them (E2): an owner on record gives the end its place.
+    state = cultivation_world()
+    countdown(state, owner_id="outer-court")
+    assert state.player.location_id != faction_seat(state, state.factions["outer-court"])
+
+    after, _ = idle(state, 2 * DAY + HOUR)
+
+    assert not end_of(after, "envoy").needs_player
+    assert after.threads["summons"].status is ThreadStatus.RESOLVED_WITHOUT_PLAYER
 
 
 def test_a_full_clock_set_back_no_longer_ends():
