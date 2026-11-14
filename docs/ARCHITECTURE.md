@@ -2193,6 +2193,25 @@ today's house style. The style Miki picks goes into `media.prompts.HOUSE_STYLE` 
 moved on, which redraws the pictures so far (M4). Two rounds on 2026-11-08 compared eight looks, then
 seven tweaks of today's, and Miki picked the higher-detail tweak (`HOUSE_STYLE_VERSION` 3).
 
+**Playing by hand.** A scenario is a script written ahead. To play as a player does, reading each
+scene before deciding the next move, a run by hand takes `play` (`backend/evals/play.py`,
+`python -m evals play`): a JSON object of each play's name and the steps to play on it now, such
+as `{"farmer": [{"create": {"premise": "..."}}, {"start": {}}, {"act": "I ..."}]}`. The steps are
+`create` (a premise as a player types it, with `language`, `rating`, `premise_id`, `gift` and
+`settings` where wanted), `revise` (a change in plain words, to the world or the character),
+`start`, `act`, `choose` (a suggestion of the last scene, from 1), `wait`, `observe` and `show` (the
+Character screen, Memory, and the record). It drafts and plays through the same code as the app:
+the drafting chain, then the turn graph on the story's own seed. Each play's folder holds its
+state between runs and a transcript: for a draft, what its screen shows and then what the record
+made of the character (attributes, talents, the gift's strength, the rung, the strongest others,
+how long they live); for a turn, how the action was read, what the engine decided, the dice, the
+scene and its suggestions, and what code found wrong. Several plays run side by side, four at a
+time. A step that fails stops its play where it stood, and the transcript says why. A run keeps
+no files, so the workflow starts from the `plays` branch and a second job commits what was played
+on top of it; read a transcript with `git fetch origin plays`. A play is made up, like an eval's
+stories: no player's data (T16). Offline (`LLM_PROVIDER=fake`) it plays the stock draft and the
+offline model's scenes, which is how its tests run.
+
 ## App
 
 The Flutter app (`app/`) is written against the v1 API in [API.md](API.md), and also reads the

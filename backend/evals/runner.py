@@ -495,8 +495,9 @@ class Story:
         prefs: ContentPrefs,
         premise: str,
         label: str,
+        checked: bool = True,
     ) -> None:
-        problems = check_state(world)
+        problems = check_state(world) if checked else []
         if problems:
             raise ValueError(f"The scenario's world breaks C1: {problems}")
         self.ev = ev
@@ -927,10 +928,13 @@ class Eval:
         premise: str = "",
         label: str = "",
         under_way: bool = False,
+        checked: bool = True,
     ) -> Story:
         """A story on `world`. Play its opening first (`await story.open()`), or pass
         `under_way` for a story whose opening was played before the scenario picks it up, as a
-        scenario over hundreds of seeds does to halve its turns."""
+        scenario over hundreds of seeds does to halve its turns. A scenario's world must hold
+        (C1); `checked=False` is for a world a real draft gave, which the app plays as it is
+        (`evals.play`)."""
         if under_way and world.turn == 0:
             world = world.model_copy(update={"turn": 1})
         story = Story(
@@ -942,6 +946,7 @@ class Eval:
             prefs=prefs or ContentPrefs(),
             premise=premise,
             label=label,
+            checked=checked,
         )
         self.stories.append(story)
         return story
