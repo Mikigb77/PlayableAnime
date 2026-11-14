@@ -177,14 +177,14 @@ class Door:
     character, and that is all.
 
     And someone walks in when the world allows it (`near`, from
-    `engine.pipeline.within_reach`, by the rules of `engine.world.visits`): the scene's words
-    name them, the map has them near enough to have come in the time that passed, nothing
-    holds them, no romance wrongs them and the turn did nothing for them to walk in on. The
-    first plays by hand on the real models (2026-11-14) had a commander whose boots the last
-    scene heard on the path, and a miller with a broken brace for the smith, told into scenes
-    the record then kept them out of, so the story and its Memory parted ways in one scene in
-    twenty-five. Where the world allows it the record follows the scene: they are at the
-    scene's place (`comes`), and the world sends them back in time.
+    `engine.pipeline.within_reach`, by the rules of `engine.world.visits`): the scene tells
+    them, the map has them within a day's way, nothing holds them, no romance in the scene
+    wrongs them and the turn did nothing for them to walk in on. The first plays by hand on
+    the real models (2026-11-14) had a commander whose boots the last scene heard on the path,
+    and a miller with a broken brace for the smith, told into scenes the record then kept them
+    out of, so the story and its Memory parted ways in one scene in twenty-five. Where the
+    world allows it the record follows the scene: they are at the scene's place (`comes`),
+    and the world sends them back in time.
     """
 
     scene: frozenset[str]

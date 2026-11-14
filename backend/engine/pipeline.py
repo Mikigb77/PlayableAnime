@@ -430,15 +430,14 @@ def brought(state: WorldState, plan: DirectorPlan, ctx: TurnContext) -> list[str
     return [i for i in dict.fromkeys(ids) if i in state.characters]
 
 
-def within_reach(
-    state: WorldState, resolution: Resolution, ctx: TurnContext, told: str
-) -> list[str]:
+def within_reach(state: WorldState, ctx: TurnContext, told: str, delta: StateDelta) -> list[str]:
     """W10. Whom this turn's scene may have walk in from where the record has them
-    (`engine.world.visits`): named by the scene's own words (`told`), near enough by the map
-    to have come in the time the turn took, held by nothing and wronged by no romance in the
-    scene, on a turn that did nothing for them to walk in on. `state` is the world the steps
-    left."""
-    return visits.within_reach(state, resolution, ctx.turn, told)
+    (`engine.world.visits`): told by the scene, in its own words (`told`) or by a meeting with
+    the player character in its update (`delta`), within a day's way by the map, held by
+    nothing and wronged by no romance in the scene, on a turn that did nothing for them to
+    walk in on. `state` is the world the steps left."""
+    meets = [change.id for change in delta.characters if change.meets_player]
+    return visits.within_reach(state, ctx.turn, told, meets)
 
 
 def settle_walk_ins(

@@ -654,10 +654,10 @@ async def apply_update(state: TurnState) -> dict[str, Any]:
             # nobody a move in a romance wronged who didn't see it.
             brought=came,
             barred=pipeline.kept_out(world, turn.ctx, came),
-            # W10: but whoever the scene names who is near enough to have walked over, on a
+            # W10: but whoever the scene tells who is near enough to have walked over, on a
             # turn with nothing for them to walk in on. The record follows a scene that has
             # them.
-            near=pipeline.within_reach(world, state["resolution"], turn.ctx, scene_text),
+            near=pipeline.within_reach(world, turn.ctx, scene_text, delta),
         )
         world = pipeline.settle_walk_ins(applied.state, applied.came, turn.ctx, turn_rng(turn))
         issues += [_rejected("rejected", r) for r in applied.rejected]
