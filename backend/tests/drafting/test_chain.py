@@ -1042,6 +1042,10 @@ def test_the_drafter_is_asked_for_talents_only_from_the_players_own_words():
         SYSTEM
     )
     assert '"the strongest sorcerer alive"' in SYSTEM and "give no talent" in SYSTEM
+    # What someone can do to people says how good they are, as "the strongest" does: on the
+    # real models, "she can make almost anyone fall for her" still came back one of a kind.
+    assert "So do words for what they can do to people or get from them" in SYSTEM
+    assert "are a master's skill and no talent" in SYSTEM
     assert "Write a talent only where the player's own words speak of how they learn" in SYSTEM
     assert "copy those words into said" in SYSTEM
     assert "never from how strong the character is" in SYSTEM
@@ -1059,7 +1063,12 @@ def test_the_drafter_gives_a_power_only_where_the_premise_does_and_says_what_it_
     a courtesan who charms people got a power over minds, and most powers said nothing of
     what they do."""
     assert "only where the premise gives the character one or anyone in their place" in SYSTEM
-    assert "someone the premise makes ordinary stays ordinary" in SYSTEM
+    assert "Someone the premise makes ordinary stays ordinary" in SYSTEM
+    # Charm at its peak is a master's skill, in a world with magic as in one without.
+    assert "never a power, in a world with magic as in one without" in SYSTEM
+    assert '"nobody can resist her smile"' in SYSTEM
+    assert "what a person does by being good at it" in SYSTEM
+    assert "or what no amount of skill could do" in SYSTEM
     assert "Each power says what it does in a sentence or two the player reads" in SYSTEM
     assert "A premise that gives them no gift leaves them without one." in SYSTEM
     assert "Give them the level the premise's words say, no more and no less" in SYSTEM
