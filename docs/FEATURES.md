@@ -154,11 +154,17 @@ The first version's state, checked against the code in WS18.
       the story is elsewhere, the likelier the older, so a month takes nobody and a hundred
       years every mortal. How long someone lives is their people's lifespan, or their rung's
       where climbing the world's ladder lengthens life, so whoever broke through outlives
-      those who never did. The player character is never taken. Living near, they know as it
-      happens. Far away it is news: the scene where the dead lived, or with their family or
-      the partner they left in it, is handed who is gone, nobody who died walks into a scene,
-      and Memory has them dead, with the day, once a scene said by name who died (W6, W10,
-      G19, C6).
+      those who never did. Living near, the character knows as it happens. Far away it is
+      news: the scene where the dead lived, or with their family or the partner they left in
+      it, is handed who is gone, nobody who died walks into a scene, and Memory has them dead,
+      with the day, once a scene said by name who died (W6, W10, G19, C6).
+- [x] The player character's own old age: nothing announces that it has begun, and nothing
+      shows how long they have left. The Character screen gives their age and never how long
+      someone like them lives. When the end is close the years stop, once, and the turn is
+      theirs: the scene tells it from inside, with no number, and they may look for a way to
+      lengthen their life or meet the end in peace. Going on, old age takes them and the
+      story ends on that scene. A longer life, by a rung, a people or something a scene gave
+      them, runs out too, later (N6, W6, W10).
 - [x] Others climb over the years: whoever stands on one of the world's ladders goes on
       climbing it while the story is elsewhere, by the character's own rule and at the pace
       their own record shows, so the young and the gifted rise, an elder on a low rung dies on

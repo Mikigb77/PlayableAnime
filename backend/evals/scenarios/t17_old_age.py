@@ -475,9 +475,19 @@ TAKES_HIM = Rubric(
     ),
     must_not=("Something other than his age kills Tomas: a blow, an accident, an illness named",),
 )
+# The record must hold the longer life (a check of code). Of the telling the judge asks only
+# that the peach is seen to change him: a live run failed a scene in which his aches eased and
+# his heart found a youthful rhythm, for not saying in words that he will live long.
 LIVES_ON = Rubric(
-    must=("Tomas eats the peach, and the scene shows that it changed him: he will live long",),
+    must=(
+        "Tomas eats the peach, and the scene shows it changing him: his years ease, his "
+        "strength or his youth comes back, or he knows he will live long",
+    ),
     must_not=("Tomas dies in this scene",),
+)
+THE_PEACH = (
+    "Tomas is the player character, told as 'you': an old man near the end of his life. The "
+    "peach gives whoever eats it three hundred years."
 )
 STILL_YOUNG = Rubric(
     must_not=(
@@ -569,14 +579,14 @@ def elf_scene() -> dict:
         "for forty more. Nothing announces that old age has begun. The years stop once, some "
         "way before the day old age takes him, a distance that varies from story to story: "
         "the scene opens on the end of his life being close and is told so with no number, "
-        "his sheet says his age of about eighty years, no brief holds the day, and he is "
-        "alive. Going on, his story ends in a death of old age, never within a season of the "
-        "stop and never by his own hand, in a scene handed his death as its task, at an age "
-        "that varies from story to story between sixty-eight and a hundred. A farmer who "
+        "his sheet says his age and nothing of how long he lives, no brief holds the day, and "
+        "he is alive. Going on, his story ends in a death of old age, never within a season of "
+        "the stop and never by his own hand, in a scene handed his death as its task, at an "
+        "age that varies from story to story between sixty-eight and a hundred. A farmer who "
         "eats a peach that gives three hundred years after the stop, in a scene whose update "
-        "says so, lives through forty more years, and his sheet says of about three hundred. "
-        "An elf of sixty in a world drafted before peoples said how long they live, whose "
-        "life the record takes for a human one, has no span on his sheet; the stop claims no "
+        "says so, lives through forty more years with three hundred on record. An elf of "
+        "sixty in a world drafted before peoples said how long they live, whose life the "
+        "record takes for a human one: the stop claims no "
         "loss, says the record doesn't say and asks first, and once the scene answers that he "
         "lives centuries no old age comes to him. A human in that world is asked too, told "
         "for a human life, and dies of old age going on. Live, the real drafter is given "
@@ -616,8 +626,8 @@ async def own_old_age(ev: Eval) -> None:
             f"{seed}: {you.status.value} at {you.age}",
         )
         ev.check(
-            "his sheet says his age of about eighty years",
-            of_his_years(then) == f"{you.age} of about 80 years",
+            "his sheet says his age, and nothing of how long he lives",
+            of_his_years(then) == f"{you.age} years old",
             f"{seed}: {of_his_years(then)}",
             live=False,
         )
@@ -714,19 +724,21 @@ async def own_old_age(ev: Eval) -> None:
             f"{seed}: lifespan {you.lifespan_years}, issues "
             f"{[i.code for i in ate.result.issues] if ate.result else ate.refused}",
         )
-        await ev.judge(f"the peach, {seed}", LIVES_ON, ate)
+        await ev.judge(f"the peach, {seed}", LIVES_ON, ate, context=THE_PEACH)
         if ev.live or not you.lifespan_years:
             continue
         later = await to_the_end(story, FORTY, turns=TURNS)
         end = story.state
         you = end.characters[YOU]
         ev.check(
-            "and he lives through forty more years, of about three hundred",
+            "and he lives through forty more years, of three hundred, his sheet still only his age",
             you.alive
             and you.age >= 105
             and stopped(later) is None
-            and of_his_years(end) == f"{you.age} of about 300 years",
-            f"{seed}: {you.status.value} at {you.age}, {of_his_years(end)}",
+            and old_age.span(end, you) == 300
+            and of_his_years(end) == f"{you.age} years old",
+            f"{seed}: {you.status.value} at {you.age} of {old_age.span(end, you)}, "
+            f"{of_his_years(end)}",
         )
         ev.check("the record holds together (C1)", check_state(end) == [], f"{seed}/peach")
 
@@ -738,7 +750,7 @@ async def own_old_age(ev: Eval) -> None:
         )
         story.change(on_his_farm)
         ev.check(
-            "before a scene told it, his sheet claims no span the record doesn't say",
+            "his sheet says his age, and nothing of how long he lives",
             of_his_years(story.state) == "60 years old",
             f"{seed}/elf: {of_his_years(story.state)}",
             live=False,
@@ -800,9 +812,9 @@ async def own_old_age(ev: Eval) -> None:
             "and no old age comes to him in the forty years after",
             you.alive
             and stopped(later) is None
-            and of_his_years(end) == f"{you.age} of about 800 years"
+            and old_age.span(end, you) == 800
             and '"old_age":' not in later[-1][1],
-            f"{seed}/elf: {you.status.value} at {you.age}, {of_his_years(end)}",
+            f"{seed}/elf: {you.status.value} at {you.age} of {old_age.span(end, you)}",
         )
         ev.check("the record holds together (C1)", check_state(end) == [], f"{seed}/elf")
 
@@ -836,8 +848,8 @@ async def own_old_age(ev: Eval) -> None:
             f"{seed}/unsaid: lifespan {you.lifespan_years}, told for {you.old_age_span}",
         )
         ev.check(
-            "from then on his sheet says his age of about eighty years",
-            of_his_years(turn.state) == f"{you.age} of about 80 years",
+            "and his sheet still says only his age",
+            of_his_years(turn.state) == f"{you.age} years old",
             f"{seed}/unsaid: {of_his_years(turn.state)}",
             live=False,
         )

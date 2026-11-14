@@ -815,9 +815,8 @@ StatusView {character: {name, lines: [string], portrait_url?},   # portrait once
 
 Sheet {about: [string],                   # who they are, a few words each: "Outer disciple,
                                           # the Azure Sky Sect" (only a faction they know,
-                                          # C6), a title, and their age: "17 of about 80
-                                          # years" where the record says how long they
-                                          # live (W6), "17 years old" otherwise
+                                          # C6), a title, and their age, "17 years old":
+                                          # never how long someone like them lives (W6)
        description,                       # how they come across
        condition: {health: "unhurt"|"hurt"|"wounded"|"badly_wounded"|"dying", health_label,
                    wounds: [{text, lasting}],          # lasting: one that stays, a lost eye

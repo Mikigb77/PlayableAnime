@@ -84,7 +84,6 @@ from engine.state.sheet import (
     TraitKind,
 )
 from engine.state.world import WorldState, natural_key
-from engine.world import last_years
 from engine.world import lives as lives_mod
 from engine.world import strife as strife_mod
 from engine.world.answers import ARRIVING, Answer
@@ -865,7 +864,6 @@ _WORDS = {
         "lost": "Lost: {what}",
         "someone": "someone",
         "age": "{age} years old",
-        "age_of": "{age} of about {span} years",
         "lasts": "Passes {when}",
         "went_to": "{who} went to tell {whom}",
         "went": "{who} went off to tell what they saw",
@@ -936,7 +934,6 @@ _WORDS = {
         "lost": "Pérdida: {what}",
         "someone": "alguien",
         "age": "{age} años",
-        "age_of": "{age} años de unos {span}",
         "lasts": "Se pasa {when}",
         "went_to": "{who} fue a contárselo a {whom}",
         "went": "{who} se fue a contar lo que vio",
@@ -1007,7 +1004,6 @@ _WORDS = {
         "lost": "Pèrdua: {what}",
         "someone": "algú",
         "age": "{age} anys",
-        "age_of": "{age} anys d'uns {span}",
         "lasts": "Passa {when}",
         "went_to": "{who} va anar a explicar-ho a {whom}",
         "went": "{who} va marxar a explicar el que havia vist",
@@ -2006,9 +2002,8 @@ class _Knowledge:
 
     def about(self, player: Character) -> list[str]:
         """Who they are in a few words: their place in each faction they know they belong to,
-        a title, and their age, of how many years someone like them lives where old age can
-        come to them and the record says it or a scene has told them (N6, W6,
-        `engine.world.last_years.shown`)."""
+        a title, and their age. How long someone like them lives is never on it, nor anything
+        of their old age (N6, W6: Miki, 2026-11-14, "I don't want that showing in the screen")."""
         resources = player.sheet.resources
         parts = []
         for membership in player.memberships:
@@ -2019,12 +2014,7 @@ class _Knowledge:
         if not player.memberships:
             parts.append(resources.rank)
         if player.age is not None:
-            years = last_years.shown(self.state, self.now)
-            if years is not None and years.you.id == player.id:
-                said_age = _WORDS[self.language]["age_of"].format(age=player.age, span=years.span)
-            else:
-                said_age = _WORDS[self.language]["age"].format(age=player.age)
-            parts.append(said_age)
+            parts.append(_WORDS[self.language]["age"].format(age=player.age))
         said: dict[str, str] = {}
         for part in parts:
             if part.strip():

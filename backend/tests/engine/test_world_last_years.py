@@ -563,7 +563,7 @@ def test_a_scene_that_lengthens_their_life_puts_old_age_off_to_the_new_span():
     assert after.rejected == () and state.characters[YOU].lifespan_years == 500
     assert waiting(state) == [(NEAR, 500)]
     assert state.pending_events[takes.id].status is EventStatus.CANCELLED
-    assert about(state) == f"{age} of about 500 years"
+    assert about(state) == f"{age} years old"
     state, event = until_old_age(state, 450)
     assert event.payload["phase"] == NEAR
     assert age_now(state) >= (OLD_AGE_FROM - LAST_YEARS[1]) * 500
@@ -657,33 +657,37 @@ def test_a_people_that_lives_long_grows_old_at_its_own_age():
 # --- the sheet ---------------------------------------------------------------------------------
 
 
-def test_the_sheet_says_their_age_of_how_many_years_where_the_record_says_how_long_they_live():
-    state = humans(aged(34), 80)
+@pytest.mark.parametrize(
+    "state",
+    [
+        pytest.param(humans(aged(34), 80), id="a people whose span is on record"),
+        pytest.param(aged(34, lifespan_years=90), id="a span of their own"),
+        pytest.param(realms(aged(34), 1, 80, 200), id="a rung that lengthens life"),
+        pytest.param(aged(34), id="a span the world only assumes"),
+    ],
+)
+def test_the_sheet_says_their_age_and_never_how_long_they_live(state):
+    # Miki, 2026-11-14, of "68 of about 80 years": "I don't want that showing in the screen."
+    assert about(state) == "34 years old"
+    assert about(state, Language.ES) == "34 años"
+    assert about(state, Language.CA) == "34 anys"
 
-    assert about(state) == "34 of about 80 years"
-    assert about(state, Language.ES) == "34 años de unos 80"
-    assert about(state, Language.CA) == "34 anys d'uns 80"
-    # A span of their own says it too, and a rung that lengthens life shows at once.
-    assert about(aged(34, lifespan_years=90)) == "34 of about 90 years"
-    assert about(realms(aged(34), 1, 80, 200)) == "34 of about 200 years"
 
-
-def test_a_span_the_world_only_assumes_is_on_the_sheet_once_a_scene_has_told_it():
-    state = aged(34)
-    assert about(state) == "34 years old" and about(state, Language.CA) == "34 anys"
-
+@pytest.mark.parametrize(
+    "state",
+    [
+        pytest.param(humans(aged(34), 80), id="a span on record"),
+        pytest.param(aged(34), id="a span the world only assumes, told by the stop"),
+    ],
+)
+def test_the_sheet_holds_their_age_and_no_other_number_once_the_years_have_stopped(state):
     state, _ = until_old_age(state, 100)
-
-    assert about(state) == f"{state.characters[YOU].age} of about 80 years"
-
-
-def test_the_sheet_holds_their_age_and_how_long_their_kind_lives_and_nothing_of_the_day():
-    state, _ = until_old_age(humans(aged(34), 80), 100)
     age = state.characters[YOU].age
 
     shown = " ".join(status_view(state, Language.EN).sheet.about)
 
-    assert re.findall(r"\d+", shown) == [str(age), "80"]
+    assert about(state) == f"{age} years old"
+    assert re.findall(r"\d+", shown) == [str(age)]
 
 
 @pytest.mark.parametrize(
