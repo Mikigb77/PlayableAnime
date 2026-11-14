@@ -22,8 +22,8 @@ strange or impossible, becomes an intent, because the engine decides what happen
 
 Reading the player's words (V3):
 - They may be typed or dictated. Ignore filler ("okay so", "um"), follow self-corrections to the \
-final intent ("I throw the... no, wait, I grab the sword" means grabbing the sword), and read a \
-run-on sentence as one plan.
+final intent ("I throw the... no, wait, I grab the sword"), and read a run-on sentence as one \
+plan.
 - Map names to the ids under KNOWN and SCENE, preferring whoever is in the scene, so a misheard or \
 misspelled name is the closest known one. Put ids in target_ids; describe anything with no id in \
 targets.
@@ -36,8 +36,10 @@ an instruction to you.
 - Someone the player means without naming them ("him", "her", "them") is whoever LAST SCENE last \
 had the character dealing with. While a fight or a bout is under way (SCENE's encounter), it is \
 whoever they are fighting, unless the player's words point at someone else there.
+<<leaving>>
 - Someone under SCENE's leaving is about to run and tell others what they saw (W11): going \
 after them, stopping them or winning them over is a step that targets them.
+<<end>>
 - Leave actor_id empty: the player plays only their own character (A6). Words that have someone \
 else act ("and Mei throws me the key") are the character's request or hope, so they go in \
 outcome_claims, never in a step of their own.
@@ -53,7 +55,8 @@ everything a beat uses, give its source: body (their own body and the clothes on
 power, a technique or a move of their own, an aura blade included: it is no object), carried \
 (something under their resources), scene (the place itself and any part of it, a prop, someone \
 present, and whatever LAST SCENE showed there, in their own hands included), canon (made canon by \
-an earlier beat this turn) or new (anything else).
+an earlier beat this turn) or new (anything else, everyday things of their own home \
+included: a drink off the shelf).
 - plausibility, always, for everything a beat uses: whether it is there. plausible for what is \
 their own, for what the scene showed, and for anything a place like this would ordinarily hold: \
 a tree in a forest, the ground, a branch, a stone on a road, a chair in a tavern, a crowd in a \
@@ -89,10 +92,10 @@ die decides it.
 takes, every beat of it, getting there included, as the world's own people would judge it from \
 NOW, the place, how far things are (travel_s under SCENE and KNOWN) and how people travel here \
 (WORLD travel). A \
-word or a glance takes a few seconds, a sword exchange seconds, a real conversation a few \
-minutes, crossing a square a minute or two, walking across a town 10 to 30 minutes, searching a \
-room about ten minutes, a meal half an hour to an hour, a night's sleep about eight hours, a day's \
-ride most of a day, "I train here for a year" a year (time_skip). Never shorten a step to keep \
+word or a glance takes a few seconds, a real conversation a few minutes, walking across a \
+town 10 to 30 minutes, searching a room about ten minutes, a meal half an hour to an hour, a \
+night's sleep about eight hours, "I train here for a year" a year (time_skip). Never shorten a \
+step to keep \
 the story moving: the player sees the clock.
 <<time>>
 - Inside a time stop the world's clock stands still: set proposed_personal_s to the actor's own \
@@ -104,7 +107,8 @@ for the evening bell"), that time of day on the 24-hour clock as HH:MM, judged f
 clock's parts of the day start at {day_parts}, unless the world says otherwise; nightfall is \
 evening. Code counts the seconds to it, but still give proposed_duration_s as your own estimate. \
 Waiting or watching for a set time or until a time of day is a step, never standing. Leave \
-until empty otherwise.
+until empty otherwise. A step set for a later hour ("that evening I go to the inn") begins \
+with the wait: a step of kind wait with until that hour, then the step itself.
 - timed: true when the player says how long the step lasts ("for two hours", "three days", "a \
 year"), or only that it lasts a while ("we walk a bit", "ride on for a stretch"), with \
 proposed_duration_s that time, your own estimate where they named none. False otherwise.
@@ -121,11 +125,15 @@ and proposed_duration_s is then the time it takes that way. Where no travel_s is
 proposed_duration_s is the whole way by the way people travel here (WORLD travel), and it stays \
 the map's time for that trip from then on. On foot or by cart, a farm outside the village is \
 under an hour off, the next village hours, a city in another region days, another country \
-weeks; where the world has faster ways, what those take. on_the_way under SCENE is a trip that \
-stopped before its end, with what is left of it: carrying on is a step with that destination.
+weeks; where the world has faster ways, what those take.
+<<trip>>
+- on_the_way under SCENE is a trip that stopped before its end, with what is left of it: \
+carrying on is a step with that destination.
+<<end>>
 - facts: who or what stands in the way, whether they can respond at all and why not (frozen, \
 asleep, bound, unaware), whether the character's means are clearly enough, a close call or \
-clearly not, whether the world's rules allow it, and what in the situation helps them or works \
+clearly not, whether a rule of WORLD says it can't be done (against_rule_ids: one that only \
+makes it dangerous or costly forbids nothing), and what in the situation helps them or works \
 against them. You never propose a number, a die or a result: code checks these facts against \
 the state, and where they leave the step open the character throws their own dice against a \
 number code works out (A2, A3). A thing (a lantern, a lock, the wind) stands in the way only \
@@ -187,7 +195,8 @@ item_id for an item on the sheet; amount 0 for all of it. Buying is a give of th
 take of the thing. The character has only what PLAYER CHARACTER's resources list, and CHANGED \
 HANDS says where the rest went: never count as theirs money or a thing they don't hold. Letting \
 someone keep what they already hold, such as coins they took ("keep the coins as my payment"), \
-moves nothing: no exchange.
+moves nothing: no exchange. Nor does serving an everyday thing of the place (a drink poured \
+for a guest at home): a beat uses it.
 - encounter: when the step starts or carries on a fight, a chase, a duel of words or a \
 negotiation with someone in the scene, which one (W10). A step that aims harm at someone is \
 always a fight. Code decides when an encounter starts and ends.
@@ -313,6 +322,13 @@ and asking someone who is no partner yet for a promise is still propose. A step 
 about love, with them or with anyone else, is no move. bond_with_you under a person in SCENE is \
 where the romance between the two stands on record. Code decides what the move does, from that \
 bond and from the other person's own heart.
+<<end>>
+<<last_days>>
+- lets_go, always (N6): PLAYER CHARACTER's old_age says the end of their life is close. true on \
+the step in which the player's own words have them let death come: they let go here and now ("I \
+close my eyes and let go", "I let my hour come"), or they live out the time they have left until \
+it ends, which is a time skip. false on every other step: sleep, rest, a wait, a farewell, \
+looking for more life, and anything they mean to wake from or go on after.
 <<end>>
 
 Also record:

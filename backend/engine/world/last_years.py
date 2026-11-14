@@ -25,6 +25,13 @@ record from the first, so the years find it however they are cut, and a rewound 
 the same day (W10a). It ends their story like any death (N6): the record has them dead of old
 age, and their romances ended by it (W17).
 
+**Or they let it come** (`let_go`). Once the stop has told them, the end is theirs to meet:
+when the player's own words have them let go, their last step ends with their death, and a
+stretch of a day or more, living out the time they have left, runs to the day. Played on the
+real models (2026-11-14), an old fisherman who closed his eyes for good was told his last
+breath while the record kept him alive at 86, and the next scene's suggestions went on from
+beyond the grave.
+
 **A longer life is another span.** A rung that lengthens life (G19), a people that lives
 longer (G23), a span the story gave them: when how long they live changes, what was pending
 for the old span is cancelled, and a new day is drawn for the new one, with a stop of its own.
@@ -57,6 +64,9 @@ from engine.world.scheduling import Kind, World, cancel, pending, schedule
 from engine.world.tuning import AGELESS_YEARS, LAST_YEARS, LIFE_QUIET_S, OLD_AGE_FROM
 
 NEAR, TAKES = "near", "takes"
+# From how long a step someone who lets go lives out the time they have left; a shorter step
+# is their last. A day, as a stretch of a day or more is told as time going by (E7).
+LIVED_OUT_S = DAY
 # What the player reads over the scene of each (`PlannedEvent.title`), said in the story's
 # language from the director's book (`engine.director.titles`).
 NEAR_TITLE = "Your years run short"
@@ -136,6 +146,43 @@ def shown(state: WorldState, at_s: int) -> Years | None:
     if found is None or not (found.told or found.said):
         return None
     return found
+
+
+def end_told(state: WorldState) -> bool:
+    """Whether a scene has told the player character that the end of their life is close, for
+    the span they have now: from then on the end is theirs to meet (`let_go`)."""
+    found = years_of(state, state.world_s)
+    return found is not None and found.told
+
+
+def let_go(w: World, duration_s: int) -> int:
+    """N6. The player character lets death come with a step that lasts `duration_s` from now,
+    and how long the step then lasts. Only once a scene has told them the end is close: before
+    that nobody's words bring old age on, and the step is what it was.
+
+    A step of under a day is their last: the day old age takes them is moved up to the step's
+    end, so the step plays and its scene tells their death. A stretch of a day or more is the
+    time they have left, lived out: it runs to the day, however long the reading made it, and
+    the world can still stop it on the way as it stops any stretch (W16)."""
+    found = years_of(w.state, w.at_s)
+    if duration_s <= 0 or found is None or not found.told:
+        return duration_s
+    ensure_old_age(w)
+    days = pending(w.state, Kind.OLD_AGE, phase=TAKES)
+    if not days:
+        return duration_s
+    day = days[0]
+    day.payload["let_go"] = True
+    if duration_s >= LIVED_OUT_S:
+        return max(duration_s, day.due_s - w.at_s)
+    day.due_s = min(day.due_s, w.at_s + duration_s)
+    return duration_s
+
+
+def let_come(event: PendingEvent) -> bool:
+    """Whether this is the end of the player character's life as they let it come (`let_go`),
+    which the scene of their death is told (`graph.turn.context`)."""
+    return event.kind == str(Kind.OLD_AGE) and bool(event.payload.get("let_go"))
 
 
 def ensure_old_age(w: World) -> None:

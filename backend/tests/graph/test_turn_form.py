@@ -124,6 +124,9 @@ TOLD = {
     "goals": ["dropped_goals"],
     "threads": ["responds_to"],
     "romance": ["- romance, always (W17)", "advance: flirting", "part: ending it"],
+    "leaving": ["Someone under SCENE's leaving"],
+    "trip": ["on_the_way under SCENE is a trip that stopped"],
+    "last_days": ["- lets_go, always (N6)", "I close my eyes and let go"],
 }
 
 

@@ -42,10 +42,28 @@ class Asks:
     # W17, F3: the player character and someone else on record are adults, so a step can be
     # a move in a romance.
     romance: bool = False
+    # W11: someone in the scene is about to get away and tell what they saw (SCENE's leaving).
+    # It asks no field of its own: only the guide's word on it comes and goes.
+    leaving: bool = False
+    # W10: a trip stopped before its end (SCENE's on_the_way). No field of its own either.
+    trip: bool = False
+    # N6: a scene has told the player character the end of their life is close, so a step can
+    # be them letting death come (`engine.world.last_years.let_go`).
+    last_days: bool = False
 
 
 # Everything, as the contract has it: what the guide's tests read, and a form for any turn.
-WHOLE = Asks(time=True, ladders=True, talents=True, goals=True, threads=True, romance=True)
+WHOLE = Asks(
+    time=True,
+    ladders=True,
+    talents=True,
+    goals=True,
+    threads=True,
+    romance=True,
+    leaving=True,
+    trip=True,
+    last_days=True,
+)
 
 # The fields no turn's form asks, by the model that holds them.
 _NEVER: dict[str, tuple[str, ...]] = {
@@ -67,6 +85,9 @@ _ONLY: dict[str, dict[str, tuple[str, ...]]] = {
     "goals": {"Intent": ("dropped_goals",)},
     "threads": {"Intent": ("responds_to",)},
     "romance": {"IntentStep": ("romance",)},
+    "leaving": {},
+    "trip": {},
+    "last_days": {"IntentStep": ("lets_go",)},
 }
 assert set(_ONLY) == {f.name for f in fields(Asks)}
 

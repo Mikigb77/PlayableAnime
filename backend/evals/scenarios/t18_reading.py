@@ -33,6 +33,7 @@ from engine.contracts import (
 )
 from engine.contracts.intent import Challenge, UseSource
 from engine.samples import grounded_world
+from engine.state.bible import RuleTopic, WorldRule
 from engine.state.scene import Bout, Encounter, EncounterKind, Terms
 from engine.state.sheet import TalentFit
 from engine.state.world import WorldState
@@ -172,6 +173,52 @@ def evening_on_the_farm() -> WorldState:
     state = worlds.farm()
     state.world_s = 12 * HOUR
     return state
+
+
+def deadly_without_a_pill() -> WorldState:
+    """Lin at the peak of his realm with no pill, in a world whose own rule says the climb
+    kills without one: a danger the player may choose to run (G19, G8)."""
+    state = worlds.seclusion()
+    state.bible.rules.append(
+        WorldRule(
+            id="foundation-bottleneck",
+            text=(
+                "Breaking through to Foundation Establishment is highly lethal without a "
+                "Foundation Pill."
+            ),
+            fixed=False,
+            topic=RuleTopic.LIMITS,
+        )
+    )
+    return state
+
+
+def at_the_end_of_his_years() -> WorldState:
+    """Tomas Weller at 79 of his eighty years, on the farm, after the scene that told him the
+    end of his life is close (N6): from then on it is his to meet."""
+    state = worlds.farm()
+    state.characters[state.player_id] = state.player.model_copy(
+        update={"age": 79, "lifespan_years": 80, "old_age_span": 80}
+    )
+    state.scene.ended_on = (
+        "Your heart has slowed these last weeks, and the strength does not come back. You "
+        "know, sitting by the stove, that the end of your life is close."
+    )
+    return state
+
+
+def sources(step: IntentStep, word: str) -> list[UseSource]:
+    """Where a step's beats say they get everything whose name holds `word`."""
+    return [u.source for b in step.beats for u in b.uses if word in u.thing.casefold()]
+
+
+def waits_until(intent: Intent, first: str, last: str) -> bool:
+    """Whether the reading's first step waits for an hour of the clock from `first` to `last`,
+    with the step the player set for that hour after it."""
+    if len(intent.steps) < 2 or intent.steps[0].until is None:
+        return False
+    hour = parse_clock(intent.steps[0].until)
+    return hour is not None and parse_clock(first) <= hour <= parse_clock(last)
 
 
 # --- the lines -----------------------------------------------------------------------------------
@@ -527,6 +574,71 @@ LINES: tuple[Line, ...] = (
                 for e in s.exchanges
             )
         ),
+    ),
+    # The everyday things of a place, the character's own home included (R2, C10). In play a
+    # glass of brandy poured for a guest at home was a gift of something he didn't have.
+    line(
+        worlds.millers_daughter,
+        "I pour Mara a cup of cider from the jug in my kitchen and ask her how the mill is doing",
+        a_drink_poured_at_home_is_no_gift_and_nothing_spent=every(
+            lambda s: not moves(s, ExchangeKind.GIVE) and not moves(s, ExchangeKind.SPEND)
+        ),
+        the_cider_in_their_own_kitchen_is_no_thing_they_carry=every(
+            lambda s: UseSource.CARRIED not in sources(s, "cider")
+        ),
+        the_question_is_asked_of_Mara=some(at(worlds.MARA)),
+    ),
+    line(
+        worlds.millers_daughter,
+        "Mara has cut her hand on the gate. I look after it until it stops bleeding",
+        tending_a_cut_carries_nothing_the_player_never_named=every(
+            lambda s: (
+                UseSource.CARRIED not in sources(s, "")
+                and not any(u.part is SheetPart.ITEM for u in s.uses)
+            )
+        ),
+    ),
+    # A step set at a later hour begins with the wait for it (W10). In play "That evening I
+    # find the widow who keeps the inn" was played at half past ten in the morning.
+    line(
+        worlds.farm,
+        "This evening I walk down to Millbrook to hear the news",
+        a_step_set_for_the_evening_waits_for_the_evening=lambda i: waits_until(i, "17:00", "21:00"),
+        the_walk_to_the_village_comes_after_the_wait=lambda i: (
+            len(i.steps) > 1 and i.steps[-1].destination == "village"
+        ),
+    ),
+    # A danger is the player's to run, never a rule broken (G8, G19). In play an attempt the
+    # world calls deadly without a pill was refused as against that rule.
+    line(
+        deadly_without_a_pill,
+        "I have no pill and no time left. I sit down and force the breakthrough to Foundation "
+        "Establishment anyway",
+        an_attempt_the_world_calls_deadly_breaks_no_rule=every(
+            lambda s: not s.facts.against_rule_ids and s.facts.world_allows
+        ),
+        forcing_it_without_the_pill_is_a_risky_attempt=some(
+            lambda s: s.training is not None and s.training.attempt and s.training.risky
+        ),
+    ),
+    # The end of one's years is theirs to meet (N6). In play "I close my eyes in my chair and
+    # let go" was a rest: the scene told a peaceful end and the record kept him alive.
+    line(
+        at_the_end_of_his_years,
+        "I close my eyes in my chair by the stove and let go.",
+        letting_go_is_read_as_letting_death_come=some(lambda s: s.lets_go),
+    ),
+    line(
+        at_the_end_of_his_years,
+        "I spend the days I have left on the porch, watching the fields, for as long as they last.",
+        living_out_what_is_left_lets_go_over_a_day_or_more=some(
+            lambda s: s.lets_go and s.proposed_duration_s >= DAY
+        ),
+    ),
+    line(
+        at_the_end_of_his_years,
+        "I am tired. I close my eyes and sleep until morning.",
+        sleep_he_means_to_wake_from_is_no_letting_go=every(lambda s: not s.lets_go),
     ),
     # Goals and threads (N2, W16).
     line(

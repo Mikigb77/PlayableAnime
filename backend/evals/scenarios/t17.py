@@ -2671,9 +2671,12 @@ async def friendly_bout(ev: Eval) -> None:
         # Half the scripted lessons are told by scenes that end them on their own, with the
         # mentor walking away, as the real narrator did: the lesson is still on (W10).
         walks_off = the_elder_walks_off() if not ev.live and shape % 2 else None
+        # A blow that never comes off is made with a staff Lin's own words reach for and he
+        # doesn't hold (C10): one only the reading added would be left out, and the blow made.
+        weapon = "bamboo staff" if never_comes_off(shape) and not ev.live else "practice sword"
         lesson = [
             await story.act(
-                "I bow, take up the practice sword and come at Elder Mo as he asked",
+                f"I bow, take up the {weapon} and come at Elder Mo as he asked",
                 lesson_blow(0, shape),
                 narration=walks_off,
             )

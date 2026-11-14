@@ -1203,7 +1203,9 @@ FACE_SCENES = (
     ("I follow the grey mage up the mountain path", "follow", ActionKind.MOVE, 10 * MINUTE),
     ("I share tea with the grey mage at dusk", "drink", ActionKind.CONVERSATION, 20 * MINUTE),
     ("I watch the grey mage meditate in the rain", "watch", ActionKind.TASK, 10 * MINUTE),
-    ("I strike at the grey mage's face", "strike", ActionKind.EXCHANGE, 2),
+    # The words name the sword the scripted reading strikes with: Lin carries none here, and a
+    # sword the player never named would be the reading's own prop, left out (`check._props`).
+    ("I strike at the grey mage's face with my sword", "strike", ActionKind.EXCHANGE, 2),
     ("I ask the grey mage whether his eye still hurts", "ask", ActionKind.CONVERSATION, 60),
     ("I walk with the grey mage through the night market", "walk", ActionKind.MOVE, 20 * MINUTE),
     ("I train beside the grey mage at dawn", "train", ActionKind.TASK, 30 * MINUTE),
