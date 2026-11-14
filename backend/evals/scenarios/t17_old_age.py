@@ -475,9 +475,19 @@ TAKES_HIM = Rubric(
     ),
     must_not=("Something other than his age kills Tomas: a blow, an accident, an illness named",),
 )
+# The record must hold the longer life (a check of code). Of the telling the judge asks only
+# that the peach is seen to change him: a live run failed a scene in which his aches eased and
+# his heart found a youthful rhythm, for not saying in words that he will live long.
 LIVES_ON = Rubric(
-    must=("Tomas eats the peach, and the scene shows that it changed him: he will live long",),
+    must=(
+        "Tomas eats the peach, and the scene shows it changing him: his years ease, his "
+        "strength or his youth comes back, or he knows he will live long",
+    ),
     must_not=("Tomas dies in this scene",),
+)
+THE_PEACH = (
+    "Tomas is the player character, told as 'you': an old man near the end of his life. The "
+    "peach gives whoever eats it three hundred years."
 )
 STILL_YOUNG = Rubric(
     must_not=(
@@ -714,7 +724,7 @@ async def own_old_age(ev: Eval) -> None:
             f"{seed}: lifespan {you.lifespan_years}, issues "
             f"{[i.code for i in ate.result.issues] if ate.result else ate.refused}",
         )
-        await ev.judge(f"the peach, {seed}", LIVES_ON, ate)
+        await ev.judge(f"the peach, {seed}", LIVES_ON, ate, context=THE_PEACH)
         if ev.live or not you.lifespan_years:
             continue
         later = await to_the_end(story, FORTY, turns=TURNS)
