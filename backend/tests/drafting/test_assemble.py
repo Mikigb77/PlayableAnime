@@ -51,6 +51,7 @@ from graph.drafting.schema import (
     PowerP,
     RuleP,
     RungP,
+    SkillP,
     TalentP,
     TimeP,
     WorldProposal,
@@ -421,10 +422,12 @@ def test_a_ladder_that_lengthens_life_says_how_long_each_rung_lives():
     assert lifespans(False, 120, 250, 500) == [0, 0, 0]
     # Where the draft doesn't say, the rungs tell.
     assert lifespans(None, 120, 250, 500) == [120, 250, 500]
-    # Said to lengthen life with no years given, or nothing said at all: the record can't
-    # say how long its rungs live, and the dice take nobody who climbed it (A2).
-    assert lifespans(True, None, None, None) == [None, None, None]
-    assert lifespans(None, None, None, None) == [None, None, None]
+    # Said to lengthen life with no years given, or nothing said at all: it lengthens none,
+    # and whoever stands on it lives as long as their kind. Left unsaid, the dice would take
+    # nobody on it: in the first live drafts a sword saint of eighty couldn't die of old age.
+    assert lifespans(True, None, None, None) == [0, 0, 0]
+    assert lifespans(None, None, None, None) == [0, 0, 0]
+    assert lifespans(True, 0, 0, 0) == [0, 0, 0]
     # Nonsense is clamped.
     assert lifespans(True, -5, 10**9) == [0, 1_000_000]
 
@@ -492,6 +495,22 @@ def test_how_long_the_character_lives_is_on_record_as_the_draft_says_it():
     assert lifespan(80, age=300) is None and lifespan(300, age=300) is None
     assert lifespan(500, age=300) == 500
     assert lifespan(80, age=None) == 80
+
+
+def test_old_age_comes_for_whoever_stands_on_a_ladder_that_gives_no_years():
+    """W6: ranks that the draft wrongly says lengthen life, with no years on any rung."""
+    from engine.world import last_years, old_age
+
+    world = samples.cultivation_world()
+    world.ladders[0].lengthens_life = True
+    for rung in world.ladders[0].rungs:
+        rung.lifespan_years = None
+    state = assemble(world, _character(age=70))
+
+    assert state.player.sheet.ladders
+    assert not old_age.open_ended(state, state.player)
+    years = last_years.years_of(state, state.world_s)
+    assert years is not None and years.span == 80 and years.old
 
 
 def test_a_ladder_is_always_asked_whether_it_lengthens_life():
@@ -957,6 +976,60 @@ def test_the_talents_the_player_described_go_on_the_sheet_with_ids_of_their_own(
 
 def test_a_character_with_no_talent_in_the_premise_has_none():
     assert _talents() == []
+
+
+def test_a_talent_is_always_asked_for_the_players_words_behind_it_first():
+    """A4, G2. Gemini answers only what a schema requires as often as not, and writes a
+    form in its order: asked for the player's words before the strength, it has to find words
+    about learning before it grades them. In the first live drafts half the characters were
+    one of a kind at something, most from a premise that only said how strong they were."""
+    schema = TalentP.model_json_schema()
+
+    assert list(schema["properties"])[0] == "said" and schema["required"][0] == "said"
+    asked = schema["properties"]["said"]["description"]
+    assert "'the strongest'" in asked and "say no talent" in asked
+    assert "beyond anyone else's" in schema["properties"]["strength"]["description"]
+    # An answer may still leave it out, and a talent code builds needs none.
+    assert TalentP(name="The sword").said == ""
+
+
+def test_a_power_is_always_asked_what_it_does():
+    """A8, G2: fourteen powers of fifteen in the first live drafts said nothing of what
+    they do, so the story had to guess it from the name."""
+    schema = PowerP.model_json_schema()
+
+    assert "description" in schema["required"]
+    assert "What it does" in schema["properties"]["description"]["description"]
+    # An answer may still leave it out.
+    assert PowerP(id="stop", name="Time stop", kind_id="qi").description == ""
+
+
+def test_a_name_written_like_an_id_reads_as_a_name():
+    """The drafter now and then names a rung or a skill the way it writes an id: the first
+    live drafts had a rung "pirate_lord" and a skill "theory-of-magic"."""
+    world = samples.cultivation_world()
+    world.ladders[0].rungs[0].name = "qi_condensation"
+    skills = ["sword_forms", "theory-of-magic", "Hand-to-hand", "Qi sense", "herbs"]
+    character = _character(
+        name="crash_override",
+        skills=[SkillP(name=name, level="fair") for name in skills],
+        ladders=[LadderPositionP(ladder_id=world.ladders[0].id, rung="qi_condensation")],
+    )
+
+    state = assemble(world, character)
+
+    assert state.bible.ladders[0].rungs[0].name == "qi condensation"
+    # Whoever the draft puts on that rung, by the name it wrote, still stands on it.
+    assert [position.rung for position in state.player.sheet.ladders] == [0]
+    assert [skill.name for skill in state.player.sheet.skills] == [
+        "sword forms",
+        "theory of magic",
+        # A name written as a name stays as it is, and so does a person's.
+        "Hand-to-hand",
+        "Qi sense",
+        "herbs",
+    ]
+    assert state.player.name == "crash_override"
 
 
 def test_one_of_a_kind_at_everything_is_drafted_as_a_general_genius():

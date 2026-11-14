@@ -272,6 +272,18 @@ def _name(value: str | None) -> str:
     return _text(value, NAME_LIMIT)
 
 
+_WRITTEN_AS_AN_ID = re.compile(r"[a-z0-9]+(?:[_-][a-z0-9]+)+")
+
+
+def _label(value: str | None) -> str:
+    """The name of a rung or a skill as the player reads it. The drafter now and then writes
+    one the way it writes an id, "pirate_lord" or "theory-of-magic": small letters with the
+    words joined up. Those read as their words. A person's name is left as written, since a
+    handle may well be "crash_override"."""
+    name = _name(value)
+    return re.sub(r"[_-]", " ", name) if _WRITTEN_AS_AN_ID.fullmatch(name) else name
+
+
 def _wording(text: str | None) -> list[str]:
     """The words of a text, to tell whether two texts say the same thing word for word."""
     return re.findall(r"\w+", (text or "").casefold())
@@ -311,23 +323,25 @@ class _Ladders:
         return self.by_id.get(ladder_id) if ladder_id else None
 
 
-def _rung_lifespans(lengthens: bool | None, rungs: list[RungP]) -> list[int | None]:
+def _rung_lifespans(lengthens: bool | None, rungs: list[RungP]) -> list[int]:
     """W6, G19. How long each rung of a drafted ladder lives, for the world's dice
     (`engine.world.old_age`). A ladder that lengthens no life gives 0 on every rung. One that
     does gives each rung its years, never fewer than the rung below. Where the draft doesn't
-    say, the rungs tell: any lifespan among them means it does. A ladder said to lengthen
-    life with no years on any rung, or one the draft says nothing of, is left unsaid (None),
-    and the dice then take nobody who stands on it."""
+    say, the rungs tell: any lifespan among them means it does. A ladder with no years on any
+    rung lengthens no life, whatever the draft says of it: the drafter was asked how long each
+    rung lives and gave nothing, so the people on it live as long as their kind does. Left
+    unsaid instead (None), the dice would take nobody who stands on it, and in the first live
+    drafts a sword saint of eighty on such "martial ranks" could never die of old age. Only a
+    ladder from before rungs carried a lifespan is unsaid (`old_age.open_ended`)."""
     given = [_clamp(r.lifespan_years, 0, 1_000_000, 0) for r in rungs]
-    if lengthens is False:
+    if lengthens is False or not any(given):
         return [0] * len(rungs)
-    if not any(given):
-        return [None] * len(rungs)
     return [max(given[: i + 1]) for i in range(len(rungs))]
 
 
 def _rung_index(ladder: PowerLadder, rung: str) -> int | None:
-    wanted = " ".join(rung.casefold().split())
+    # Read as the ladder's own rungs are (`_label`), so "pirate_lord" finds "pirate lord".
+    wanted = " ".join(_label(rung).casefold().split())
     if not wanted:
         return None
     names = [r.name.casefold() for r in ladder.rungs]
@@ -637,7 +651,7 @@ class _Assembler:
                 axis=proposed.axis,
                 rungs=[
                     Rung(
-                        name=_name(r.name),
+                        name=_label(r.name),
                         tier=min(TIER_MAX, 2 * (i + 1)),
                         description=_text(r.description, 300),
                         lifespan_years=lifespans[i],
@@ -1325,7 +1339,7 @@ def _lifespan(years: int | None, age: int | None) -> int | None:
 def _skills(proposals) -> list[Skill]:
     skills: dict[str, Skill] = {}
     for proposed in proposals[: MAX["sheet"]]:
-        name = _name(proposed.name)
+        name = _label(proposed.name)
         if name and name.casefold() not in skills:
             skills[name.casefold()] = Skill(
                 name=name, level=proposed.level, notes=_text(proposed.notes, 200)
