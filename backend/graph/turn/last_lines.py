@@ -7,9 +7,9 @@ away and secure the schedules", "It is time to rest, or perhaps to share what yo
 (the plays of 2026-11-14: four scenes of fifty, one of them after the form said so). So
 code holds the line. The closing
 sentences of a scene that tell the player what to do are left out of it (`shown`), and the
-scene ends on what it showed before them. While the scene streams, a sentence that may yet
-turn out to be one of those waits (`showable`), so the player never reads a line the saved
-scene won't have.
+scene ends on what it showed before them. While the scene streams, its last sentence waits
+until what follows it shows the scene keeps it (`showable`), so the player never reads a
+line the saved scene won't have.
 
 Only the narrator's own closing words are read. What someone in the scene says is theirs to
 say ("Will you answer the call, or must I draft every youth of the village?"), so a sentence
@@ -18,11 +18,14 @@ sentence a scene has left: nothing here ever leaves a scene blank.
 
 The wordings are the ones narrators reach for, in the three languages the app speaks (S10):
 what the player must decide, choose or do, that it is time to do something, which ways are
-open, that the choice is theirs, and a question put to the player. A sentence is read from its
-first words, so one that only mentions a decision further on ("Aldous waits to hear what you
-decide") is showing, and stays. Words that also plainly tell a game or a thing in hand ("Your
-move", "Está en tus manos") are left alone: a scene that loses a good last line is worse off
-than one that keeps a soft one.
+open, that the choice is theirs, and a question put to the player. A sentence is read from the
+first words of each of its clauses: the real narrator also closed on "If you are to survive
+this ambush and reach the ranking tournament, you must act before they pin you between them"
+(the first check on the real models, 2026-11-14). One that only mentions a decision inside a
+clause ("Aldous waits to hear what you decide") is showing, and stays. Words that also plainly
+tell a game, a thing in hand or a part to play ("Your move", "Está en tus manos", "You must act
+the part of a servant") are left alone: a scene that loses a good last line is worse off than
+one that keeps a soft one.
 """
 
 import re
@@ -31,9 +34,6 @@ from collections.abc import Iterator
 # The issue code for a scene whose closing words code left out: only that it happened is
 # logged, never the words (T5, T6).
 ENDING_TOLD = "ending_told"
-# How far into a sentence the words that make it one of these can run. A sentence still being
-# told is held until it has this many characters, since nothing yet says what it will be.
-OPENING_CHARS = 72
 
 # Where one sentence stops and the next starts: the marks that close it, then the space
 # between them. Not before a small letter, where the stop was a pause ("And then... you").
@@ -44,32 +44,44 @@ _QUOTE = re.compile(r"[\"“”„«»]|(?<![^\W\d_])['‘’]|['‘’](?![^\W\
 _AND = r"(?:(?:and|but|so|then|y|pero|así que|entonces|i|però|així que|llavors)[,;:]? )?"
 _NOW = r"(?:(?:now|for now|ahora|por ahora|ara|per ara)[,;:]? )?"
 _ASKED = r"\?$"
+# The start of a clause after a sentence's first: past a comma, a semicolon, a colon or a dash.
+_CLAUSE = re.compile(r"[,;:]\s+|\s*[—–]\s*|\s+-\s+")
+# To act, as a call to do something: not to act a part, or as someone would.
+_ACT = (
+    r"act(?=$|[.!?…,;:]| (?:now|quickly|fast|soon|swiftly|first|carefully|decisively|at once"
+    r"|before|while|or|if)\b)"
+)
+_ACTUAR = r"actuar(?! (?:como|de|com)\b)"
+# A wording that is one only as a sentence's own first words: read after a comma, "decide,"
+# is what the character does ("You weigh it, decide, and go").
+_FIRST = object()
 
-# Each wording as how the sentence opens, and what the rest of it must hold for it to count:
-# nothing more, or the question mark of a question put to the player.
-_WORDINGS: tuple[tuple[str, str | None], ...] = (
+# Each wording as how a sentence or one of its clauses opens, and what the rest of the sentence
+# must hold for it to count: nothing more, or the question mark of a question put to the player.
+_WORDINGS: tuple[tuple[str, object], ...] = (
     # What the player must decide, choose or do.
     (
         r"you (?:now |soon |alone |still )?"
         r"(?:must|should|need to|have to|will have to|will need to|['’]ll have to|had better) "
         r"(?:now |soon |quickly |first )?"
-        r"(?:decide|choose|pick|act|make (?:a|your|the) (?:choice|decision|move))\b",
+        r"(?:(?:decide|choose)\b|pick (?:one|a side|between|which)\b|" + _ACT + r"|"
+        r"make (?:a|your|the) (?:choice|decision|move)\b)",
         None,
     ),
     (
         r"(?:debes|tienes que|has de|deberás|tendrás que|te toca|necesitas|deberías) "
         r"(?:ahora |pronto |ya )?"
-        r"(?:decidir|elegir|escoger|actuar|tomar (?:una|la|tu) decisión)\b",
+        r"(?:decidir|elegir|escoger|" + _ACTUAR + r"|tomar (?:una|la|tu) decisión)\b",
         None,
     ),
     (
-        r"(?:has de|hauràs de|et cal|et caldrà|et toca|hauries de|necessites) "
+        r"(?:(?:has|hauràs|hauries) d(?:e |['’])|(?:et cal|et caldrà|et toca|necessites) )"
         r"(?:ara |aviat |ja )?"
-        r"(?:decidir|triar|escollir|actuar|prendre (?:una|la) decisió)\b",
+        r"(?:decidir|triar|escollir|" + _ACTUAR + r"|prendre (?:una|la) decisió)\b",
         None,
     ),
     (r"cal que (?:ara )?(?:decideixis|triïs|escullis|actuïs)\b", None),
-    (r"(?:decide|choose)(?: (?:now|quickly|wisely|carefully|well|fast|soon))?[.!,:]", None),
+    (r"(?:decide|choose)(?: (?:now|quickly|wisely|carefully|well|fast|soon))?[.!,:]", _FIRST),
     (r"whatever you (?:choose|decide)\b", None),
     # That it is time to do something.
     (r"it(?: is|['’]s) (?:now |finally |high |about )?time (?:for you )?to\b", None),
@@ -181,7 +193,11 @@ _WORDINGS: tuple[tuple[str, str | None], ...] = (
     (r"(?:ara què|què ara)\b", _ASKED),
 )
 _READ = tuple(
-    (re.compile(_AND + _NOW + opening, re.IGNORECASE), rest and re.compile(rest, re.IGNORECASE))
+    (
+        re.compile(_AND + _NOW + opening, re.IGNORECASE),
+        re.compile(rest, re.IGNORECASE) if isinstance(rest, str) else None,
+        rest is not _FIRST,
+    )
     for opening, rest in _WORDINGS
 )
 
@@ -195,20 +211,17 @@ def _words(sentence: str) -> str:
 def tells(sentence: str) -> bool:
     """Whether a sentence of the narrator's own tells the player what to do: what they must
     decide, that it is time, which ways are open, that the choice is theirs, or a question put
-    to them."""
+    to them. It does when it opens that way, or when a clause of it does ("With the guards
+    asleep, it is time to slip away")."""
     words = _words(sentence)
-    for opening, rest in _READ:
-        found = opening.match(words)
-        if found and (rest is None or rest.search(words, found.end())):
-            return True
+    for at in (0, *(found.end() for found in _CLAUSE.finditer(words))):
+        for opening, rest, in_any_clause in _READ:
+            if at and not in_any_clause:
+                continue
+            found = opening.match(words, at)
+            if found and (rest is None or rest.search(words, found.end())):
+                return True
     return False
-
-
-def _may_tell(sentence: str) -> bool:
-    """Whether a sentence still being told may yet be one that tells: it opens as one, or it is
-    too short to say."""
-    words = _words(sentence)
-    return len(words) < OPENING_CHARS or any(opening.match(words) for opening, _ in _READ)
 
 
 def _sentences(text: str) -> Iterator[tuple[int, int]]:
@@ -253,21 +266,20 @@ def shown(narration: str, *, after: str = "") -> str:
 
 def showable(telling: str) -> int:
     """S4: how much of a scene still being told can go out to the player: all of it but its
-    closing sentences that tell the player what to do, or may yet turn out to. Whatever
-    follows them later lets them go, and a scene that ends on them never showed them. It never
-    holds more than `shown` can take, so nothing a scene keeps waits past its end."""
+    last sentence, which may yet turn out to tell the player what to do in any clause of it,
+    and the closing sentences before that one which do. Whatever follows them later lets them
+    go, and a scene that ends on them never showed them. It never holds more than `shown` can
+    take, so nothing a scene keeps waits past its end (`TextEnded`, in `graph.turn.nodes`)."""
     spans = list(_sentences(telling))
     held = None
     # Never the scene's first sentence, which it keeps whatever it says: it goes out as it is
-    # written, so the first words reach the player as soon as before (S3).
+    # written, so the first words reach the player as soon as before (S3). Speech goes out as
+    # it is written too, since it is never taken.
     for at, (start, end) in enumerate(spans[:-1]):
-        sentence = telling[start:end]
         # The last may still be growing; the ones before it are whole.
-        told = _may_tell(sentence) if at == 0 else tells(sentence)
-        if not told or _spoken(telling, start, end):
+        if _spoken(telling, start, end) or (at and not tells(telling[start:end])):
             break
         held = start
-    if held is None:
-        return len(telling)
-    # Not the space before them either: what went out reads as the scene would without them.
-    return len(telling[:held].rstrip())
+    # Not the space before them either, nor one that nothing follows yet: what went out reads
+    # as the scene would if it stopped there.
+    return len((telling if held is None else telling[:held]).rstrip())

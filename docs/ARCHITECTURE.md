@@ -1234,18 +1234,25 @@ ending that shows where things stand and never tells the player their move, and 
 narrator still closed scenes on one ("You must decide whether to…", "The time has come to…":
 four scenes of fifty in the plays of 2026-11-14, one of them after the form said so). So code
 holds it. `last_lines.tells`
-reads a sentence from its first words against the wordings narrators reach for in the app's
+reads a sentence from the first words of each of its clauses against the wordings narrators
+reach for in the app's
 three languages: what the player must decide, choose or do, that it is time to do something,
-which ways are open, that the choice is theirs, and a question put to the player. Words that
-also plainly tell a game or a thing in hand ("Your move") are left alone.
+which ways are open, that the choice is theirs, and a question put to the player. The first
+check on the real models closed a scene on "If you are to survive this ambush…, you must act
+before they pin you between them", which is why a clause after the first is read too. Words
+that also plainly tell a game, a thing in hand or a part to play ("Your move", "You must act
+the part of a servant") are left alone.
 `last_lines.shown` leaves the closing sentences that tell out of the narration, and the
 narrate node keeps that as the scene, with the issue `ending_told` on the turn's T5 line
 (the sentence itself is story text and is never logged, T6). A sentence with a quotation
 mark in it, or inside a speech still open, is someone's speech and always stays, and so does
 the last sentence the narration has left. While the scene streams, `last_lines.showable`
-says how much of it can go out: all but its closing sentences that tell, or that are still
-too short to say (`OPENING_CHARS`). The scene's first sentence never waits, so the first
-words reach the player as soon as before (S3). Whatever follows them lets them go, `TextEnded` sends
+says how much of it can go out: all but its last sentence, which may yet tell in a clause
+still to come, and the closing sentences before it that tell. So after its first sentence a
+scene goes out a sentence at a time, a fraction of a second behind the model. The scene's
+first sentence never waits, so the first
+words reach the player as soon as before (S3), and neither does speech, which is never
+taken. Whatever follows them lets them go, `TextEnded` sends
 what waited and stays, and a scene that ends on them never showed them, so the text of the
 `narration.delta` events is the scene as `scene.completed` gives it. The brief says where
 this doesn't apply (`NarrationBrief.ends_shown`): a scene that ends the character's story
