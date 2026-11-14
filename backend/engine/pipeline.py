@@ -49,7 +49,7 @@ from engine.state.records import PendingEvent
 from engine.state.sheet import Practice
 from engine.state.world import WorldState
 from engine.timekeeping import TimePassage, prune_time_effects, world_stopped
-from engine.world import carriers, hearsay, journeys, last_years, lives, strife
+from engine.world import carriers, hearsay, journeys, last_years, lives, strife, visits
 from engine.world.geography import region_of
 from engine.world.scheduling import World
 
@@ -428,6 +428,32 @@ def brought(state: WorldState, plan: DirectorPlan, ctx: TurnContext) -> list[str
         if due.brings(event, state):
             ids += event.subject_ids
     return [i for i in dict.fromkeys(ids) if i in state.characters]
+
+
+def within_reach(
+    state: WorldState, resolution: Resolution, ctx: TurnContext, told: str
+) -> list[str]:
+    """W10. Whom this turn's scene may have walk in from where the record has them
+    (`engine.world.visits`): named by the scene's own words (`told`), near enough by the map
+    to have come in the time the turn took, held by nothing and wronged by no romance in the
+    scene, on a turn that did nothing for them to walk in on. `state` is the world the steps
+    left."""
+    return visits.within_reach(state, resolution, ctx.turn, told)
+
+
+def settle_walk_ins(
+    state: WorldState, came: Iterable[tuple[str, str]], ctx: TurnContext, rng: SeededRng
+) -> WorldState:
+    """W10. Whoever walked into the scene from nearby (`engine.apply.Applied.came`) goes back
+    where the record had them after a while (`visits.settle`). Returns the state unchanged
+    when nobody came."""
+    came = list(came)
+    if not came:
+        return state
+    after = state.model_copy(deep=True)
+    w = World(state=after, ctx=ctx, at_s=after.world_s, rng=rng.child("walk-ins"))
+    visits.settle(w, came)
+    return after
 
 
 def kept_out(state: WorldState, ctx: TurnContext, came: Iterable[str] = ()) -> list[str]:

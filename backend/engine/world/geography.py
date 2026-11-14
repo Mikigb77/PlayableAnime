@@ -146,6 +146,14 @@ def travel_s(state: WorldState, from_id: str | None, to_id: str | None) -> int |
     return way[0] if way is not None else None
 
 
+def ways_from(state: WorldState, from_id: str | None) -> dict[str, int]:
+    """W10. Rough travel time from a place to every place the map connects it to, itself at
+    0: `travel_s` for them all at once."""
+    if from_id is None or from_id not in state.places:
+        return {}
+    return {to_id: cost for to_id, (cost, _) in _ways(state, from_id).items()} | {from_id: 0}
+
+
 def route_s(state: WorldState, from_id: str | None, to_id: str | None) -> int | None:
     """W10. What a trip between two places takes by the map's own routes, or None when no route
     covers the way: the two aren't connected, or only by the short walks between a place and

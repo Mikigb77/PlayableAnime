@@ -148,8 +148,13 @@ class Rejection:
 
 @dataclass(frozen=True)
 class Applied:
+    """`came` is who walked into a narrated scene from nearby, each with the place the record
+    had them at (`Door.near`): the world sends them back there in time
+    (`engine.pipeline.settle_walk_ins`)."""
+
     state: WorldState
     rejected: tuple[Rejection, ...] = field(default_factory=tuple)
+    came: tuple[tuple[str, str], ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True)
@@ -170,6 +175,16 @@ class Door:
     who didn't see it (W17). `reached` is whom the turn reached without their being there
     (`engine.pipeline.reached`): the scene may move how they feel and have them meet the player
     character, and that is all.
+
+    And someone walks in when the world allows it (`near`, from
+    `engine.pipeline.within_reach`, by the rules of `engine.world.visits`): the scene's words
+    name them, the map has them near enough to have come in the time that passed, nothing
+    holds them, no romance wrongs them and the turn did nothing for them to walk in on. The
+    first plays by hand on the real models (2026-11-14) had a commander whose boots the last
+    scene heard on the path, and a miller with a broken brace for the smith, told into scenes
+    the record then kept them out of, so the story and its Memory parted ways in one scene in
+    twenty-five. Where the world allows it the record follows the scene: they are at the
+    scene's place (`comes`), and the world sends them back in time.
     """
 
     scene: frozenset[str]
@@ -178,6 +193,7 @@ class Door:
     reached: frozenset[str] = frozenset()
     brought: frozenset[str] = frozenset()
     barred: frozenset[str] = frozenset()
+    near: frozenset[str] = frozenset()
 
     @classmethod
     def of(
@@ -188,6 +204,7 @@ class Door:
         reached: Sequence[str] = (),
         brought: Sequence[str] = (),
         barred: Sequence[str] = (),
+        near: Sequence[str] = (),
     ) -> Self:
         """The door of the scene `delta` tells, on the state the steps left. The scene plays
         where the record has the player character by now, which is where a trip of this turn
@@ -204,6 +221,7 @@ class Door:
             reached=frozenset(reached),
             brought=frozenset(brought),
             barred=frozenset(barred),
+            near=frozenset(near),
         )
 
     def admits(self, state: WorldState, character_id: str, *, at: str | None = None) -> bool:
@@ -213,13 +231,35 @@ class Door:
             return True
         if character_id in self.barred:
             return False
-        if character_id in self.brought:
+        if character_id in self.brought or character_id in self.near:
             return True
+        return self._there(state, character_id, at)
+
+    def _there(self, state: WorldState, character_id: str, at: str | None) -> bool:
+        """Whether the record has them where the scene plays, or nowhere, which is the
+        scene's to place."""
         character = state.characters.get(character_id)
         spots = {*self.spots, at} - {None}
         if character is None or character.location_id not in state.places or not spots:
-            return True  # nowhere on record: the scene's to place
+            return True
         return any(together(state, character.location_id, spot) for spot in spots)
+
+    def plays_at(self, state: WorldState, place_id: str | None) -> bool:
+        """Whether a place is one the scene plays in: one of its spots, or inside or around
+        one."""
+        return place_id in state.places and any(
+            together(state, place_id, spot) for spot in self.spots
+        )
+
+    def comes(self, state: WorldState, character_id: str, *, at: str | None = None) -> bool:
+        """Whether the scene has them only because they could walk over (`near`): the record
+        has them at another place, and nothing else lets them in. They are the ones it moves
+        to where the scene plays, and nowhere else."""
+        if character_id in self.scene or character_id not in self.known:
+            return False
+        if character_id in self.barred or character_id in self.brought:
+            return False
+        return character_id in self.near and not self._there(state, character_id, at)
 
     def touches(self, state: WorldState, character_id: str) -> bool:
         """Whether the scene reaches them at all: it may have them in it, or the turn reached
@@ -241,6 +281,7 @@ def apply_delta(
     reached: Sequence[str] = (),
     brought: Sequence[str] = (),
     barred: Sequence[str] = (),
+    near: Sequence[str] = (),
 ) -> Applied:
     """Apply `delta` to a copy of `state` at the current world time, on behalf of `source`, and
     stamp what it records with `ctx.turn`. It never raises for a bad proposal: refused changes
@@ -256,7 +297,9 @@ def apply_delta(
     else (W4, `scene_people`). `brought` is whom the turn brings into the scene from wherever
     the record has them (`engine.pipeline.brought`) and `barred` whom this scene can't bring in
     or touch (`engine.pipeline.kept_out`): a narrated scene has nobody else in it that the
-    record has elsewhere, and moves nobody else (W10, W17, `Door`).
+    record has elsewhere, and moves nobody else (W10, W17, `Door`), but whoever could have
+    walked over (`near`, from `engine.pipeline.within_reach`), who is then at the scene's place
+    on record (`Applied.came`).
     """
     return apply_in_place(
         state.model_copy(deep=True),
@@ -269,6 +312,7 @@ def apply_delta(
         reached=reached,
         brought=brought,
         barred=barred,
+        near=near,
     )
 
 
@@ -284,12 +328,13 @@ def apply_in_place(
     reached: Sequence[str] = (),
     brought: Sequence[str] = (),
     barred: Sequence[str] = (),
+    near: Sequence[str] = (),
 ) -> Applied:
     """`apply_delta` on a working copy the caller owns, such as `play_out`'s, which it changes
     in place instead of copying the whole state again. `Applied.state` is that same object."""
     door = None
     if source is DeltaSource.NARRATOR:
-        door = Door.of(state, delta, reached=reached, brought=brought, barred=barred)
+        door = Door.of(state, delta, reached=reached, brought=brought, barred=barred, near=near)
     applier = _Applier(
         state,
         source,
@@ -351,7 +396,7 @@ def apply_in_place(
         applier.state.scene.props = _scene_props(applier.state.scene.props, found)
     if delta.summary:
         applier.state.summary = delta.summary
-    return Applied(applier.state, tuple(applier.rejected))
+    return Applied(applier.state, tuple(applier.rejected), tuple(applier.came.items()))
 
 
 def scene_people(state: WorldState, delta: StateDelta, door: Door) -> set[str]:
@@ -471,6 +516,8 @@ class _Applier:
         self.player_acted = player_acted
         # W4: whose feelings the narrator may move (`scene_people`); None means anyone's.
         self.in_scene = in_scene
+        # W10: who walked into the scene from nearby, with the place the record had them at.
+        self.came: dict[str, str] = {}
         # W10: whom the narrator's scene may have in it and move (`Door`); None means anyone.
         self.door = door
         self.rejected: list[Rejection] = []
@@ -610,9 +657,26 @@ class _Applier:
                 continue
             if self.door is None or self.door.admits(self.state, character_id, at=place_id):
                 present.append(character_id)
+                self.walk_in(character_id, place_id)
             else:
                 self.reject(f"character {character_id}", "presence", _ELSEWHERE)
         return present
+
+    def walk_in(self, character_id: str, place_id: str | None) -> None:
+        """W10. Someone the scene's end has there only because they could walk over
+        (`Door.comes`) is where the scene plays, on record: at `place_id`, the place it ends
+        in, or where the player character is. Where they came from is kept (`came`), so the
+        world sends them back. Someone the scene only has meet the player character on the
+        way came and went: they are where they were."""
+        door, state = self.door, self.state
+        if door is None or not door.comes(state, character_id, at=place_id):
+            return
+        here = place_id or state.player.location_id or state.scene.place_id
+        character = state.characters[character_id]
+        if here not in state.places or character.location_id is None:
+            return
+        self.came.setdefault(character_id, character.location_id)
+        character.location_id = here
 
     def scene_place(self, end: SceneEnd, changes: list[PlaceChange]) -> str | None:
         """R3, R8. The place the scene ends in, once this delta's places are on record, or None
@@ -767,6 +831,13 @@ class _Applier:
             elif self.door is not None and not self.door.admits(self.state, character.id):
                 # W10. The scene says where its own people go: only the world moves anyone else.
                 self.reject(subject, "location", _ELSEWHERE)
+            elif self.door is not None and self.door.comes(self.state, character.id):
+                # Someone who could walk over comes to where the scene plays, and nowhere else.
+                if self.door.plays_at(self.state, change.location_id):
+                    self.came.setdefault(character.id, character.location_id or "")
+                    character.location_id = change.location_id
+                else:
+                    self.reject(subject, "location", _ELSEWHERE)
             else:
                 character.location_id = change.location_id
         if change.faction_id is not None:

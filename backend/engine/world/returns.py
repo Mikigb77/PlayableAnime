@@ -110,16 +110,22 @@ def on_return(w: World, event: PendingEvent) -> None:
     state.facts[fact.id] = fact
 
 
+def errands_of(state: WorldState, character_id: str) -> list[PendingEvent]:
+    """The errands of the world's making someone is on, still to come: an answer they are
+    bringing to someone (W4), a report they carry to their faction (W11)."""
+    return [
+        *pending(state, Kind.ANSWER, avenger_id=character_id),
+        *pending(state, Kind.REPORT, witness_id=character_id),
+    ]
+
+
 def _held_until(w: World, who: Character, held_s: int) -> int | None:
     """When someone due back can set out, or None when nothing holds them. An errand of theirs
     that is still to come holds them until a day after it has. The player character's scene,
     or a state that leaves them helpless, holds them a day at first and then as long again as
     it has held them since `held_s`, up to a week (W10, K8: a year in a cell asks weekly)."""
     state = w.state
-    errands = [
-        *pending(state, Kind.ANSWER, avenger_id=who.id),
-        *pending(state, Kind.REPORT, witness_id=who.id),
-    ]
+    errands = errands_of(state, who.id)
     if errands:
         return max(e.due_s for e in errands) + HELD_S
     if who.id in scene_ids(state) or helpless_state(who) is not None:
