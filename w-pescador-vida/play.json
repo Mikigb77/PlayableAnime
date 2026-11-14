@@ -15,9 +15,9 @@
  "seed": "play/w-pescador",
  "state": {
   "schema_version": 1,
-  "turn": 9,
+  "turn": 10,
   "timeline_id": "main",
-  "world_s": 268121034,
+  "world_s": 268121064,
   "bible": {
    "title": "La Sirena de Cadaqués",
    "genre": "realisme màgic mariner",
@@ -163,8 +163,8 @@
     ],
     "prominence": "key",
     "description": "Un pescador vell de pell colrada pel sol i mans endurides pel fil de pescar i el vent de tramuntana.",
-    "appearance": "Cabells blancs com l'escuma de la mar, esquena lleugerament corbada pels anys, armilla de llana blava gastada i pantalons de pana fosca tacats de sal.",
-    "look_version": 1,
+    "appearance": "Cabells blancs com l'escuma de la mar, esquena lleugerament corbada pels anys, armilla de llana blava gastada i pantalons de pana fosca tacats de sal. Els seus ulls mantenen el blau de la mar profunda, ara plens d'una vitalitat recuperada.",
+    "look_version": 2,
     "age": 86,
     "people_id": "humans",
     "status": "alive",
@@ -362,9 +362,9 @@
     "faith": null,
     "solitary": false,
     "born_s": null,
-    "lifespan_years": 80,
+    "lifespan_years": 150,
     "old_age_span": 80,
-    "seen_s": null,
+    "seen_s": 268121064,
     "near_s": null,
     "met_s": null
    },
@@ -517,7 +517,7 @@
     "born_s": null,
     "lifespan_years": 0,
     "old_age_span": null,
-    "seen_s": 91920,
+    "seen_s": 268121064,
     "near_s": 268116474,
     "met_s": null
    },
@@ -1102,6 +1102,38 @@
     "known_by": [
      "player",
      "mateu"
+    ],
+    "known_by_factions": [],
+    "heard_by": {},
+    "heard_by_factions": {},
+    "terms": null,
+    "broke_terms": false,
+    "went_to_tell": {},
+    "word_out_s": null
+   },
+   "deed-2": {
+    "id": "deed-2",
+    "actor_id": "player",
+    "kind": "persuade",
+    "text": "Estiro la mà cap a la sirena i li demano que em curi i m'allargui la vida. (it worked)",
+    "turn": 10,
+    "world_s": 268121064,
+    "timeline_id": "main",
+    "place_id": "platja-portlligat",
+    "victim_ids": [],
+    "target_ids": [
+     "sirena"
+    ],
+    "wronged_ids": [],
+    "severity": 1,
+    "visibility": "secret",
+    "witness_ids": [],
+    "unnoticed_witness_ids": [],
+    "traces": [],
+    "in_stopped_time": false,
+    "discovered": false,
+    "known_by": [
+     "player"
     ],
     "known_by_factions": [],
     "heard_by": {},
@@ -1727,8 +1759,8 @@
     },
     "status": "open",
     "opened_turn": 0,
-    "last_active_turn": 9,
-    "taken_up_turn": 9,
+    "last_active_turn": 10,
+    "taken_up_turn": 10,
     "closed_turn": null,
     "arc": null,
     "known_by": [
@@ -2895,19 +2927,17 @@
   "time_effects": [],
   "scene": {
    "place_id": "platja-portlligat",
-   "present_ids": [
-    "player"
-   ],
+   "present_ids": [],
    "positions": [
-    "Pere és estirat a la sorra de Portlligat, feble i esgotat.",
-    "La Sirena ferida és a l'aigua, a tocar de la platja, mirant en Pere."
+    "Pere és a la vora de l'aigua, sentint el caliu de la mar al pit.",
+    "La Sirena ferida és a l'aigua, agafant la mà d'en Pere i cantant."
    ],
    "props": [
-    "La jaqueta de sarga",
     "Navalla de butxaca marinera",
-    "Pipa de fusta de bruc"
+    "Pipa de fusta de bruc",
+    "La Sirena ferida"
    ],
-   "ended_on": "La sirena es detura a pocs passos de tu, mirant-te amb els seus ulls intel·ligents i humits des de la vora de l'aigua.",
+   "ended_on": "La sirena et sosté la mà mentre el seu cant et torna la força al pit.",
    "encounter": null
   },
   "director": {
@@ -2930,14 +2960,15 @@
     13190136,
     268116474,
     268119174,
-    268121034
+    268121034,
+    268121064
    ],
-   "frequency_drift": 0.1,
+   "frequency_drift": 0.2,
    "recent_sources": [
     "deck:old-friend"
    ],
    "auto_pictures": 7,
-   "picture_credit": 0.9,
+   "picture_credit": 1.0,
    "pictured": [
     "portrait:player",
     "portrait:player:v1",
@@ -2965,7 +2996,7 @@
    "director-event": 2,
    "rumor": 2,
    "thread": 1,
-   "deed": 1,
+   "deed": 2,
    "life": 1
   },
   "fallen": [],
@@ -3020,14 +3051,19 @@
    "turn": 9,
    "narration": "T'arrossegues pel camí de terra, clavant els dits a la sorra i a les pedres del camí, empès només per una voluntat de ferro que es nega a apagar-se. El dolor del pit és un ganivet de gel, però la platja de Portlligat és la teva darrera cala i no et deturaràs. Quan els teus genolls toquen finalment la sorra humida de la vora, la mar d'Amunt s'obre davant teu, grisa i bressolada per la tramuntana. Reunes les poques forces que et queden als pulmons i crides cap a les onades, un crit que surt de la teva gola trencada pel salnitre, demanant a la sirena que recordi el vell pescador i t'allargui la vida.\n\nEl teu crit es perd en el fresseig de l'aigua contra els còdols, i per un moment només hi ha el silenci immens de la platja solitària. T'envoltes amb la jaqueta de sarga, tremolant sota la llum pàl·lida del migdia, mentre sents que el cor et batega cada vegada més feble, com un motor que es queda sense oli.\n\nLlavors, de sobte, l'aigua es trenca a pocs metres de la vora sense fer soroll. Entre l'escuma blanca s'alça una silueta coneguda. La mirada profunda de la sirena es clava en la teva, tan jove i platejada com fa vuit anys, del tot aliena al pas del temps que a tu t'està consumint. S'apropa nedant amb recel, recordant el teu rostre però espantada per la teva feblesa extrema, fins que la seva cua platejada frega la sorra on tu estàs estirat. La mar profunda, regeneradora i curativa, batega darrere seu com una promesa de vida eterna.",
    "player_action": "M'arrossego fins a la platja i crido la sirena perquè m'allargui la vida."
+  },
+  {
+   "turn": 10,
+   "narration": "Aixeques el braç amb una feblesa extrema, tremolant, i estires la mà cap a l'aigua freda de la cala. Les puntes dels teus dits freguen l'escuma mentre la mires als ulls, sentint que la darrera alenada se t'escapa del pit. Amb un fil de veu, ronc i gastat pels anys, pronuncies les paraules que et queden: \"Ajuda'm, cura'm i allarga'm la vida.\"\n\nLa sirena es detura a pocs passos de tu, bressolada per l'aigua grisa. La seva cua platejada batega lentament sota la superfície, fent brillar les escates com monedes de plata vella sota el cel de tardor. Et mira fixament, avaluant la teva respiració feixuga, i el recel dels seus ulls es transmuta en una tristesa profunda, vella com els mateixos penya-segats del Cap de Creus. Reconeix el pescador que un dia la va salvar d'aquella hèlix de ferro.\n\nLlavors, s'acosta del tot. La seva pell freda i humida frega el teu braç gastat mentre estira les seves mans delicades i t'agafa els dits tremolosos. De sobte, comença a cantar. No és una melodia que es pugui escriure amb notes, sinó un murmuri profund que s'assembla al fresseig dels còdols quan es retira l'onada i al ressò de les coves submarines. Un caliu sorprenent i salat et puja des dels dits, recorrent-te el braç i estenent-se pel pit com si la mateixa mar profunda et bategués a les venes, apaivagant el punyal de gel que et tancava el cor.",
+   "player_action": "Estiro la mà cap a la sirena i li demano que em curi i m'allargui la vida."
   }
  ],
  "choices": [
-  "Estira la mà cap a ella i demana-li que et curi.",
-  "Canta-li una vella cançó de taverna per tranquil·litzar-la.",
-  "Arrossega't de tornada cap a les roques per por de la Guàrdia Civil."
+  "Tancar els ulls i deixar-te bressolar pel seu cant regenerador.",
+  "Agrair-li el do i demanar-li com pots ajudar la seva gent.",
+  "Aixecar-te i mirar si algú vigila des del camí de ronda."
  ],
- "cost_usd": 0.50830496,
+ "cost_usd": 0.56229691,
  "draft": {
   "premise": "Sóc un pescador vell de Cadaqués, de setanta-vuit anys. Un matí trobo una sirena ferida a la xarxa.",
   "proposal": {
