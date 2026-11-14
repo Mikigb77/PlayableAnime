@@ -110,7 +110,7 @@ from engine.state import (
 )
 from engine.world.tuning import AGELESS_YEARS
 from graph.drafting.catalog import PremiseTemplate
-from graph.drafting.named import aimed, one_aim, stated_aim
+from graph.drafting.named import one_aim
 from graph.drafting.schema import (
     PLAYER_ID,
     AttributesP,
@@ -1003,7 +1003,6 @@ class _Assembler:
                 want
                 for want in temperament.wants
                 if not any(self._said_again(want, goal) for goal in goals)
-                and not self._its_one_aim(want)
             ]
         return CharacterSheet(
             attributes=self._attributes(proposed.attributes),
@@ -1120,26 +1119,12 @@ class _Assembler:
         """G2: the aims the premise gives the character. A goal is one aim, never the premise
         handed back: a drafter asked for the player's own words can copy all of them, and "Goal:
         I'm a squire about to take the knight exam in 3 days, and..." tells the player nothing."""
-        said, language = self.options.premise, self.options.language
-        premise = _wording(said)
+        premise = _wording(self.options.premise)
         # A premise that is itself one short aim ("I want to be a pirate.") is the exception:
         # handed back whole it is still what they are after, in their own words.
-        its_aim = one_aim(said, language)
+        its_aim = one_aim(self.options.premise, self.options.language)
         aims = (goal for goal in self.character.goals if its_aim or _wording(goal) != premise)
-        goals = _texts(aims, 6, 300)
-        # And it is their goal where the drafter wrote none for it: no model decides whether
-        # words that say outright what the character is after give them a goal.
-        theirs = stated_aim(said, language)
-        if theirs and not any(aimed(said, goal, language) for goal in goals):
-            goals = _texts([theirs, *goals], 6, 300)
-        return goals
-
-    def _its_one_aim(self, want: str) -> bool:
-        """G2: whether a want is the one aim the premise is, said again: where the player's
-        words are one aim and nothing more, that aim is the goal (`_goals`), and a want those
-        words name is the same aim once more ("to be a pirate")."""
-        said, language = self.options.premise, self.options.language
-        return bool(stated_aim(said, language)) and aimed(said, want, language)
+        return _texts(aims, 6, 300)
 
     def _said_again(self, want: str, goal: str) -> bool:
         """G2: whether a want says a goal again: word for word, or in the same words that say

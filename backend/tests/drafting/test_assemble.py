@@ -924,56 +924,6 @@ def test_a_premise_that_is_one_short_aim_is_the_goal_when_handed_back():
     assert not state.goals
 
 
-def test_a_premise_that_is_one_short_aim_is_the_goal_whatever_the_drafter_wrote():
-    # G2 (the live check of 2026-11-14): asked to write no goal the player didn't state, the
-    # real drafter gave "I want to be a pirate." no goal at all, and the story started with none.
-    premise = "I want to be a pirate."
-    character = samples.cultivation_character()
-    character.goals = []
-    character.temperament.wants = ["to be a pirate", "to see the sea"]
-    options = DraftOptions(premise=premise)
-
-    state = assemble(samples.cultivation_world(), character, options)
-
-    assert [goal.text for goal in state.goals.values()] == [premise]
-    # The aim is said once: a want that is the same aim goes, and any other stays.
-    assert state.player.sheet.disposition.temperament.wants == ["to see the sea"]
-    # A goal of the drafter's that says the aim stands as it is, alone.
-    character.goals = ["Become a pirate"]
-    state = assemble(samples.cultivation_world(), character, options)
-    assert [goal.text for goal in state.goals.values()] == ["Become a pirate"]
-    # One that says something else doesn't stand for it.
-    character.goals = ["Find the cursed map"]
-    state = assemble(samples.cultivation_world(), character, options)
-    assert [goal.text for goal in state.goals.values()] == [premise, "Find the cursed map"]
-    # In the story's language, whichever it is.
-    character.goals = []
-    vull = "Vull ser la millor cuinera del regne."
-    options = DraftOptions(premise=vull, language=Language.CA)
-    state = assemble(samples.cultivation_world(), character, options)
-    assert [goal.text for goal in state.goals.values()] == [vull]
-
-
-@pytest.mark.parametrize(
-    "premise",
-    [
-        "A pirate with a cursed map.",
-        "My dream died with her.",
-        "I will die in three days.",
-        "I'm a squire about to take the knight exam in 3 days, and I want to pass it.",
-    ],
-)
-def test_words_that_state_no_aim_alone_give_no_goal_of_their_own(premise):
-    character = samples.cultivation_character()
-    character.goals = []
-    wants = list(character.temperament.wants)
-
-    state = assemble(samples.cultivation_world(), character, DraftOptions(premise=premise))
-
-    assert not state.goals
-    assert state.player.sheet.disposition.temperament.wants == wants
-
-
 def test_an_aim_is_said_once_as_the_goal_it_is():
     # G2 (the first plays on the real models, 2026-11-14): the drafter wrote each goal again,
     # word for word, as what the character wants, and a summary would give it twice.

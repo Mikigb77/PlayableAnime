@@ -25,6 +25,7 @@ from engine.state import GiftStrength, PhysicsMode, WorldState
 from graph.drafting import direct
 from graph.drafting.assemble import DraftOptions, assemble, drafted_clocks, slug
 from graph.drafting.catalog import PremiseTemplate, starter, wordings
+from graph.drafting.named import aimed, stated_aim
 from graph.drafting.openers import (
     Said,
     carried,
@@ -200,7 +201,7 @@ async def create(
     proposal = without_real_names(await llm.structured(Node.DRAFTER, prompt, DraftProposal))
     world = proposal.world.model_copy(update={"dropped_rule_ids": []})
     draft = replace(draft, proposal=proposal.model_copy(update={"world": world}))
-    draft = _on_time(draft, [premise])
+    draft = _stating(_on_time(draft, [premise]))
     if rules:
         current = current_rules(draft.state())
         chosen = {r.id: r for r in rules if r.id}
@@ -821,6 +822,32 @@ def _on_time(draft: Draft, words: Iterable[str]) -> Draft:
         return draft
     clocks = [paced.get(id(clock), clock) for clock in world.clocks]
     return replace(draft, proposal=_with_world(draft.proposal, clocks=clocks))
+
+
+def _stating(draft: Draft) -> Draft:
+    """G2: the first draft with the aim its premise states as the character's goal. Where the
+    premise is one short sentence that opens on what the character is after (`stated_aim`: "I
+    want to be a pirate.") and no goal the drafter wrote says it, the player's words are the
+    first goal, and a want that says the same aim once more goes: an aim is said once. The
+    real drafter, asked to write no goal the player didn't state, also wrote none for such a
+    premise (the live check of 2026-11-14), and whether those words give a goal is no model's
+    call. It is done once, on the draft's own record, so a goal the player takes out later
+    stays out."""
+    said = stated_aim(draft.premise, draft.language)
+    if not said:
+        return draft
+    character = draft.proposal.character
+    goals = list(character.goals)
+    if not any(aimed(draft.premise, goal, draft.language) for goal in goals):
+        goals = [said, *goals]
+    wants = [
+        want
+        for want in character.temperament.wants
+        if not aimed(draft.premise, want, draft.language)
+    ]
+    temperament = character.temperament.model_copy(update={"wants": wants})
+    character = character.model_copy(update={"goals": goals, "temperament": temperament})
+    return replace(draft, proposal=draft.proposal.model_copy(update={"character": character}))
 
 
 def _noting(draft: Draft, words: Iterable[str], plainly: bool = False) -> Draft:

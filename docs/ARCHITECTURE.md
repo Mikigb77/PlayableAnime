@@ -1749,9 +1749,11 @@ flowchart LR
   short sentence that says an aim (`named.one_aim`: "I want to be a pirate." handed back
   whole is still the goal, where the story used to start with none). Where such a premise
   opens on the aim (`named.stated_aim`: "I want to", "I must", "My dream is", in the three
-  languages) and no goal of the drafter's says it (`aimed`), `assemble` makes the premise the
-  first goal itself, and drops a want that says the same aim again: on the real models the
-  drafter, asked to write no goal the player didn't state, also wrote none for it. `named.called`: a person
+  languages) and no goal of the drafter's says it (`aimed`), `chain.create` makes the premise
+  the first goal itself (`_stating`), and drops a want that says the same aim again: on the
+  real models the drafter, asked to write no goal the player didn't state, also wrote none
+  for it. It is written into the proposal once, at the first draft, so a goal the player
+  takes out later stays out. `named.called`: a person
   is named only by their name, one word of it with a capital or all of it in any case, without
   the words someone else is called by too, so the Esposito family in a premise names nobody in
   it (`openers.own_names`); a description names nobody. `view.world_lines`,
