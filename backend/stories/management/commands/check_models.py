@@ -134,7 +134,7 @@ CACHE_PROMPT = "Reply with the word ok."
 
 def response_formats() -> tuple[tuple[Node, type[BaseModel]], ...]:
     """Each node's structured output, as it asks for it. The judge's is left out with it."""
-    from graph.drafting.chain import CharacterProposal, DraftProposal, WorldChange
+    from graph.drafting.chain import CharacterChange, DraftProposal, WorldChange
     from graph.turn.nodes import ChapterOutput, Intent, NarratorOutput
     from graph.turn.saying import Said
     from media.notes import PictureNote
@@ -146,7 +146,7 @@ def response_formats() -> tuple[tuple[Node, type[BaseModel]], ...]:
         (Node.SUMMARIZER, ChapterOutput),
         (Node.DRAFTER, DraftProposal),
         (Node.DRAFTER, WorldChange),
-        (Node.DRAFTER, CharacterProposal),
+        (Node.DRAFTER, CharacterChange),
         (Node.PICTURE_NOTE, PictureNote),
         (Node.WORDING, Said),  # S10: a turn's lines in the story's language
     )
