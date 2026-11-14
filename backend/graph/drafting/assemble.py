@@ -213,9 +213,40 @@ def assemble(
     return state
 
 
+# W6: what a clock that counts the years of a life is called, in the languages the app speaks.
+_LIFESPAN = re.compile(
+    r"\b(?:life[ -]?spans?|old age|esperanza de vida|vejez|esperança de vida|vellesa)\b",
+    re.IGNORECASE,
+)
+
+
+def own_years(world: WorldProposal, clock: ClockP) -> bool:
+    """W6, E2: whether a drafted clock counts the player character's own years of life running
+    out. The record's age and years are that countdown (`engine.world.old_age`), and the story
+    tells the end itself when it comes (N6), so such a clock is none of the state's: on the
+    real models an old cultivator's draft ran "Lifespan Depletion" beside them, and "The
+    Lifespan Limit (2 Years Left)" after the drafter was told never to (2026-11-14), two
+    countdowns to one death. It is one when the drafter says so (`ClockP.own_lifespan`), or
+    when it is called a lifespan or old age, belongs to nobody else of the world, and runs for
+    a year or more: the old emperor's is his, and "The Lifespan Pill auction" in ten days is
+    an auction."""
+    if clock.own_lifespan:
+        return True
+    others = {owner.id for owner in (*world.factions, *world.npcs)}
+    if clock.owner_id in others or not _LIFESPAN.search(clock.name):
+        return False
+    hours = clock.step_every_hours
+    return hours is None or hours * len(_texts(clock.steps, 8, 300)) * HOUR >= YEAR
+
+
 def drafted_clocks(world: WorldProposal) -> list[ClockP]:
-    """The clocks of a proposal that become the state's (E2), in the state's own order."""
-    return [clock for clock in world.clocks[: MAX["clocks"]] if _texts(clock.steps, 1)]
+    """The clocks of a proposal that become the state's (E2), in the state's own order: each
+    that has a step, but one that counts the player character's own years (`own_years`)."""
+    return [
+        clock
+        for clock in world.clocks[: MAX["clocks"]]
+        if _texts(clock.steps, 1) and not own_years(world, clock)
+    ]
 
 
 # Ids.

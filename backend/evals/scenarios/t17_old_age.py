@@ -10,6 +10,7 @@ when the scene told one.
 from __future__ import annotations
 
 import json
+import re
 from collections import Counter
 
 from engine import bonds
@@ -459,7 +460,9 @@ RISEN_COURIER = (
 )
 # A made-up premise for the real drafter: years that are running out, in the player's words.
 # The first one played by hand (2026-11-14) got a countdown "Lifespan Depletion" of the drafter's
-# own beside the record's age and years, so two clocks ran to one death.
+# own beside the record's age and years, so two clocks ran to one death, and the first check
+# after the drafter was told never to got "The Lifespan Limit (2 Years Left)", with no owner.
+COUNTS_A_LIFE = re.compile(r"life[ -]?span|old age|years? (?:left|remaining)|longevity", re.I)
 SPENT_CULTIVATOR = (
     "An old cultivator, 148 years old, stuck at the peak of Foundation Establishment. My "
     "lifespan of 150 years is almost spent: I break through to Core Formation or I die."
@@ -895,7 +898,11 @@ async def own_old_age(ev: Eval) -> None:
     # W6, E2: the record's age and years are the one countdown to the end of a life.
     world = await ev.drafted(SPENT_CULTIVATOR)
     you = world.player
-    theirs = [clock.name for clock in world.clocks.values() if clock.owner_id == you.id]
+    theirs = [
+        clock.name
+        for clock in world.clocks.values()
+        if clock.owner_id == you.id or COUNTS_A_LIFE.search(clock.name)
+    ]
     ev.metric(
         "years that are running out, as the real drafter wrote them",
         {

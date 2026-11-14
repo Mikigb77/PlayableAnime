@@ -866,7 +866,12 @@ demons, dragons in human form, spirits, or ones the world invents. Each one come
   character, with their age, since their own old age follows from it (W6, N6). Their age and
   years are the one countdown to the end of their life: the drafter is told to write no clock
   (E2) for it, since a cultivator whose "lifespan of 150 years is almost spent" was drafted with
-  a "Lifespan Depletion" clock of its own beside them (2026-11-14).
+  a "Lifespan Depletion" clock of its own beside them (2026-11-14). Told so, it wrote "The
+  Lifespan Limit (2 Years Left)" all the same, so code leaves such a clock out of the story: one
+  the drafter marks as counting the character's own years, or one called a lifespan or old age
+  (in English, Spanish or Catalan) that belongs to nobody else and runs for a year or more.
+  Someone else's old age can still be a clock of the story's, and so can anything that comes
+  in days.
 - **Culture:** its customs, laws and what it honours (W11), so the same deed can be a crime among
   one people and a duty among another.
 - **Relations with the other races:** old wars, alliances, trade and prejudice. These set how
