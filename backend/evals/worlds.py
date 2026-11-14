@@ -1597,25 +1597,32 @@ def millbrook_at_sixty(*, peach: bool = False) -> WorldState:
     return state
 
 
-def millbrook_elf_at_sixty() -> WorldState:
-    """`millbrook_at_sixty` as a world drafted before peoples said how long they live (W6):
-    Tomas is an elf among humans, the story has elves live for many centuries, and the record
-    gives neither people a lifespan, nor him one of his own. The world takes his life for a
-    human one."""
+def millbrook_unsaid_at_sixty() -> WorldState:
+    """`millbrook_at_sixty` as a world drafted before peoples said how long they live (W6): the
+    record gives its people no lifespan, nor Tomas one of his own. The world takes his life
+    for a human one, which it is."""
     state = millbrook_at_sixty()
-    state.bible.peoples = [
-        People(id="humans", name="humans"),
+    state.bible.peoples = [People(id="humans", name="humans")]
+    for character in state.characters.values():
+        character.people_id = "humans"
+    state.characters["tomas"].lifespan_years = None
+    return state
+
+
+def millbrook_elf_at_sixty() -> WorldState:
+    """`millbrook_unsaid_at_sixty` where Tomas is an elf among humans and the story has elves
+    live for many centuries. The record gives neither people a lifespan, so the world takes
+    his life for a human one."""
+    state = millbrook_unsaid_at_sixty()
+    state.bible.peoples.append(
         People(
             id="elves",
             name="elves",
             description="Elves live for many centuries: one of sixty is barely grown.",
-        ),
-    ]
-    for character in state.characters.values():
-        character.people_id = "humans"
+        )
+    )
     tomas = state.characters["tomas"]
     tomas.people_id = "elves"
-    tomas.lifespan_years = None
     tomas.description = "An elf who farms among humans, young for his kind at sixty."
     tomas.appearance = "Looks a man of twenty: fair hair, pointed ears, a farmer's hands."
     state.summary = "Tomas Weller, an elf, has farmed a small plot in the Long Valley for decades."

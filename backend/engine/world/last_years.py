@@ -37,14 +37,17 @@ means the record doesn't give: anyone else is taken to have half as long again
 on, so on record old age doesn't take such a player character. Where their span is only the
 human one the world assumes (`old_age.on_record`), a world drafted before peoples said how long
 they live, old age still comes, but neither the Character screen nor the narrator is given the
-span before the stop has told it (`shown`), and the scene of the stop may answer that the story
-has them living far longer (`_UNSAID`): the narrator's update then puts it on record.
+span before the stop has told it (`shown`). There the stop asks before it tells (`_ASKED`,
+under `ASKED_TITLE`, which claims nothing): the scene decides from the story whether they are
+someone who lives far longer, shows no old age if so, and its update puts how long they live
+on record. Every scene after it reads the same question until the record says.
 """
 
 import math
 from dataclasses import dataclass
 
 from engine.base import DAY, YEAR
+from engine.contracts.direction import EventKind
 from engine.state.cast import Character
 from engine.state.records import EventStatus, PendingEvent
 from engine.state.world import EventSize, WorldState
@@ -58,22 +61,44 @@ NEAR, TAKES = "near", "takes"
 # language from the director's book (`engine.director.titles`).
 NEAR_TITLE = "Your years run short"
 TAKES_TITLE = "Your years run out"
-# What the stop adds where the span is the world's assumption, not the record's word.
-_UNSAID = (
-    " The record doesn't say how long they live, and takes it for a human life. If the story "
-    "has made them someone who lives far longer, or whom old age never takes, show no old age "
-    "and say how long they live in the update (lifespan_years, 1000000 for never)."
+# Where the span is the world's assumption, not the record's word, the stop's title claims
+# nothing: the scene under it decides what they are.
+ASKED_TITLE = "The weight of your years"
+# How the stop's brief opens: where the record says how long they live, and where it doesn't.
+# The real narrator told a young elf his end was near while the question came last (build 114),
+# so it comes first.
+_SAID = (
+    "{name} is {age}, of the about {span} years someone like them lives, and the end of their "
+    "life is close. "
+)
+_ASKED = (
+    "The record doesn't say how long {name} lives, and takes it for a human life of about "
+    "{span} years, of which they are {age}. Decide first, from WORLD and the story so far, "
+    "whether that is what they are. If the story has made them someone who lives far longer, "
+    "or whom old age never takes, nothing happens to them here: show no old age, tell the "
+    "time that went by as it was for someone like them, and say how long they live in the "
+    "update (lifespan_years, 1000000 for never). Only otherwise is the end of their life "
+    "close. "
+)
+_TELLING = (
+    "The years stop here. Tell it from inside, as they sense it in their own body, such as a "
+    "heart that slows or strength that doesn't come back, and let them foresee that going on "
+    "as they are, old age takes them soon. Nobody knows the day: give no number of years or "
+    "days left. What they do with the time is theirs: look for a way to lengthen their life, "
+    "where the world has one, or meet the end in peace."
 )
 
 
 @dataclass(frozen=True)
 class Years:
-    """The player character where old age can come to them: their age now, to the day, and
-    how long they live."""
+    """The player character where old age can come to them: their age now, to the day, how
+    long they live, and whether the record itself says so (`old_age.on_record`) or the world
+    only assumes a human life."""
 
     you: Character
     age: float
     span: int
+    said: bool
 
     @property
     def told(self) -> bool:
@@ -97,7 +122,9 @@ def years_of(state: WorldState, at_s: int) -> Years | None:
     if age is None or old_age.open_ended(state, you):
         return None
     span = old_age.span(state, you)
-    return Years(you, age, span) if span < AGELESS_YEARS else None
+    if span >= AGELESS_YEARS:
+        return None
+    return Years(you, age, span, old_age.on_record(state, you))
 
 
 def shown(state: WorldState, at_s: int) -> Years | None:
@@ -106,7 +133,7 @@ def shown(state: WorldState, at_s: int) -> Years | None:
     close. A span the world only assumes is not theirs to read before that. It is how long
     someone like them lives, never the day: nothing shows how long they have left."""
     found = years_of(state, at_s)
-    if found is None or not (found.told or old_age.on_record(state, found.you)):
+    if found is None or not (found.told or found.said):
         return None
     return found
 
@@ -165,16 +192,13 @@ def on_old_age(w: World, event: PendingEvent) -> bool:
         lives.taken(w, you, known=True)
         return True
     you.old_age_span = found.span
-    unsaid = "" if old_age.on_record(w.state, you) else _UNSAID
-    event.payload["event"] = _told(
-        f"{you.name} is {you.age}, of the about {found.span} years someone like them lives, "
-        "and the end of their life is close. The years stop here. Tell it from inside, as "
-        "they sense it in their own body, such as a heart that slows or strength that doesn't "
-        "come back, and let them foresee that going on as they are, old age takes them soon. "
-        "Nobody knows the day: give no number of years or days left. What they do with the "
-        "time is theirs: look for a way to lengthen their life, where the world has one, or "
-        f"meet the end in peace.{unsaid}"
-    )
+    opening = (_SAID if found.said else _ASKED).format(name=you.name, age=you.age, span=found.span)
+    if found.said:
+        event.payload["event"] = _told(opening + _TELLING)
+    else:
+        # The scene decides what they are, so neither the title nor the kind says a loss.
+        event.title = ASKED_TITLE
+        event.payload["event"] = _told(opening + _TELLING, EventKind.DISCOVERY)
     day_s = int(event.payload.get("day_s", 0))
     _schedule(w, found, TAKES, TAKES_TITLE, max(day_s, w.at_s + LIFE_QUIET_S))
     return True
@@ -189,10 +213,10 @@ def _is_for(event: PendingEvent, found: Years, stage: object) -> bool:
     )
 
 
-def _told(brief: str) -> dict[str, str]:
+def _told(brief: str, kind: EventKind = EventKind.LOSS) -> dict[str, str]:
     """The scene's event as the director reads it (`engine.director.due.world_event`): a
-    personal one, a loss, told from this brief."""
-    return {"size": EventSize.PERSONAL.value, "kind": "loss", "brief": brief}
+    personal one, a loss unless said otherwise, told from this brief."""
+    return {"size": EventSize.PERSONAL.value, "kind": kind.value, "brief": brief}
 
 
 def _draw(w: World, found: Years) -> tuple[int, float]:
