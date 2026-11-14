@@ -158,8 +158,9 @@ class Character(EngineModel):
         default=None,
         ge=0,
         description="N6, W6: for the player character, the span in years for which a scene "
-        "has told them that old age set in (`engine.world.last_years`). A longer life since "
-        "is another span, with a warning of its own. None while no scene has told them.",
+        "has told them that the end of their life is close (`engine.world.last_years`). A "
+        "longer life since is another span, with a stop of its own. None while no scene has "
+        "told them.",
     )
     seen_s: WorldSeconds | None = Field(
         default=None,

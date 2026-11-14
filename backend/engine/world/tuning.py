@@ -250,6 +250,10 @@ AGELESS_YEARS = 1_000_000
 # older, so that half of those who get that far are gone at the full span and next to nobody
 # sees a fifth more than it. Nothing takes anyone younger.
 OLD_AGE_FROM = 0.85
+# The player character's own old age (N6, W6): the years stop this part of their span before
+# the day it takes them, drawn between the two with the day, so the stop tells nobody how long
+# is left (Miki, 2026-11-13). Of eighty years it is ten months to three years.
+LAST_YEARS = (0.01, 0.04)
 # Someone the world first finds older than their span has one of their own: as long again
 # past their age as half of what they have outlived the span by.
 OWN_SPAN = 0.5

@@ -1,15 +1,17 @@
 """N6, W6: the player character's own old age, through a turn.
 
-The years stop once when old age sets in, and the scene that opens there is told what it
-means. Every scene after it reads them old. Going on past the day old age takes them ends
-their story on a last scene of its own, and a scene that lengthens their life puts it off.
+Nothing announces that old age has begun: once they are old a scene reads them old, where the
+record says how long they live. The years stop once when the end is close, and the scene that
+opens there is told so, with no number. Going on past the day old age takes them ends their
+story on a last scene of its own, and a scene that lengthens their life puts it off. No scene
+is ever handed the day.
 """
 
 from engine.base import DAY, YEAR
 from engine.context import Language, StorySettings
 from engine.state import EventStatus, PendingEvent, WorldState
-from engine.world import last_years, lives
-from engine.world.last_years import SETS_IN_TITLE, TAKES, TAKES_TITLE
+from engine.world import last_years, lives, old_age
+from engine.world.last_years import NEAR_TITLE, TAKES, TAKES_TITLE
 from engine.world.scheduling import Kind
 from graph.llm import Node, Reply
 from graph.turn import prompts
@@ -56,57 +58,101 @@ def task(told: str) -> str:
     return told.split("## TASK\n", 1)[1].split("\n\n## ", 1)[0]
 
 
-def old(years_on: float = 0) -> WorldState:
-    """Tomas at sixty-eight, the day a scene told him old age had set in, or `years_on` later
-    with the day it takes him still to come."""
-    state, _ = until_old_age(aged(60), 20)
-    if years_on:
-        state.world_s += int(years_on * YEAR)
+def said(age: int) -> WorldState:
+    """Tomas at an age, in a world whose record gives him eighty years."""
+    return aged(age, lifespan_years=80)
+
+
+def near_the_end() -> WorldState:
+    """Tomas the day a scene told him the end is close, with the day it comes still ahead."""
+    state, _ = until_old_age(said(60), 40)
     return state
 
 
-def test_the_years_stop_once_when_old_age_sets_in_and_the_scene_is_told(fake, make_client):
-    start = aged(60)
+def the_day(state: WorldState) -> PendingEvent:
+    (takes,) = [
+        e
+        for e in state.pending_events.values()
+        if e.status is EventStatus.PENDING and e.kind == Kind.OLD_AGE
+    ]
+    return takes
 
-    result, told = a_turn(fake, make_client, start, 20)
 
-    # Eight of the twenty years: the rest is theirs to decide on, knowing.
+def test_the_years_stop_once_when_the_end_is_close_and_the_scene_is_told(fake, make_client):
+    result, told = a_turn(fake, make_client, said(60), 40)
+
+    # Some of the forty years: the rest is theirs to decide on, knowing.
     (step,) = result.resolution.steps
-    assert step.interrupted and step.duration_s == 8 * YEAR
-    assert result.ending is None and result.state.characters[YOU].old_age_span == 80
-    assert result.scene.event.title == SETS_IN_TITLE
+    assert step.interrupted and 4 * YEAR < step.duration_s < 40 * YEAR
+    you = result.state.characters[YOU]
+    assert result.ending is None and you.alive and you.old_age_span == 80
+    assert result.scene.event.title == NEAR_TITLE
     event = _section(told, "EVENT")
-    assert event["title"] == SETS_IN_TITLE and event["kind"] == "loss"
-    assert event["brief"].startswith("Tomas Weller has grown old: 68, of the about 80 years")
-    # From this scene on they read as old, and the record's own counter never shows.
-    you = _section(told, "PLAYER CHARACTER")
-    assert you["age"] == 68 and "old_age_span" not in you
-    assert you["old_age"].startswith("set in: 68 of the about 80 years someone like them lives.")
-    assert "lifespan_years" in you["old_age"]
+    assert event["title"] == NEAR_TITLE and event["kind"] == "loss"
+    assert event["brief"].startswith(f"Tomas Weller is {you.age}, of the about 80 years")
+    assert "the end of their life is close" in event["brief"]
+    assert "give no number of years or days left" in event["brief"]
+    # From this scene on they read as near the end, and the record's own counter never shows.
+    view = _section(told, "PLAYER CHARACTER")
+    assert view["age"] == you.age and "old_age_span" not in view
+    assert view["old_age"].startswith(
+        f"{you.age} of the about 80 years someone like them lives: the end of their life is "
+        "close, they know it"
+    )
+    assert "lifespan_years" in view["old_age"]
+
+
+def test_no_scene_is_handed_the_day_or_how_long_is_left(fake, make_client):
+    result, told = a_turn(fake, make_client, said(60), 40)
+
+    takes = the_day(result.state)
+    assert takes.due_s > result.state.world_s  # the day is on record, still ahead
+    # Neither the scene of the stop nor the one after it reads it.
+    for read in (told, brief(result.state).user):
+        assert "day_s" not in read and str(takes.due_s) not in read
+    assert "Nobody knows how long they have" in _section(told, "PLAYER CHARACTER")["old_age"]
 
 
 def test_the_title_over_the_scene_is_in_the_storys_language(fake, make_client):
     settings = StorySettings(language=Language.ES)
 
-    result, _ = a_turn(fake, make_client, aged(60), 20, settings=settings)
+    result, _ = a_turn(fake, make_client, said(60), 40, settings=settings)
 
-    assert result.scene.event.title == "Llega la vejez"
+    assert result.scene.event.title == "Te quedan pocos años"
 
 
-def test_nothing_is_said_of_old_age_before_it_sets_in():
-    told = brief(aged(60))
+def test_nothing_is_said_of_old_age_before_they_are_old():
+    told = brief(said(60))
 
     you = _section(told.user, "PLAYER CHARACTER")
     assert you["age"] == 60 and "old_age" not in you and "old_age_span" not in you
 
 
+def test_once_old_a_scene_reads_them_old_where_the_record_says_how_long_they_live():
+    you = _section(brief(said(70)).user, "PLAYER CHARACTER")
+
+    assert you["old_age"].startswith(
+        "70 of the about 80 years someone like them lives: they are old, and it shows in "
+        "their body. Nobody knows how long they have, so no scene gives a number."
+    )
+    # Where eighty years is only the world's assumption, the narrator is not given it.
+    assert "old_age" not in _section(brief(aged(70)).user, "PLAYER CHARACTER")
+
+
+def test_someone_told_before_they_are_old_reads_as_near_the_end(monkeypatch):
+    # A day that falls as old age begins: the stop before it comes while they are not yet old.
+    monkeypatch.setattr(old_age, "taken_at", lambda lives_years, reached, luck: 68.5)
+    state, event = until_old_age(said(60), 40)
+
+    years = last_years.years_of(state, state.world_s)
+    assert event is not None and years.told and not years.old
+    you = _section(brief(state).user, "PLAYER CHARACTER")
+    assert "the end of their life is close, they know it" in you["old_age"]
+
+
 def test_going_on_past_the_day_ends_the_story_on_a_scene_of_its_own(fake, make_client):
-    start = old()
-    (takes,) = [
-        e
-        for e in start.pending_events.values()
-        if e.status is EventStatus.PENDING and e.kind == Kind.OLD_AGE
-    ]
+    start = near_the_end()
+    takes = the_day(start)
 
     result, told = a_turn(fake, make_client, start, 40)
 
@@ -128,10 +174,8 @@ def test_going_on_past_the_day_ends_the_story_on_a_scene_of_its_own(fake, make_c
 def test_someone_whose_day_was_left_overdue_dies_before_they_act(fake, make_client):
     """A stretch the event cap cut short leaves what was due pending, and the next turn
     applies it as it begins: their years ran out, and nothing they set out to do happens."""
-    start = old(years_on=1)
-    for event in start.pending_events.values():
-        if event.kind == Kind.OLD_AGE and event.status is EventStatus.PENDING:
-            event.due_s = start.world_s - DAY
+    start = near_the_end()
+    the_day(start).due_s = start.world_s - DAY
 
     result, told = a_turn(fake, make_client, start, 1)
 
@@ -144,7 +188,7 @@ def test_someone_whose_day_was_left_overdue_dies_before_they_act(fake, make_clie
 
 
 def test_a_scene_that_lengthens_their_life_puts_old_age_off(fake, make_client):
-    start = old()
+    start = near_the_end()
     scene = SCENE | {
         "narration": "The peach is cold and sweet, and the years fall from Tomas like a coat.",
         "update": SCENE["update"] | {"characters": [{"id": YOU, "lifespan_years": 300}]},
@@ -157,29 +201,31 @@ def test_a_scene_that_lengthens_their_life_puts_old_age_off(fake, make_client):
     assert state.characters[YOU].lifespan_years == 300
     # The next time the world looks, the day that was drawn is gone and old age is years off.
     state = until_old_age(state, 1)[0]
-    assert waiting(state) == [("sets_in", 300)]
-    assert last_years.years_of(state, state.world_s).set_in is False
+    assert waiting(state) == [("near", 300)]
+    assert last_years.years_of(state, state.world_s).told is False
     assert "old_age" not in _section(brief(state).user, "PLAYER CHARACTER")
 
 
-def test_the_warning_scene_can_answer_that_the_story_has_them_living_far_longer(fake, make_client):
+def test_the_scene_of_the_stop_can_answer_that_the_story_has_them_living_far_longer(
+    fake, make_client
+):
     """A world drafted before peoples said how long they live: eighty years is the world's
     assumption, the scene is told so, and its update can put the real span on record."""
     scene = SCENE | {
-        "narration": "Tomas is an elf, and sixty-eight winters sit on him like one.",
+        "narration": "Tomas is an elf, and his winters sit on him like one.",
         "update": SCENE["update"] | {"characters": [{"id": YOU, "lifespan_years": 800}]},
     }
 
-    result, told = a_turn(fake, make_client, aged(60), 20, scene=scene)
+    result, told = a_turn(fake, make_client, aged(60), 40, scene=scene)
 
     asked = _section(told, "EVENT")["brief"]
     assert "The record doesn't say how long they live" in asked and "lifespan_years" in asked
     state = result.state
     assert "rejected" not in [issue.code for issue in result.issues]
     assert state.characters[YOU].lifespan_years == 800
-    # The day drawn for eighty years is gone, and old age is six centuries off.
+    # The day drawn for eighty years is gone, and old age is centuries off.
     state = until_old_age(state, 1)[0]
-    assert waiting(state) == [("sets_in", 800)]
+    assert waiting(state) == [("near", 800)]
     assert "old_age" not in _section(brief(state).user, "PLAYER CHARACTER")
 
 
@@ -196,7 +242,7 @@ def test_the_narrators_form_says_when_a_scene_gives_a_lifespan():
 
 def test_an_old_age_event_of_another_story_line_is_left_alone():
     # A pending event on another timeline is not this one's to cancel or to fire.
-    state = old()
+    state = near_the_end()
     other = PendingEvent(
         id="elsewhere",
         kind=str(Kind.OLD_AGE),

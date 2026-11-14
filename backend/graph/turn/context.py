@@ -160,11 +160,16 @@ def place_name(state: WorldState) -> str | None:
 _LOOKS = ("appearance", "description")
 
 
-# N6, W6: the player character's old age, as every scene after its warning reads it.
+# N6, W6: the player character's old age, as every scene reads it once they are old and the
+# record can say so, and after the scene that told them the end is close.
 _OLD_AGE = (
-    "set in: {age} of the about {span} years someone like them lives. It shows in their "
-    "body, and their years are running out. A scene in which something lengthens their life "
+    "{age} of the about {span} years someone like them lives: {how}. Nobody knows how long "
+    "they have, so no scene gives a number. A scene in which something lengthens their life "
     "says so in its update (lifespan_years)."
+)
+_OLD, _NEAR_THE_END = (
+    "they are old, and it shows in their body",
+    "the end of their life is close, they know it, and it shows in their body",
 )
 
 
@@ -190,11 +195,13 @@ def _player_view(state: WorldState, *, looks: bool = True) -> dict[str, Any]:
     condition = view["sheet"].setdefault("condition", {})
     condition["health"] = state.player.sheet.condition.health.value
     condition.setdefault("wounds", [])
-    # N6, W6: their old age, once a scene has told them it set in, so every scene after it
-    # shows them old. Nothing before: how old someone is says enough.
-    years = last_years.years_of(state, state.world_s)
-    if years is not None and years.set_in:
-        view["old_age"] = _OLD_AGE.format(age=int(years.age), span=years.span)
+    # N6, W6: their old age, from the age the years take people at, so a scene shows them
+    # old, and what they were told once the years stopped for it. Nothing before, and never
+    # how long is left: how old someone is says enough.
+    years = last_years.shown(state, state.world_s)
+    if years is not None and (years.old or years.told):
+        how = _NEAR_THE_END if years.told else _OLD
+        view["old_age"] = _OLD_AGE.format(age=int(years.age), span=years.span, how=how)
     # The player character's own family, marking anyone of it they don't know of (C6).
     return view | _family_view(state, state.player, knower=state.player_id)
 

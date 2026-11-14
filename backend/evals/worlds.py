@@ -1577,7 +1577,7 @@ PEACH = "peach"
 def millbrook_at_sixty(*, peach: bool = False) -> WorldState:
     """`millbrook_he_knows` years on, for his own old age (N6, W6): Tomas is sixty, on the farm
     he never left. The record gives him eighty years, as a new world's draft says of its
-    character, so old age sets in for him at sixty-eight.
+    character, so he is old at sixty-eight and old age takes him some years on.
     With `peach` he has kept a peach from the Orchard of the Undying all his life, which gives
     whoever eats it three hundred years."""
     state = millbrook_he_knows()

@@ -1,13 +1,16 @@
-"""N6, W6, W10: the player character's own old age, a warning first and then a real end.
+"""N6, W6, W10: the player character's own old age. Nothing when it begins, a stop when the end
+is close, then a real end.
 
-Old age takes everyone else under the tick's dice. The player character's comes as two events
-of their own, at in-world times: it sets in at the age it does for anyone, stopping the years
-once so a scene can tell them, and it takes them on a day drawn then by the same odds, never
-within a season of the warning. A longer life is another span, with a warning of its own, and
-where the record can't say how long they live, nothing comes.
+Old age takes everyone else under the tick's dice. The player character's day is drawn once,
+by the same odds, and kept where nobody reads it. Some way before it, a part of their span
+drawn with it, the years stop once so a scene can let them feel the end is close, with no
+number. Going on, it takes them on the day, never within a season of the stop. A longer life
+is another span, with a stop of its own, and where the record can't say how long they live,
+nothing comes.
 """
 
 import math
+import re
 
 import pytest
 
@@ -34,9 +37,9 @@ from engine.state import (
 from engine.state.world import EventSize
 from engine.visibility import status_view
 from engine.world import last_years, lives, old_age
-from engine.world.last_years import SETS_IN, SETS_IN_TITLE, TAKES, TAKES_TITLE
+from engine.world.last_years import NEAR, NEAR_TITLE, TAKES, TAKES_TITLE
 from engine.world.scheduling import Kind
-from engine.world.tuning import AGELESS_YEARS, LIFE_QUIET_S, OLD_AGE_FROM
+from engine.world.tuning import AGELESS_YEARS, LAST_YEARS, LIFE_QUIET_S, OLD_AGE_FROM
 
 from .test_world import ctx, idle, pending_of, rng
 from .test_world_lives import NARRATOR, YOU, couple, valley
@@ -62,6 +65,11 @@ def realms(state: WorldState, rung: int, *spans: int | None) -> WorldState:
     return state
 
 
+def looked(state: WorldState, turn: int = 3) -> WorldState:
+    """The world looks, with no time passing: what it keeps pending is pending."""
+    return pipeline.catch_up(state, state.world_s, ctx(turn), rng(turn)).state
+
+
 def until_old_age(state: WorldState, years: float = 300, *, turn: int = 3):
     """Let the years pass until old age stops them: the state there and the event, or the
     state those years on and None."""
@@ -84,44 +92,72 @@ def age_now(state: WorldState) -> float:
     return old_age.age_at(state, state.characters[YOU], state.world_s)
 
 
-# --- it sets in --------------------------------------------------------------------------------
+def about(state: WorldState, language: Language = Language.EN) -> str:
+    return status_view(state, language).sheet.about[-1]
 
 
-def test_old_age_sets_in_at_its_age_and_stops_the_years_once():
-    state = aged(34)
+# --- nothing when it begins, a stop when the end is close --------------------------------------
+
+
+def test_nothing_announces_that_old_age_has_begun():
+    state = looked(aged(60, lifespan_years=80))
+    (stop,) = pending_of(state, OLD_AGE)
+
+    # Sixty-eight comes and goes: the years run on until the end is close.
+    state, fired = idle(state, stop.due_s - DAY)
+
+    assert [e for e in fired if e.kind == OLD_AGE] == []
+    you = state.characters[YOU]
+    assert you.alive and you.old_age_span is None
+    years = last_years.years_of(state, state.world_s)
+    assert years.old and not years.told and waiting(state) == [(NEAR, 80)]
+
+
+def test_the_years_stop_once_when_the_end_is_close():
+    state = looked(aged(34))
     start = state.world_s
+    (stop,) = pending_of(state, OLD_AGE)
+    day_s = stop.payload["day_s"]
+    assert stop.payload == {"phase": NEAR, "who": YOU, "span": 80, "day_s": day_s}
 
     state, event = until_old_age(state, 100)
 
-    # Sixty-eight of eighty years, to the day, however long the stretch was meant to be.
-    assert event.payload["phase"] == SETS_IN and event.needs_player
-    assert state.world_s - start == 34 * YEAR
-    assert age_now(state) == pytest.approx(OLD_AGE_FROM * 80)
+    # However long the stretch was meant to be, it stops there, some way before the day.
+    assert event.payload["phase"] == NEAR and event.needs_player
+    assert state.world_s == stop.due_s > start + 30 * YEAR
+    low, high = LAST_YEARS
+    assert low * 80 * YEAR <= day_s - stop.due_s <= high * 80 * YEAR + 1
     you = state.characters[YOU]
     assert you.alive and you.old_age_span == 80
-    # The day it takes them is drawn there and then, and never within a season.
+    # The day was drawn from the first, at an age old age takes people at, and waits there.
     (takes,) = pending_of(state, OLD_AGE)
     assert takes.payload == {"phase": TAKES, "who": YOU, "span": 80}
-    assert takes.due_s >= state.world_s + SEASON and takes.needs_player
-    # Nothing warns them twice.
+    assert takes.due_s == day_s >= start + (OLD_AGE_FROM * 80 - 34) * YEAR and takes.needs_player
+    # Nothing stops them twice.
     later, fired = idle(state, takes.due_s - DAY)
     assert [e for e in fired if e.kind == OLD_AGE] == []
     assert later.characters[YOU].alive and waiting(later) == [(TAKES, 80)]
     assert check_state(later) == []
 
 
-def test_the_scene_it_opens_is_told_what_it_means():
-    state, event = until_old_age(aged(34), 100)
+def test_the_scene_it_opens_is_told_the_end_is_close_and_no_number():
+    state, event = until_old_age(aged(34, lifespan_years=80), 100)
+    age = state.characters[YOU].age
 
     told = world_event(event)
 
-    assert told.title == SETS_IN_TITLE == "Old age sets in"
+    assert told.title == NEAR_TITLE == "Your years run short"
     assert told.size is EventSize.PERSONAL and told.kind.value == "loss"
     assert told.cast_ids == [YOU]
-    assert told.brief.startswith("Tomas Weller has grown old: 68, of the about 80 years")
-    assert "Half of those who reach this age are gone by 80" in told.brief
-    assert "next to nobody sees 96" in told.brief
-    assert "lengthens their life" in told.brief
+    assert told.brief.startswith(
+        f"Tomas Weller is {age}, of the about 80 years someone like them lives, and the end "
+        "of their life is close. The years stop here."
+    )
+    assert "sense it in their own body" in told.brief and "foresee" in told.brief
+    assert "Nobody knows the day: give no number of years or days left." in told.brief
+    assert "lengthen their life" in told.brief and "meet the end in peace" in told.brief
+    # Their age and how long someone like them lives are the only numbers it holds.
+    assert re.findall(r"\d+", told.brief) == [str(age), "80"]
 
 
 def test_where_the_span_is_only_assumed_the_scene_may_answer_that_they_live_longer():
@@ -135,54 +171,64 @@ def test_where_the_span_is_only_assumed_the_scene_may_answer_that_they_live_long
     for state in (aged(34, lifespan_years=80), humans(aged(34), 80), realms(aged(34), 0, 80)):
         _, event = until_old_age(state, 100)
         said = world_event(event).brief
-        assert said.startswith("Tomas Weller has grown old: 68, of the about 80 years")
-        assert said.endswith("puts it off.") and "The record doesn't say" not in said
+        assert said.endswith("meet the end in peace.") and "The record doesn't say" not in said
 
 
 def test_its_titles_are_said_in_spanish_and_catalan():
-    assert titles.said(SETS_IN_TITLE, Language.ES) == "Llega la vejez"
-    assert titles.said(SETS_IN_TITLE, Language.CA) == "Arriba la vellesa"
+    assert titles.said(NEAR_TITLE, Language.ES) == "Te quedan pocos años"
+    assert titles.said(NEAR_TITLE, Language.CA) == "Et queden pocs anys"
     assert titles.said(TAKES_TITLE, Language.ES) == "Se te acaban los años"
     assert titles.said(TAKES_TITLE, Language.CA) == "Se t'acaben els anys"
-    assert titles.written(SETS_IN_TITLE) and titles.written(TAKES_TITLE)
+    assert titles.written(NEAR_TITLE) and titles.written(TAKES_TITLE)
 
 
 def test_a_month_or_ten_years_bring_the_young_nothing():
     for years in (1 / 12, 10):
-        state = aged(34)
-        start = state.world_s
+        state = looked(aged(34))
+        (stop,) = pending_of(state, OLD_AGE)
 
         state, event = until_old_age(state, years)
 
         assert event is None and state.characters[YOU].old_age_span is None
-        (sets_in,) = pending_of(state, OLD_AGE)
-        assert sets_in.payload["phase"] == SETS_IN
-        assert sets_in.due_s == start + 34 * YEAR
+        assert pending_of(state, OLD_AGE) == [stop]
 
 
-def test_someone_who_starts_the_story_old_is_told_a_day_in():
-    state = aged(75)
+def test_someone_already_that_close_when_the_story_starts_is_told_a_day_in(monkeypatch):
+    monkeypatch.setattr(old_age, "taken_at", lambda lives_years, reached, luck: reached + 0.3)
+    state = aged(79)
     start = state.world_s
 
     first = pipeline.catch_up(state, start, ctx(), rng())  # the opening scene: no time yet
     state, event = until_old_age(first.state, 1)
 
     assert first.fired == () and first.state.characters[YOU].old_age_span is None
-    assert event.payload["phase"] == SETS_IN and state.world_s == start + DAY
-    assert state.characters[YOU].old_age_span == 80
+    assert event.payload["phase"] == NEAR and state.world_s == start + DAY
+    assert state.characters[YOU].old_age_span == 80 and waiting(state) == [(TAKES, 80)]
+
+
+def test_how_far_before_the_day_the_years_stop_tells_nobody_the_day():
+    parts = []
+    for seed in range(3, 27):
+        (stop,) = pending_of(looked(aged(34), seed), OLD_AGE)
+        parts.append((stop.payload["day_s"] - stop.due_s) / (80 * YEAR))
+
+    low, high = LAST_YEARS
+    assert all(low <= part <= high + 1e-9 for part in parts)
+    assert len({round(part, 4) for part in parts}) >= 20
+    assert min(parts) < 0.02 and max(parts) > 0.03
 
 
 def test_someone_first_found_older_than_their_kind_lives_is_left_alone():
     # Three hundred among people who live eighty, by means the record doesn't give. Anyone
     # else is given a guessed span (`old_age.own_span`): no guess ends the player's story.
-    state = pipeline.catch_up(aged(300), 0, ctx(), rng()).state
+    state = looked(aged(300))
 
     assert state.characters[YOU].lifespan_years == AGELESS_YEARS
     assert pending_of(state, OLD_AGE) == [] and last_years.years_of(state, 0) is None
     state, event = until_old_age(state, 200)
     assert event is None and state.characters[YOU].alive
     # Someone within the span of their kind has none of their own.
-    assert pipeline.catch_up(aged(34), 0, ctx(), rng()).state.characters[YOU].lifespan_years == 0
+    assert looked(aged(34)).characters[YOU].lifespan_years == 0
 
 
 # --- it takes them -----------------------------------------------------------------------------
@@ -212,6 +258,7 @@ def test_the_day_is_never_before_the_age_they_have_reached_whatever_the_rounding
 
 def test_going_on_past_the_day_ends_their_life():
     state = aged(34)
+    start = state.world_s
     couple(state, YOU, "ilse", BondStage.MARRIED)
     state.characters["ilse"].age = None  # she is there to the end
     state, _ = until_old_age(state, 100)
@@ -227,7 +274,7 @@ def test_going_on_past_the_day_ends_their_life():
     death = you.status_history[-1]
     assert (death.note, death.known_by, death.world_s) == ("Died of old age.", [YOU], state.world_s)
     # The record has the age they died at, to the year, whenever the world last counted.
-    assert you.age == int(68 + (takes.due_s - takes.created_s) / YEAR)
+    assert you.age == int(34 + (takes.due_s - start) / YEAR)
     assert bonds.partners(state, YOU) == []  # W17: the death ended their marriage
     assert world_event(event).brief == f"Old age takes Tomas Weller, at {you.age}."
     assert check_state(state) == []
@@ -237,9 +284,13 @@ def test_going_on_past_the_day_ends_their_life():
     assert later.characters[YOU].age == you.age
 
 
-def test_the_day_never_comes_within_a_season_of_the_warning(monkeypatch):
+def test_the_day_never_comes_within_a_season_of_the_stop(monkeypatch):
     monkeypatch.setattr(old_age, "taken_at", lambda lives_years, reached, luck: reached)
-    state, _ = until_old_age(aged(79), 1)
+    state = looked(aged(79))
+    (stop,) = pending_of(state, OLD_AGE)
+    # The day on record is the day it comes: a season after a stop made a day in.
+    assert stop.due_s == state.world_s + DAY and stop.payload["day_s"] == stop.due_s + SEASON
+    state, _ = until_old_age(state, 1)
     told_s = state.world_s
 
     state, event = until_old_age(state, 1)
@@ -248,17 +299,49 @@ def test_the_day_never_comes_within_a_season_of_the_warning(monkeypatch):
     assert state.world_s == told_s + SEASON
 
 
-def test_the_same_story_finds_the_same_day_however_the_years_are_cut():
-    told, _ = until_old_age(aged(34), 100)
-    (takes,) = pending_of(told, OLD_AGE)
+def test_a_stop_that_comes_late_still_leaves_a_season():
+    """A stretch the event cap cut short leaves the stop overdue. The season runs from the
+    scene that tells them, not from when it was due."""
+    state = looked(aged(60, lifespan_years=80))
+    (stop,) = pending_of(state, OLD_AGE)
+    at = state.world_s
+    stop.due_s, stop.payload["day_s"] = at - YEAR, at + DAY
 
-    at_once, _ = until_old_age(told.model_copy(deep=True), 100, turn=9)
-    by_days = told.model_copy(deep=True)
+    state, event = until_old_age(state, 1)
+
+    assert event.payload["phase"] == NEAR and state.world_s == at
+    (takes,) = pending_of(state, OLD_AGE)
+    assert takes.payload["phase"] == TAKES and takes.due_s == at + SEASON
+
+
+def test_a_short_life_is_stopped_a_season_before_the_day_at_the_least(monkeypatch):
+    # A people of six years: the last of them is under three months, whatever is drawn.
+    monkeypatch.setattr(old_age, "taken_at", lambda lives_years, reached, luck: 5.5)
+    state = looked(humans(aged(3), 6))
+
+    (stop,) = pending_of(state, OLD_AGE)
+
+    assert LAST_YEARS[1] * 6 * YEAR < SEASON
+    # The day stays the day that was drawn, and the years stop a season before it.
+    day_s = stop.payload["day_s"]
+    assert day_s == state.world_s + math.ceil((5.5 - age_now(state)) * YEAR)
+    assert stop.due_s == day_s - SEASON
+
+
+def test_the_same_story_finds_the_same_stop_and_day_however_the_years_are_cut():
+    first = looked(aged(34))
+    (stop,) = pending_of(first, OLD_AGE)
+
+    at_once, _ = until_old_age(first.model_copy(deep=True), 100, turn=9)
+    by_days = first.model_copy(deep=True)
     for turn in range(20, 26):  # a week of scenes, each its own turn, then the rest
         by_days = pipeline.catch_up(by_days, by_days.world_s + DAY, ctx(turn), rng(turn)).state
     by_days, _ = until_old_age(by_days, 100, turn=40)
+    assert at_once.world_s == by_days.world_s == stop.due_s
 
-    assert at_once.world_s == by_days.world_s == takes.due_s
+    at_once, _ = until_old_age(at_once, 100, turn=10)
+    by_days, _ = until_old_age(by_days, 100, turn=77)
+    assert at_once.world_s == by_days.world_s == stop.payload["day_s"]
     assert not at_once.characters[YOU].alive and not by_days.characters[YOU].alive
 
 
@@ -276,42 +359,38 @@ def test_the_days_vary_from_story_to_story_as_everyones_do():
 # --- a longer life is another span -------------------------------------------------------------
 
 
-def test_a_longer_life_is_another_span_with_a_warning_of_its_own():
+def test_a_longer_life_is_another_span_with_a_stop_of_its_own():
     state = realms(aged(34), 0, 80, 200)
     state, _ = until_old_age(state, 100)
     (takes,) = pending_of(state, OLD_AGE)
     assert state.characters[YOU].old_age_span == 80
 
-    # A breakthrough at seventy: the next rung lives two hundred years.
-    state, _ = idle(state, state.world_s + 2 * YEAR)
+    # A breakthrough in the time left: the next rung lives two hundred years.
     state.characters[YOU].sheet.ladders[0].rung = 1
-    state = pipeline.catch_up(state, state.world_s, ctx(9), rng(9)).state
+    state = looked(state, 9)
 
-    assert waiting(state) == [(SETS_IN, 200)]
+    assert waiting(state) == [(NEAR, 200)]
     assert state.pending_events[takes.id].status is EventStatus.CANCELLED
-    assert last_years.years_of(state, state.world_s).set_in is False
+    assert last_years.years_of(state, state.world_s).told is False
     # The day that was drawn for the old span passes and takes nobody.
-    state, event = until_old_age(state, 120)
-    assert event.payload == {"phase": SETS_IN, "who": YOU, "span": 200} | {
-        "event": event.payload["event"]
-    }
-    assert age_now(state) == pytest.approx(170)
+    state, event = until_old_age(state, 200)
+    assert (event.payload["phase"], event.payload["span"]) == (NEAR, 200)
+    assert age_now(state) >= (OLD_AGE_FROM - LAST_YEARS[1]) * 200
     assert state.world_s > takes.due_s and state.characters[YOU].alive
     assert state.characters[YOU].old_age_span == 200 and waiting(state) == [(TAKES, 200)]
 
 
-def test_someone_already_old_for_the_longer_life_is_told_again_a_day_on(monkeypatch):
-    monkeypatch.setattr(old_age, "taken_at", lambda lives_years, reached, luck: reached + 40)
+def test_someone_already_close_for_the_longer_life_is_told_again_a_day_on(monkeypatch):
     state = realms(aged(34), 0, 80, 100)
     state, _ = until_old_age(state, 100)
-    state, _ = idle(state, state.world_s + 20 * YEAR)  # eighty-eight, and still here
+    monkeypatch.setattr(old_age, "taken_at", lambda lives_years, reached, luck: reached + 0.5)
     state.characters[YOU].sheet.ladders[0].rung = 1
     at = state.world_s
 
     state, event = until_old_age(state, 1)
 
-    # Eighty-five of a hundred years is where old age begins: they are past it already.
-    assert event.payload["phase"] == SETS_IN and event.payload["span"] == 100
+    # Half a year from the new day is within the last of a hundred years: they are told.
+    assert (event.payload["phase"], event.payload["span"]) == (NEAR, 100)
     assert state.world_s == at + DAY
     assert state.characters[YOU].old_age_span == 100 and waiting(state) == [(TAKES, 100)]
 
@@ -330,16 +409,16 @@ def test_an_event_for_a_span_they_no_longer_have_is_cancelled_and_tells_nobody()
     assert after.characters[YOU].alive
 
 
-def test_a_warning_already_given_is_never_given_again():
-    state, first = until_old_age(aged(34), 100)
+def test_a_stop_already_made_is_never_made_again():
+    state, _ = until_old_age(aged(34), 100)
     again = PendingEvent(
         id="again",
         kind=str(OLD_AGE),
-        title=SETS_IN_TITLE,
+        title=NEAR_TITLE,
         due_s=state.world_s,
         timeline_id=state.timeline_id,
         needs_player=True,
-        payload={"phase": SETS_IN, "who": YOU, "span": 80},
+        payload={"phase": NEAR, "who": YOU, "span": 80, "day_s": state.world_s + YEAR},
     )
     state.pending_events[again.id] = again
 
@@ -348,22 +427,28 @@ def test_a_warning_already_given_is_never_given_again():
     assert after.pending_events["again"].status is EventStatus.CANCELLED
     assert waiting(after) == [(TAKES, 80)]
     # And the world's own look cancels whatever stage is behind them.
-    looked = pipeline.catch_up(state, state.world_s, ctx(), rng()).state
-    assert looked.pending_events["again"].status is EventStatus.CANCELLED
+    assert looked(state).pending_events["again"].status is EventStatus.CANCELLED
+    # Even where it is all that is pending: what waits is the day, not a second stop.
+    for event in pending_of(state, OLD_AGE):
+        if event.id != "again":
+            event.status = EventStatus.CANCELLED
+    alone = looked(state)
+    assert alone.pending_events["again"].status is EventStatus.CANCELLED
+    assert waiting(alone) == [(TAKES, 80)]
 
 
-def test_a_life_lengthened_before_old_age_set_in_is_warned_at_the_new_age_alone():
-    state = realms(aged(34), 0, 80, 200)
-    state = pipeline.catch_up(state, state.world_s, ctx(), rng()).state
+def test_a_life_lengthened_before_the_stop_is_stopped_for_the_new_life_alone():
+    state = looked(realms(aged(34), 0, 80, 200))
     (first,) = pending_of(state, OLD_AGE)
-    assert first.payload == {"phase": SETS_IN, "who": YOU, "span": 80}
+    assert (first.payload["phase"], first.payload["span"]) == (NEAR, 80)
 
     state.characters[YOU].sheet.ladders[0].rung = 1  # a breakthrough at thirty-four
     state, event = until_old_age(state, 300)
 
-    # Sixty-eight comes and goes: the warning that waited there was for another life.
+    # The stop that waited was for another life, and so was its day.
     assert state.pending_events[first.id].status is EventStatus.CANCELLED
-    assert event.payload["span"] == 200 and age_now(state) == pytest.approx(170)
+    assert event.payload["span"] == 200 and state.world_s > first.payload["day_s"]
+    assert age_now(state) >= (OLD_AGE_FROM - LAST_YEARS[1]) * 200
     assert state.characters[YOU].old_age_span == 200
 
 
@@ -371,16 +456,30 @@ def test_a_life_back_at_the_span_they_were_told_for_has_a_day_again():
     state = realms(aged(34), 0, 80, 200)
     state, _ = until_old_age(state, 100)
     state.characters[YOU].sheet.ladders[0].rung = 1
-    state = pipeline.catch_up(state, state.world_s, ctx(8), rng(8)).state
-    assert waiting(state) == [(SETS_IN, 200)]
+    state = looked(state, 8)
+    assert waiting(state) == [(NEAR, 200)]
 
     state.characters[YOU].sheet.ladders[0].rung = 0  # the rung is lost again
-    state = pipeline.catch_up(state, state.world_s, ctx(9), rng(9)).state
+    state = looked(state, 9)
 
-    # They were told for eighty years already, so no second warning: only the day.
+    # They were told for eighty years already, so no second stop: only the day.
     (takes,) = pending_of(state, OLD_AGE)
     assert takes.payload == {"phase": TAKES, "who": YOU, "span": 80}
     assert takes.due_s >= state.world_s + SEASON
+
+
+def test_a_day_drawn_again_is_never_within_a_season(monkeypatch):
+    state = realms(aged(34), 0, 80, 200)
+    state, _ = until_old_age(state, 100)
+    state.characters[YOU].sheet.ladders[0].rung = 1
+    state = looked(state, 8)
+    monkeypatch.setattr(old_age, "taken_at", lambda lives_years, reached, luck: reached)
+
+    state.characters[YOU].sheet.ladders[0].rung = 0  # the rung is lost again
+    state = looked(state, 9)
+
+    (takes,) = pending_of(state, OLD_AGE)
+    assert takes.payload["phase"] == TAKES and takes.due_s == state.world_s + SEASON
 
 
 def test_of_two_events_for_the_same_stage_one_is_kept():
@@ -389,9 +488,7 @@ def test_of_two_events_for_the_same_stage_one_is_kept():
     twin = takes.model_copy(update={"id": "twin", "due_s": takes.due_s + YEAR})
     state.pending_events[twin.id] = twin
 
-    looked = pipeline.catch_up(state, state.world_s, ctx(), rng()).state
-
-    assert waiting(looked) == [(TAKES, 80)]
+    assert waiting(looked(state)) == [(TAKES, 80)]
 
 
 def test_whoever_takes_the_story_up_has_an_old_age_of_their_own():
@@ -400,14 +497,28 @@ def test_whoever_takes_the_story_up_has_an_old_age_of_their_own():
     state.characters["ilse"].age = 40
     state.player_id = "ilse"
 
-    state = pipeline.catch_up(state, state.world_s, ctx(9), rng(9)).state
+    state = looked(state, 9)
 
-    (sets_in,) = pending_of(state, OLD_AGE)
-    assert sets_in.payload == {"phase": SETS_IN, "who": "ilse", "span": 80}
+    (stop,) = pending_of(state, OLD_AGE)
+    assert (stop.payload["phase"], stop.payload["who"], stop.payload["span"]) == (NEAR, "ilse", 80)
     ilse = old_age.age_at(state, state.characters["ilse"], state.world_s)
-    assert sets_in.due_s == state.world_s + math.ceil((68 - ilse) * YEAR)
+    assert stop.payload["day_s"] >= state.world_s + (68 - ilse) * YEAR
     # Tomas is one of the world's people now: the dice have him, as they have everyone.
     assert state.characters[YOU].alive and state.characters[YOU].old_age_span == 80
+
+
+def test_a_stop_drawn_for_whoever_played_before_is_not_theirs():
+    # Both live eighty years and neither was told: the stage and the span are the same.
+    state = looked(aged(34))
+    (his,) = pending_of(state, OLD_AGE)
+    state.characters["ilse"].age = 40
+    state.player_id = "ilse"
+
+    state = looked(state, 9)
+
+    (hers,) = pending_of(state, OLD_AGE)
+    assert state.pending_events[his.id].status is EventStatus.CANCELLED
+    assert (hers.payload["phase"], hers.payload["who"], hers.payload["span"]) == (NEAR, "ilse", 80)
 
 
 # --- the story lengthens a life ----------------------------------------------------------------
@@ -422,17 +533,19 @@ def told(state: WorldState, who: str, years: int):
 def test_a_scene_that_lengthens_their_life_puts_old_age_off_to_the_new_span():
     state, _ = until_old_age(aged(34), 100)
     (takes,) = pending_of(state, OLD_AGE)
+    age = state.characters[YOU].age
 
     # An elixir, a pact: what it was is the scene's. Five hundred years, all told.
     after = told(state, YOU, 500)
-    state = pipeline.catch_up(after.state, after.state.world_s, ctx(9), rng(9)).state
+    state = looked(after.state, 9)
 
     assert after.rejected == () and state.characters[YOU].lifespan_years == 500
-    assert waiting(state) == [(SETS_IN, 500)]
+    assert waiting(state) == [(NEAR, 500)]
     assert state.pending_events[takes.id].status is EventStatus.CANCELLED
-    assert about(state) == "68 of about 500 years"
-    state, event = until_old_age(state, 400)
-    assert event.payload["phase"] == SETS_IN and age_now(state) == pytest.approx(425)
+    assert about(state) == f"{age} of about 500 years"
+    state, event = until_old_age(state, 450)
+    assert event.payload["phase"] == NEAR
+    assert age_now(state) >= (OLD_AGE_FROM - LAST_YEARS[1]) * 500
 
 
 def test_a_scene_that_ends_their_ageing_ends_their_old_age():
@@ -512,21 +625,15 @@ def test_nothing_comes_where_old_age_never_does_or_the_record_cannot_say(state):
 def test_a_people_that_lives_long_grows_old_at_its_own_age():
     state = aged(140, people_id="elves")
     state.bible.peoples = [People(id="elves", name="elves", lifespan_years=600)]
-    start = state.world_s
 
-    state, event = until_old_age(state, 500)
+    state, event = until_old_age(state, 700)
 
-    assert event.payload == {"phase": SETS_IN, "who": YOU, "span": 600} | {
-        "event": event.payload["event"]
-    }
-    assert state.world_s - start == 370 * YEAR  # five hundred and ten, of six hundred
+    assert (event.payload["phase"], event.payload["span"]) == (NEAR, 600)
+    # Never before the last of six hundred years: twenty-four years before five hundred and ten.
+    assert age_now(state) >= (OLD_AGE_FROM - LAST_YEARS[1]) * 600
 
 
 # --- the sheet ---------------------------------------------------------------------------------
-
-
-def about(state: WorldState, language: Language = Language.EN) -> str:
-    return status_view(state, language).sheet.about[-1]
 
 
 def test_the_sheet_says_their_age_of_how_many_years_where_the_record_says_how_long_they_live():
@@ -546,7 +653,16 @@ def test_a_span_the_world_only_assumes_is_on_the_sheet_once_a_scene_has_told_it(
 
     state, _ = until_old_age(state, 100)
 
-    assert about(state) == "68 of about 80 years"
+    assert about(state) == f"{state.characters[YOU].age} of about 80 years"
+
+
+def test_the_sheet_holds_their_age_and_how_long_their_kind_lives_and_nothing_of_the_day():
+    state, _ = until_old_age(humans(aged(34), 80), 100)
+    age = state.characters[YOU].age
+
+    shown = " ".join(status_view(state, Language.EN).sheet.about)
+
+    assert re.findall(r"\d+", shown) == [str(age), "80"]
 
 
 @pytest.mark.parametrize(
