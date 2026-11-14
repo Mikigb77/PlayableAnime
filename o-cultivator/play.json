@@ -1,0 +1,2177 @@
+{
+ "premise": "An old cultivator, 148 years old, stuck at the peak of Foundation Establishment. My lifespan of 150 years is almost spent: I break through to Core Formation or I die.",
+ "language": "en",
+ "rating": "teen",
+ "settings": {
+  "narration_length": "medium",
+  "tone": null,
+  "difficulty": "balanced",
+  "event_frequency": "calm",
+  "images": "key_moments",
+  "suggestions": true,
+  "language": "en",
+  "accent": null
+ },
+ "seed": "play/o-cultivator",
+ "state": {
+  "schema_version": 1,
+  "turn": 1,
+  "timeline_id": "main",
+  "world_s": 0,
+  "bible": {
+   "title": "The Flickering Jade: A Cultivator's Last Stand",
+   "genre": "Cultivation / Xianxia",
+   "tone": "Desperate, resolute, and filled with the cold beauty of a dying flame",
+   "era": "Ancient Xianxia Era: spirit talismans, flying swords, and Qi-powered formations",
+   "extraordinary": [
+    {
+     "id": "qi",
+     "kind": "qi cultivation",
+     "prevalence": "common",
+     "reach": "Cultivators refine Qi to transcend mortality, manipulate elements, and fly through the heavens.",
+     "rule_ids": [
+      "qi-lifespan",
+      "core-formation-bottleneck",
+      "meridian-fragility",
+      "flying-swords",
+      "qi-exists"
+     ]
+    }
+   ],
+   "peoples": [
+    {
+     "id": "human",
+     "name": "Human",
+     "description": "The dominant inhabitants of the mortal plains, many of whom seek the Dao to escape the cycle of reincarnation.",
+     "lifespan_years": 80,
+     "gifts": [],
+     "culture": "A society deeply structured by sect hierarchies and ancestral respect.",
+     "relations": [],
+     "path": ""
+    }
+   ],
+   "creatures": [
+    {
+     "id": "poison-python",
+     "name": "Rank 3 Poison-Spitting Python",
+     "description": "A massive serpent whose venom can melt spirit shields and whose scales are as tough as iron.",
+     "tier": 6,
+     "habitat": "Deep caverns and swampy forests.",
+     "worth": "Venom glands for poison cultivation; scales for high-grade armour.",
+     "can_be_tamed": false
+    }
+   ],
+   "nature": [
+    "spiritual-veins"
+   ],
+   "physics": "fun_first",
+   "force": {
+    "tier1_joules": 10000.0,
+    "per_tier": 10.0
+   },
+   "ladders": [
+    {
+     "id": "cultivation-realms",
+     "name": "cultivation realms",
+     "axis": "might",
+     "rungs": [
+      {
+       "name": "Qi Condensation",
+       "tier": 2,
+       "description": "Drawing Qi into the body to cleanse the meridians.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 100,
+       "added_s": null
+      },
+      {
+       "name": "Foundation Establishment",
+       "tier": 4,
+       "description": "Liquefying Qi into a spiritual sea to build the foundation of immortality.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 150,
+       "added_s": null
+      },
+      {
+       "name": "Core Formation",
+       "tier": 6,
+       "description": "Condensing the liquid spiritual sea into a golden core, gaining true longevity.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 500,
+       "added_s": null
+      },
+      {
+       "name": "Nascent Soul",
+       "tier": 8,
+       "description": "Nurturing a spiritual infant within the core, allowing the soul to survive outside the body.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 2000,
+       "added_s": null
+      }
+     ],
+     "standing_follows": true,
+     "sensing": true,
+     "rung_levels": 1,
+     "shrugs_off": 3,
+     "known_to_all": 4
+    }
+   ],
+   "calendar": {
+    "style": "day_count",
+    "time_of_day": "parts",
+    "epoch": null,
+    "start_second_of_day": 21600,
+    "months": [],
+    "start_year": 1,
+    "start_month": 1,
+    "start_day": 1,
+    "era": ""
+   },
+   "travel": {
+    "description": "Cultivators travel by foot, spirit carriage, or flying sword. News is carried by messenger birds or spiritual jade slips.",
+    "instant_messages": false
+   },
+   "medicine": {
+    "healing": "Medicinal pills and spiritual herbs accelerate cellular repair and mend shattered meridians.",
+    "resurrection": "none",
+    "resurrection_means": ""
+   },
+   "laws": [
+    {
+     "id": "sect-decree",
+     "text": "Disciples and elders must not slay one another within the sect grounds upon pain of soul extraction.",
+     "enforcer": "The Discipline Hall Elders",
+     "enforcer_faction_id": "misty-cloud",
+     "zeal": "high",
+     "corruptible": false
+    }
+   ],
+   "norms": [],
+   "several_partners": false,
+   "unions": "held",
+   "rules": [
+    {
+     "id": "qi-lifespan",
+     "text": "A cultivator's lifespan is bound to their realm; failing to break through before it expires leads to absolute mortality.",
+     "fixed": true,
+     "topic": "medicine"
+    },
+    {
+     "id": "core-formation-bottleneck",
+     "text": "Condensing a Golden Core requires compressing one's spiritual liquid into a solid core, a process highly lethal without protective pills.",
+     "fixed": false,
+     "topic": "limits"
+    },
+    {
+     "id": "meridian-fragility",
+     "text": "An aging body's meridians become brittle, exponentially increasing the pain and danger of Qi circulation during breakthrough attempts.",
+     "fixed": true,
+     "topic": "nature"
+    },
+    {
+     "id": "flying-swords",
+     "text": "Cultivators of the Foundation Establishment realm and above can traverse vast distances on flying swords, bypassing earthly terrain.",
+     "fixed": true,
+     "topic": "travel"
+    },
+    {
+     "id": "qi-exists",
+     "text": "Qi cultivation: real, and everywhere.",
+     "fixed": true,
+     "topic": "existence"
+    }
+   ],
+   "mysteries": [
+    {
+     "id": "abyss-herb-location",
+     "question": "Where does the legendary Dragon-Blood Grass grow in the Black Abyss?",
+     "answer": "The Dragon-Blood Grass grows in a geothermal cavern beneath the Whispering Falls, directly guarded by a slumbering Rank 3 Poison-Spitting Python.",
+     "clues": [
+      "A faded map fragment found in the sect's outer library mentions 'heat rising from the abyss wetness'.",
+      "Alchemist Song notes that the beast's venom has scorched the earth near the falls."
+     ],
+     "thread_id": "the-pill-quest",
+     "solved": false
+    }
+   ]
+  },
+  "player_id": "player",
+  "characters": {
+   "player": {
+    "id": "player",
+    "name": "Han Feng",
+    "aliases": [
+     "Elder Han"
+    ],
+    "prominence": "key",
+    "description": "An ancient cultivator with a heavily lined face, a long grey beard, and eyes reflecting decades of patience and growing desperation.",
+    "appearance": "Thin, frail-looking frame concealed by loose, faded grey robes. Long, snow-white hair tied in a simple wooden topknot.",
+    "look_version": 1,
+    "age": 148,
+    "people_id": "human",
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "spirit-peak",
+    "personal_offset_s": 0,
+    "memberships": [
+     {
+      "faction_id": "misty-cloud",
+      "rank": "Outer Elder",
+      "loyalty": 40
+     }
+    ],
+    "sheet": {
+     "attributes": {
+      "strength": 2,
+      "speed": 3,
+      "toughness": 3,
+      "wits": 4,
+      "knowledge": 4,
+      "willpower": 5,
+      "charm": 3,
+      "nerve": 4,
+      "bearing": 4
+     },
+     "skills": [
+      {
+       "name": "Qi Refinement",
+       "level": "expert",
+       "notes": "Decades of stagnation have made your control over your existing Qi exceptionally precise."
+      },
+      {
+       "name": "Sword Cultivation",
+       "level": "skilled",
+       "notes": "Your swordsmanship is refined, though hindered by a physical body that tires quickly."
+      },
+      {
+       "name": "Herbology",
+       "level": "fair",
+       "notes": "Familiarity with common spiritual herbs from years of searching for a cure."
+      }
+     ],
+     "traits": [
+      {
+       "name": "Brittle Meridians",
+       "kind": "flaw",
+       "description": "Your spiritual pathways are stiff and aged, making heavy Qi circulation painful and dangerous."
+      },
+      {
+       "name": "Tempered Will",
+       "kind": "gift",
+       "description": "A century and a half of struggle has made your mind immune to ordinary illusions and spiritual intimidation."
+      }
+     ],
+     "talents": [],
+     "powers": [
+      {
+       "id": "foundation-qi",
+       "name": "Foundation Qi Manipulation",
+       "description": "You can manifest your liquid spiritual energy to form defensive shields, project blade beams, or glide short distances.",
+       "strength": null,
+       "limits": [
+        "Limited by your pool of spiritual energy.",
+        "Overexertion causes physical fatigue and strain on your meridians."
+       ],
+       "costs": [
+        {
+         "kind": "fatigue",
+         "text": "Strains your physical body if used continuously for more than a few minutes."
+        }
+       ],
+       "secret": false,
+       "time": null,
+       "settings": {},
+       "ready_at_personal_s": null
+      }
+     ],
+     "techniques": [
+      {
+       "id": "misty-cloud-sword-stance",
+       "name": "Misty Cloud Sword Stance",
+       "style": "Misty Cloud Sword Art",
+       "effect": "Creates deceptive phantoms of your blade to confuse the opponent's spiritual sense.",
+       "cost": "Moderate Qi expenditure",
+       "requirements": "A spiritual sword",
+       "learned_from": "",
+       "power_id": null,
+       "mastery": "practiced",
+       "uses": 0
+      }
+     ],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "cautious",
+        "resolute",
+        "weathered"
+       ],
+       "values": [
+        "Survival",
+        "Dignity"
+       ],
+       "loves": [
+        "The quiet of the mountains",
+        "A well-brewed spiritual tea"
+       ],
+       "fears": [
+        "Dying in obscurity",
+        "Failing his disciple"
+       ],
+       "wants": [
+        "Break through to Core Formation or I die."
+       ],
+       "voice": "Raspy, calm, and deliberate."
+      },
+      "attitudes": {}
+     },
+     "resources": {
+      "items": [
+       {
+        "id": "worn-flying-sword",
+        "name": "Worn Flying Sword",
+        "kind": "weapon",
+        "description": "A steel sword with a slightly dulled edge, but well-maintained and loyal to your spiritual signature.",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       },
+       {
+        "id": "low-grade-qi-gathering-pill",
+        "name": "Low-grade Qi-Gathering Pill",
+        "kind": "consumable",
+        "description": "A bitter pill that helps replenish lost spiritual energy over several hours.",
+        "quantity": 3,
+        "carried": true,
+        "history": ""
+       }
+      ],
+      "money": 120,
+      "currency": "spirit stones",
+      "title": "Elder of the Misty Cloud Sect",
+      "rank": "Foundation Establishment (Peak)",
+      "family_name": "Han",
+      "connections": [
+       {
+        "name": "Chen Yi",
+        "kind": "ally",
+        "character_id": "disciple-chen",
+        "note": "Your fiercely loyal sole disciple."
+       }
+      ]
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [
+       {
+        "name": "Spiritual Qi",
+        "level": 100,
+        "recovery_s": null
+       }
+      ],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 4,
+      "influence": 2,
+      "wealth": 2,
+      "knowledge": 3,
+      "stealth": 2
+     },
+     "ladders": [
+      {
+       "ladder_id": "cultivation-realms",
+       "rung": 1,
+       "stage": "peak",
+       "shown_rung": null,
+       "yearly_s": null
+      }
+     ],
+     "rungs_heard": [
+      {
+       "ladder_id": "cultivation-realms",
+       "rung": 2,
+       "heard_s": 0,
+       "known_s": 0,
+       "known_from": "sect-master"
+      }
+     ],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": [
+      {
+       "text": "You joined the Misty Cloud Sect as a young man with average talent.",
+       "turn": 0
+      },
+      {
+       "text": "You reached the peak of Foundation Establishment eighty years ago, but the barrier to Core Formation remained completely impenetrable.",
+       "turn": 0
+      },
+      {
+       "text": "As your lifespan dwindles to its absolute limit, you have retreated to Spirit-Severing Peak to make one final, desperate struggle for immortality.",
+       "turn": 0
+      }
+     ]
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": 150,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   },
+   "sect-master": {
+    "id": "sect-master",
+    "name": "Sect Master Liu",
+    "aliases": [
+     "Liu Cang"
+    ],
+    "prominence": "key",
+    "description": "A severe-looking man dressed in pristine white robes. He was once your junior, but achieved Core Formation seventy years ago.",
+    "appearance": "Sharp eyes, high cheekbones, dark hair pinned back by a jade hairpin, and an aura of constant authority.",
+    "look_version": 1,
+    "age": 220,
+    "people_id": "human",
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "misty-sect",
+    "personal_offset_s": 0,
+    "memberships": [
+     {
+      "faction_id": "misty-cloud",
+      "rank": "Sect Master",
+      "loyalty": 90
+     }
+    ],
+    "sheet": {
+     "attributes": {
+      "strength": 4,
+      "speed": 4,
+      "toughness": 4,
+      "wits": 4,
+      "knowledge": 4,
+      "willpower": 4,
+      "charm": 3,
+      "nerve": 4,
+      "bearing": 4
+     },
+     "skills": [
+      {
+       "name": "Qi Refinement",
+       "level": "expert",
+       "notes": ""
+      },
+      {
+       "name": "Sect Administration",
+       "level": "skilled",
+       "notes": ""
+      }
+     ],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "pragmatic",
+        "distant",
+        "stern"
+       ],
+       "values": [
+        "Sect survival",
+        "Order"
+       ],
+       "loves": [],
+       "fears": [
+        "The sect's collapse"
+       ],
+       "wants": [
+        "Preserve the Misty Cloud Sect's lineage."
+       ],
+       "voice": "Cold, measured, and formal."
+      },
+      "attitudes": {
+       "player": {
+        "affinity": -10,
+        "fear": 0,
+        "trust": 20,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 6,
+      "influence": 4,
+      "wealth": 3,
+      "knowledge": 3,
+      "stealth": 2
+     },
+     "ladders": [
+      {
+       "ladder_id": "cultivation-realms",
+       "rung": 2,
+       "stage": "middle",
+       "shown_rung": null,
+       "yearly_s": null
+      }
+     ],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": {
+     "goal": "Refuses to waste the sect's remaining breakthrough pills on an aging elder with low potential.",
+     "method": "Direct Han to dangerous tasks in exchange for resources, hoping he either succeeds against the odds or dies usefully.",
+     "secret": "",
+     "clock_id": null
+    },
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": true,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   },
+   "disciple-chen": {
+    "id": "disciple-chen",
+    "name": "Chen Yi",
+    "aliases": [],
+    "prominence": "key",
+    "description": "Your only remaining disciple, a young man who remains fiercely loyal despite your lack of prospects.",
+    "appearance": "Lean build, slightly patched robes, honest eyes, and calloused hands from hard work.",
+    "look_version": 1,
+    "age": 24,
+    "people_id": "human",
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "spirit-peak",
+    "personal_offset_s": 0,
+    "memberships": [
+     {
+      "faction_id": "misty-cloud",
+      "rank": "Inner Disciple",
+      "loyalty": 70
+     }
+    ],
+    "sheet": {
+     "attributes": {
+      "strength": 3,
+      "speed": 3,
+      "toughness": 3,
+      "wits": 3,
+      "knowledge": 2,
+      "willpower": 4,
+      "charm": 3,
+      "nerve": 3,
+      "bearing": 2
+     },
+     "skills": [
+      {
+       "name": "Sword Cultivation",
+       "level": "fair",
+       "notes": ""
+      }
+     ],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "loyal",
+        "stubborn",
+        "optimistic"
+       ],
+       "values": [
+        "Filial piety",
+        "Hard work"
+       ],
+       "loves": [
+        "His master",
+        "Sword arts"
+       ],
+       "fears": [
+        "His master's death"
+       ],
+       "wants": [
+        "Help his master find a way to break through."
+       ],
+       "voice": "Earnest and respectful."
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 85,
+        "fear": 10,
+        "trust": 90,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 2,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [
+      {
+       "ladder_id": "cultivation-realms",
+       "rung": 0,
+       "stage": "late",
+       "shown_rung": null,
+       "yearly_s": null
+      }
+     ],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [
+     "He has been secretly skipping his own cultivation resources to buy cheap vitality-preserving herbs for you."
+    ],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": 0,
+    "near_s": null,
+    "met_s": null
+   },
+   "alchemist-song": {
+    "id": "alchemist-song",
+    "name": "Elder Song",
+    "aliases": [],
+    "prominence": "key",
+    "description": "An eccentric alchemist who runs the Pill Hall. He values rare ingredients above sect politics.",
+    "appearance": "Slightly stooped, soot-stained fingers, wild grey hair, and a strong scent of burnt sulfur clinging to him.",
+    "look_version": 1,
+    "age": 130,
+    "people_id": "human",
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "pill-hall",
+    "personal_offset_s": 0,
+    "memberships": [
+     {
+      "faction_id": "misty-cloud",
+      "rank": "Pill Hall Elder",
+      "loyalty": 60
+     }
+    ],
+    "sheet": {
+     "attributes": {
+      "strength": 2,
+      "speed": 3,
+      "toughness": 3,
+      "wits": 4,
+      "knowledge": 4,
+      "willpower": 3,
+      "charm": 2,
+      "nerve": 3,
+      "bearing": 3
+     },
+     "skills": [
+      {
+       "name": "Alchemy",
+       "level": "expert",
+       "notes": ""
+      }
+     ],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "obsessive",
+        "blunt",
+        "mercenary"
+       ],
+       "values": [
+        "Alchemy perfection",
+        "Rare materials"
+       ],
+       "loves": [
+        "Sovereign-grade cauldrons"
+       ],
+       "fears": [
+        "Running out of spirit herbs"
+       ],
+       "wants": [
+        "Refine a perfect grade Core-Assisting Pill."
+       ],
+       "voice": "Raspy and hurried."
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 30,
+        "fear": 0,
+        "trust": 40,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 4,
+      "influence": 2,
+      "wealth": 3,
+      "knowledge": 3,
+      "stealth": 1
+     },
+     "ladders": [
+      {
+       "ladder_id": "cultivation-realms",
+       "rung": 1,
+       "stage": "peak",
+       "shown_rung": null,
+       "yearly_s": null
+      }
+     ],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": {
+     "goal": "Refining a Core-Assisting Pill that could solve Han's bottleneck, but requires a hazardous ingredient.",
+     "method": "Offer to make the pill if Han retrieves Dragon-Blood Grass from the Black Abyss Forest.",
+     "secret": "",
+     "clock_id": null
+    },
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": true,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   }
+  },
+  "factions": {
+   "misty-cloud": {
+    "id": "misty-cloud",
+    "name": "Misty Cloud Sect",
+    "kind": "sect",
+    "description": "A struggling cultivation sect trying to preserve its small territory from aggressive neighbours.",
+    "parent_id": null,
+    "status": "intact",
+    "status_history": [],
+    "activity": "active",
+    "leader_ids": [
+     "sect-master"
+    ],
+    "goal": "Find a way to produce a new Core Formation cultivator to secure their standing.",
+    "methods": "Hoarding resources and searching for ancient ruins.",
+    "strength": "A dozen Foundation Establishment elders and a hundred Qi Condensation disciples.",
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "threat": 0,
+    "relations": {},
+    "survivors": [],
+    "secrets": [
+     "The sect's spiritual vein is slowly drying up, which will force them to migrate within ten years."
+    ],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "places": {
+   "misty-sect": {
+    "id": "misty-sect",
+    "name": "Misty Cloud Sect",
+    "kind": "region",
+    "description": "A minor sect built upon a low-grade spiritual vein, hidden amidst shrouded mountain peaks.",
+    "parent_id": null,
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": "misty-cloud",
+    "mood": "Fading and quiet",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "market-town",
+      "travel_s": 21600,
+      "mode": "by carriage"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "spirit-peak": {
+    "id": "spirit-peak",
+    "name": "Spirit-Severing Peak",
+    "kind": "wilds",
+    "description": "A secluded, windswept peak allocated to Elder Han for quiet meditation.",
+    "parent_id": "misty-sect",
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": "misty-cloud",
+    "mood": "Stark and desolate",
+    "stability": 70,
+    "routes": [],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [
+     "player"
+    ],
+    "judged": []
+   },
+   "pill-hall": {
+    "id": "pill-hall",
+    "name": "The Pill Refinement Hall",
+    "kind": "building",
+    "description": "A stone hall permeated by the bitter aroma of medicinal herbs and the heat of geological flame.",
+    "parent_id": "misty-sect",
+    "setting": "indoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": "misty-cloud",
+    "mood": "Sweltering and focused",
+    "stability": 70,
+    "routes": [],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "market-town": {
+    "id": "market-town",
+    "name": "Misty River Market",
+    "kind": "village",
+    "description": "A bustling trading hub at the foot of the mountains where rogues and sect members exchange resources.",
+    "parent_id": null,
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "Lively and opportunistic",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "abyss-forest",
+      "travel_s": 43200,
+      "mode": "on foot"
+     },
+     {
+      "to_id": "misty-sect",
+      "travel_s": 21600,
+      "mode": "by carriage"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "abyss-forest": {
+    "id": "abyss-forest",
+    "name": "Black Abyss Forest",
+    "kind": "wilds",
+    "description": "A dark, dense canopy home to dangerous spirit beasts and rare spiritual herbs.",
+    "parent_id": null,
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "Ominous and treacherous",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "market-town",
+      "travel_s": 43200,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   }
+  },
+  "deeds": {},
+  "rumors": {},
+  "bonds": {},
+  "lives": {},
+  "aged_s": null,
+  "changes": {},
+  "strife_s": {},
+  "facts": {
+   "fact-1": {
+    "id": "fact-1",
+    "text": "You have exactly two years left of your natural 150-year lifespan.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-2": {
+    "id": "fact-2",
+    "text": "The standard breakthrough to Core Formation has a ninety percent failure rate without a Core-Assisting Pill.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-3": {
+    "id": "fact-3",
+    "text": "Sect Master Liu considers you a liability and will not grant you any sect-owned breakthrough resources.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   }
+  },
+  "goals": {
+   "goal-1": {
+    "id": "goal-1",
+    "text": "Break through to Core Formation or I die.",
+    "status": "active",
+    "set_turn": 0,
+    "set_s": null,
+    "lead_id": null,
+    "closed_turn": null,
+    "closed_s": null,
+    "merged_into": null,
+    "progress": "",
+    "moved_turn": null
+   }
+  },
+  "leads": {},
+  "threads": {
+   "golden-core-breakthrough": {
+    "id": "golden-core-breakthrough",
+    "title": "The Golden Core Breakthrough",
+    "kind": "quest",
+    "stakes": "Survival and a new lease on life, or total dissolution of body and soul.",
+    "involved_ids": [
+     "player",
+     "disciple-chen"
+    ],
+    "clock_id": "lifespan-depletion",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "status": "open",
+    "opened_turn": 0,
+    "last_active_turn": 0,
+    "taken_up_turn": null,
+    "closed_turn": null,
+    "arc": null,
+    "known_by": [
+     "player"
+    ]
+   },
+   "the-pill-quest": {
+    "id": "the-pill-quest",
+    "title": "The Core-Assisting Pill",
+    "kind": "quest",
+    "stakes": "Obtaining a pill to safely bridge the gap to Core Formation without dying of backfire.",
+    "involved_ids": [
+     "player",
+     "alchemist-song"
+    ],
+    "clock_id": null,
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "status": "open",
+    "opened_turn": 0,
+    "last_active_turn": 0,
+    "taken_up_turn": null,
+    "closed_turn": null,
+    "arc": null,
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "clocks": {
+   "lifespan-depletion": {
+    "id": "lifespan-depletion",
+    "name": "Lifespan Depletion",
+    "steps": [
+     "The first signs of grey rot touch your spiritual veins, slowing your Qi flow.",
+     "Your dantian begins to leak spiritual energy, making cultivation recovery sluggish.",
+     "A deathly chill settles in your bones; you can no longer attempt a normal breakthrough.",
+     "Your remaining life force expires, and your soul returns to the heavens."
+    ],
+    "filled": 0,
+    "advances_on": [],
+    "reverses_on": [],
+    "interval_s": 21024000,
+    "next_step_s": 21024000,
+    "owner_id": "player",
+    "thread_id": "golden-core-breakthrough",
+    "status": "running",
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "pending_events": {
+   "event-1": {
+    "id": "event-1",
+    "kind": "world.clock_step",
+    "title": "Lifespan Depletion: The first signs of grey rot touch your spiritual veins, slowing your Qi flow.",
+    "due_s": 21024000,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [
+     "player"
+    ],
+    "place_id": null,
+    "origin": {
+     "kind": "clock",
+     "ref_id": "lifespan-depletion",
+     "text": ""
+    },
+    "payload": {
+     "clock_id": "lifespan-depletion"
+    },
+    "seed": "story=play%2Fo-cultivator/timeline=main/turn=1/world/schedule/event-1",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-2": {
+    "id": "event-2",
+    "kind": "world.old_age",
+    "title": "Your years run short",
+    "due_s": 438447101,
+    "timeline_id": "main",
+    "needs_player": true,
+    "status": "pending",
+    "subject_ids": [
+     "player"
+    ],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "phase": "near",
+     "who": "player",
+     "span": 150,
+     "day_s": 491142719
+    },
+    "seed": "story=play%2Fo-cultivator/timeline=main/turn=1/world/schedule/event-2",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-3": {
+    "id": "event-3",
+    "kind": "world.tick",
+    "title": "The world moves on",
+    "due_s": 86400,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "last_s": 0,
+     "stride_s": 86400
+    },
+    "seed": "story=play%2Fo-cultivator/timeline=main/turn=1/world/schedule/event-3",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   }
+  },
+  "transfers": [],
+  "time_effects": [],
+  "scene": {
+   "place_id": "spirit-peak",
+   "present_ids": [
+    "player",
+    "disciple-chen"
+   ],
+   "positions": [
+    "Sitting cross-legged on the stone platform",
+    "Standing nearby, waiting anxiously"
+   ],
+   "props": [
+    "A cracked stone incense burner"
+   ],
+   "ended_on": "Chen Yi steps forward, waiting for your response.",
+   "encounter": null
+  },
+  "director": {
+   "turns_without_stakes": 0,
+   "low_stakes_streak": 0,
+   "last_action_key": null,
+   "last_event_turn": null,
+   "last_event_size": null,
+   "last_event_s": {},
+   "last_small_s": null,
+   "recent_moments": [],
+   "recent_clock": [
+    0
+   ],
+   "frequency_drift": 0.0,
+   "recent_sources": [],
+   "auto_pictures": 1,
+   "picture_credit": 1.1,
+   "pictured": [
+    "portrait:player",
+    "portrait:player:v1"
+   ],
+   "fight": null,
+   "deck_draws": 0,
+   "road_stops": 0
+  },
+  "summary": "At 148 years old, Elder Han's 150-year lifespan is nearly spent. Trapped at the peak of Foundation Establishment, he must find a way to achieve Core Formation before his physical form dissolves into dust.",
+  "chapters": [],
+  "id_counters": {
+   "fact": 3,
+   "goal": 1,
+   "bond": 0,
+   "event": 3
+  },
+  "fallen": [],
+  "opening_due": false,
+  "misses_in_a_row": 0,
+  "openings": [],
+  "journey": null,
+  "untold": []
+ },
+ "scenes": [
+  {
+   "turn": 1,
+   "narration": "You sit cross-legged on the cold stone platform of Spirit-Severing Peak. The dawn wind is a blade of ice, cutting through your thin, faded grey robes. Your breath comes ragged and shallow, puffing into white mist. Your body feels like brittle dry wood.\n\nNearby, Chen Yi stands by the cracked stone incense burner, his honest eyes shadowed with a desperate worry. He is only twenty-four, full of youth, yet bound to a master whose flame is flickering out.\n\nOnly two years remain of your natural hundred-and-fifty-year lifespan. Without a Core-Assisting Pill, attempting the breakthrough to Core Formation is a ninety percent guarantee of death—your stiff, aged meridians will simply shatter under the pressure. Yet, Sect Master Liu has made his stance clear: the sect will not waste precious resources on an outer elder who has stagnated for eighty years.\n\nChen Yi steps forward, his hands clenched. \"Master,\" his earnest voice trembles slightly. \"The Pill Refinement Hall... Elder Song is preparing a new batch of Core-Assisting Pills this week. There must be a way to secure one, even if the Sect Master refuses us.\"",
+   "player_action": null
+  }
+ ],
+ "choices": [
+  "Ask Chen Yi what it would take to acquire a pill.",
+  "Steel your brittle meridians and begin a cautious Qi circulation session.",
+  "Seek an audience with Sect Master Liu to demand your dues."
+ ],
+ "cost_usd": 0.1423209,
+ "draft": {
+  "premise": "An old cultivator, 148 years old, stuck at the peak of Foundation Establishment. My lifespan of 150 years is almost spent: I break through to Core Formation or I die.",
+  "proposal": {
+   "world": {
+    "title": "The Flickering Jade: A Cultivator's Last Stand",
+    "genre": "Cultivation / Xianxia",
+    "tone": "Desperate, resolute, and filled with the cold beauty of a dying flame",
+    "era": "Ancient Xianxia Era: spirit talismans, flying swords, and Qi-powered formations",
+    "extraordinary": [
+     {
+      "id": "qi",
+      "kind": "qi cultivation",
+      "prevalence": "common",
+      "reach": "Cultivators refine Qi to transcend mortality, manipulate elements, and fly through the heavens."
+     }
+    ],
+    "rules": [
+     {
+      "id": "qi-lifespan",
+      "text": "A cultivator's lifespan is bound to their realm; failing to break through before it expires leads to absolute mortality.",
+      "fixed": true,
+      "topic": "medicine",
+      "about": [
+       "qi"
+      ]
+     },
+     {
+      "id": "core-formation-bottleneck",
+      "text": "Condensing a Golden Core requires compressing one's spiritual liquid into a solid core, a process highly lethal without protective pills.",
+      "fixed": false,
+      "topic": "limits",
+      "about": [
+       "qi"
+      ]
+     },
+     {
+      "id": "meridian-fragility",
+      "text": "An aging body's meridians become brittle, exponentially increasing the pain and danger of Qi circulation during breakthrough attempts.",
+      "fixed": true,
+      "topic": "nature",
+      "about": [
+       "qi"
+      ]
+     },
+     {
+      "id": "flying-swords",
+      "text": "Cultivators of the Foundation Establishment realm and above can traverse vast distances on flying swords, bypassing earthly terrain.",
+      "fixed": true,
+      "topic": "travel",
+      "about": [
+       "qi"
+      ]
+     }
+    ],
+    "dropped_rule_ids": [],
+    "peoples": [
+     {
+      "id": "human",
+      "name": "Human",
+      "description": "The dominant inhabitants of the mortal plains, many of whom seek the Dao to escape the cycle of reincarnation.",
+      "lifespan_years": 80,
+      "gifts": [],
+      "culture": "A society deeply structured by sect hierarchies and ancestral respect.",
+      "relations": [],
+      "path": ""
+     }
+    ],
+    "creatures": [
+     {
+      "id": "poison-python",
+      "name": "Rank 3 Poison-Spitting Python",
+      "description": "A massive serpent whose venom can melt spirit shields and whose scales are as tough as iron.",
+      "rung": "Core Formation",
+      "habitat": "Deep caverns and swampy forests.",
+      "worth": "Venom glands for poison cultivation; scales for high-grade armour.",
+      "can_be_tamed": false
+     }
+    ],
+    "nature": [
+     "spiritual-veins"
+    ],
+    "ladders": [
+     {
+      "id": "cultivation-realms",
+      "name": "cultivation realms",
+      "axis": "might",
+      "rungs": [
+       {
+        "name": "Qi Condensation",
+        "description": "Drawing Qi into the body to cleanse the meridians.",
+        "lifespan_years": 100
+       },
+       {
+        "name": "Foundation Establishment",
+        "description": "Liquefying Qi into a spiritual sea to build the foundation of immortality.",
+        "lifespan_years": 150
+       },
+       {
+        "name": "Core Formation",
+        "description": "Condensing the liquid spiritual sea into a golden core, gaining true longevity.",
+        "lifespan_years": 500
+       },
+       {
+        "name": "Nascent Soul",
+        "description": "Nurturing a spiritual infant within the core, allowing the soul to survive outside the body.",
+        "lifespan_years": 2000
+       }
+      ],
+      "known_to_all": 4,
+      "sensing": true,
+      "standing_follows": true,
+      "lengthens_life": true
+     }
+    ],
+    "calendar": {
+     "style": "day_count",
+     "clock_time": false,
+     "epoch": "",
+     "start_hour": 6,
+     "months": [],
+     "start_year": 1,
+     "start_month": 1,
+     "start_day": 1,
+     "era": "Great Dao"
+    },
+    "travel": {
+     "description": "Cultivators travel by foot, spirit carriage, or flying sword. News is carried by messenger birds or spiritual jade slips.",
+     "instant_messages": false
+    },
+    "medicine": {
+     "healing": "Medicinal pills and spiritual herbs accelerate cellular repair and mend shattered meridians.",
+     "resurrection": "none",
+     "resurrection_means": ""
+    },
+    "laws": [
+     {
+      "id": "sect-decree",
+      "text": "Disciples and elders must not slay one another within the sect grounds upon pain of soul extraction.",
+      "enforcer": "The Discipline Hall Elders",
+      "enforcer_faction_id": "misty-cloud",
+      "zeal": "high",
+      "corruptible": false
+     }
+    ],
+    "norms": [],
+    "several_partners": false,
+    "unions": "held",
+    "places": [
+     {
+      "id": "misty-sect",
+      "name": "Misty Cloud Sect",
+      "kind": "region",
+      "description": "A minor sect built upon a low-grade spiritual vein, hidden amidst shrouded mountain peaks.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "misty-cloud",
+      "mood": "Fading and quiet",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "market-town",
+        "travel_hours": 6.0,
+        "mode": "by carriage"
+       }
+      ]
+     },
+     {
+      "id": "spirit-peak",
+      "name": "Spirit-Severing Peak",
+      "kind": "wilds",
+      "description": "A secluded, windswept peak allocated to Elder Han for quiet meditation.",
+      "parent_id": "misty-sect",
+      "setting": "outdoors",
+      "controller_id": "misty-cloud",
+      "mood": "Stark and desolate",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "pill-hall",
+      "name": "The Pill Refinement Hall",
+      "kind": "building",
+      "description": "A stone hall permeated by the bitter aroma of medicinal herbs and the heat of geological flame.",
+      "parent_id": "misty-sect",
+      "setting": "indoors",
+      "controller_id": "misty-cloud",
+      "mood": "Sweltering and focused",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "market-town",
+      "name": "Misty River Market",
+      "kind": "village",
+      "description": "A bustling trading hub at the foot of the mountains where rogues and sect members exchange resources.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "Lively and opportunistic",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "abyss-forest",
+        "travel_hours": 12.0,
+        "mode": "on foot"
+       }
+      ]
+     },
+     {
+      "id": "abyss-forest",
+      "name": "Black Abyss Forest",
+      "kind": "wilds",
+      "description": "A dark, dense canopy home to dangerous spirit beasts and rare spiritual herbs.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "Ominous and treacherous",
+      "known_to_player": true,
+      "routes": []
+     }
+    ],
+    "factions": [
+     {
+      "id": "misty-cloud",
+      "name": "Misty Cloud Sect",
+      "kind": "sect",
+      "description": "A struggling cultivation sect trying to preserve its small territory from aggressive neighbours.",
+      "parent_id": "",
+      "leader_ids": [
+       "sect-master"
+      ],
+      "goal": "Find a way to produce a new Core Formation cultivator to secure their standing.",
+      "methods": "Hoarding resources and searching for ancient ruins.",
+      "strength": "A dozen Foundation Establishment elders and a hundred Qi Condensation disciples.",
+      "relations": [],
+      "secrets": [
+       "The sect's spiritual vein is slowly drying up, which will force them to migrate within ten years."
+      ],
+      "known_to_player": true
+     }
+    ],
+    "npcs": [
+     {
+      "id": "sect-master",
+      "name": "Sect Master Liu",
+      "aliases": [
+       "Liu Cang"
+      ],
+      "description": "A severe-looking man dressed in pristine white robes. He was once your junior, but achieved Core Formation seventy years ago.",
+      "appearance": "Sharp eyes, high cheekbones, dark hair pinned back by a jade hairpin, and an aura of constant authority.",
+      "age": 220,
+      "people_id": "human",
+      "location_id": "misty-sect",
+      "memberships": [
+       {
+        "faction_id": "misty-cloud",
+        "rank": "Sect Master",
+        "loyalty": 90
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "pragmatic",
+        "distant",
+        "stern"
+       ],
+       "values": [
+        "Sect survival",
+        "Order"
+       ],
+       "loves": [],
+       "fears": [
+        "The sect's collapse"
+       ],
+       "wants": [
+        "Preserve the Misty Cloud Sect's lineage."
+       ],
+       "voice": "Cold, measured, and formal."
+      },
+      "attributes": {
+       "strength": 4,
+       "speed": 4,
+       "toughness": 4,
+       "wits": 4,
+       "knowledge": 4,
+       "willpower": 4,
+       "charm": 3,
+       "nerve": 4,
+       "bearing": 4
+      },
+      "skills": [
+       {
+        "name": "Qi Refinement",
+        "level": "expert",
+        "notes": ""
+       },
+       {
+        "name": "Sect Administration",
+        "level": "skilled",
+        "notes": ""
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [
+       {
+        "ladder_id": "cultivation-realms",
+        "rung": "Core Formation",
+        "stage": "middle"
+       }
+      ],
+      "axes": {
+       "might": 3,
+       "influence": 4,
+       "wealth": 3,
+       "knowledge": 3,
+       "stealth": 2
+      },
+      "attitude_to_player": {
+       "affinity": -10,
+       "fear": 0,
+       "trust": 20,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": true,
+      "agenda": {
+       "goal": "Refuses to waste the sect's remaining breakthrough pills on an aging elder with low potential.",
+       "method": "Direct Han to dangerous tasks in exchange for resources, hoping he either succeeds against the odds or dies usefully.",
+       "secret": "",
+       "clock_id": ""
+      },
+      "secrets": [],
+      "player_knows": "met"
+     },
+     {
+      "id": "disciple-chen",
+      "name": "Chen Yi",
+      "aliases": [],
+      "description": "Your only remaining disciple, a young man who remains fiercely loyal despite your lack of prospects.",
+      "appearance": "Lean build, slightly patched robes, honest eyes, and calloused hands from hard work.",
+      "age": 24,
+      "people_id": "human",
+      "location_id": "spirit-peak",
+      "memberships": [
+       {
+        "faction_id": "misty-cloud",
+        "rank": "Inner Disciple",
+        "loyalty": 70
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "loyal",
+        "stubborn",
+        "optimistic"
+       ],
+       "values": [
+        "Filial piety",
+        "Hard work"
+       ],
+       "loves": [
+        "His master",
+        "Sword arts"
+       ],
+       "fears": [
+        "His master's death"
+       ],
+       "wants": [
+        "Help his master find a way to break through."
+       ],
+       "voice": "Earnest and respectful."
+      },
+      "attributes": {
+       "strength": 3,
+       "speed": 3,
+       "toughness": 3,
+       "wits": 3,
+       "knowledge": 2,
+       "willpower": 4,
+       "charm": 3,
+       "nerve": 3,
+       "bearing": 2
+      },
+      "skills": [
+       {
+        "name": "Sword Cultivation",
+        "level": "fair",
+        "notes": ""
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [
+       {
+        "ladder_id": "cultivation-realms",
+        "rung": "Qi Condensation",
+        "stage": "late"
+       }
+      ],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 85,
+       "fear": 10,
+       "trust": 90,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [
+       "He has been secretly skipping his own cultivation resources to buy cheap vitality-preserving herbs for you."
+      ],
+      "player_knows": "met"
+     },
+     {
+      "id": "alchemist-song",
+      "name": "Elder Song",
+      "aliases": [],
+      "description": "An eccentric alchemist who runs the Pill Hall. He values rare ingredients above sect politics.",
+      "appearance": "Slightly stooped, soot-stained fingers, wild grey hair, and a strong scent of burnt sulfur clinging to him.",
+      "age": 130,
+      "people_id": "human",
+      "location_id": "pill-hall",
+      "memberships": [
+       {
+        "faction_id": "misty-cloud",
+        "rank": "Pill Hall Elder",
+        "loyalty": 60
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "obsessive",
+        "blunt",
+        "mercenary"
+       ],
+       "values": [
+        "Alchemy perfection",
+        "Rare materials"
+       ],
+       "loves": [
+        "Sovereign-grade cauldrons"
+       ],
+       "fears": [
+        "Running out of spirit herbs"
+       ],
+       "wants": [
+        "Refine a perfect grade Core-Assisting Pill."
+       ],
+       "voice": "Raspy and hurried."
+      },
+      "attributes": {
+       "strength": 2,
+       "speed": 3,
+       "toughness": 3,
+       "wits": 4,
+       "knowledge": 4,
+       "willpower": 3,
+       "charm": 2,
+       "nerve": 3,
+       "bearing": 3
+      },
+      "skills": [
+       {
+        "name": "Alchemy",
+        "level": "expert",
+        "notes": ""
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [
+       {
+        "ladder_id": "cultivation-realms",
+        "rung": "Foundation Establishment",
+        "stage": "peak"
+       }
+      ],
+      "axes": {
+       "might": 2,
+       "influence": 2,
+       "wealth": 3,
+       "knowledge": 3,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 30,
+       "fear": 0,
+       "trust": 40,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": true,
+      "agenda": {
+       "goal": "Refining a Core-Assisting Pill that could solve Han's bottleneck, but requires a hazardous ingredient.",
+       "method": "Offer to make the pill if Han retrieves Dragon-Blood Grass from the Black Abyss Forest.",
+       "secret": "",
+       "clock_id": ""
+      },
+      "secrets": [],
+      "player_knows": "met"
+     }
+    ],
+    "clocks": [
+     {
+      "id": "lifespan-depletion",
+      "name": "Lifespan Depletion",
+      "steps": [
+       "The first signs of grey rot touch your spiritual veins, slowing your Qi flow.",
+       "Your dantian begins to leak spiritual energy, making cultivation recovery sluggish.",
+       "A deathly chill settles in your bones; you can no longer attempt a normal breakthrough.",
+       "Your remaining life force expires, and your soul returns to the heavens."
+      ],
+      "step_every_hours": 5840.0,
+      "owner_id": "player",
+      "thread_id": "golden-core-breakthrough",
+      "known_to_player": true
+     }
+    ],
+    "threads": [
+     {
+      "id": "golden-core-breakthrough",
+      "title": "The Golden Core Breakthrough",
+      "kind": "quest",
+      "stakes": "Survival and a new lease on life, or total dissolution of body and soul.",
+      "involved_ids": [
+       "player",
+       "disciple-chen"
+      ],
+      "clock_id": "lifespan-depletion",
+      "known_to_player": true
+     },
+     {
+      "id": "the-pill-quest",
+      "title": "The Core-Assisting Pill",
+      "kind": "quest",
+      "stakes": "Obtaining a pill to safely bridge the gap to Core Formation without dying of backfire.",
+      "involved_ids": [
+       "player",
+       "alchemist-song"
+      ],
+      "clock_id": "",
+      "known_to_player": true
+     }
+    ],
+    "mysteries": [
+     {
+      "id": "abyss-herb-location",
+      "question": "Where does the legendary Dragon-Blood Grass grow in the Black Abyss?",
+      "answer": "The Dragon-Blood Grass grows in a geothermal cavern beneath the Whispering Falls, directly guarded by a slumbering Rank 3 Poison-Spitting Python.",
+      "clues": [
+       "A faded map fragment found in the sect's outer library mentions 'heat rising from the abyss wetness'.",
+       "Alchemist Song notes that the beast's venom has scorched the earth near the falls."
+      ],
+      "thread_id": "the-pill-quest",
+      "known_to_player": true
+     }
+    ],
+    "known_facts": [
+     "You have exactly two years left of your natural 150-year lifespan.",
+     "The standard breakthrough to Core Formation has a ninety percent failure rate without a Core-Assisting Pill.",
+     "Sect Master Liu considers you a liability and will not grant you any sect-owned breakthrough resources."
+    ],
+    "opening": {
+     "place_id": "spirit-peak",
+     "present_ids": [
+      "disciple-chen"
+     ],
+     "positions": [
+      "Sitting cross-legged on the stone platform",
+      "Standing nearby with a worried expression"
+     ],
+     "props": [
+      "A cracked stone incense burner"
+     ],
+     "situation": "You sit in cross-legged meditation upon the cold stone platform of Spirit-Severing Peak, your breath ragged and shallow, as your loyal disciple Chen Yi stands nearby with a look of deep worry."
+    },
+    "summary": "At 148 years old, Elder Han's 150-year lifespan is nearly spent. Trapped at the peak of Foundation Establishment, he must find a way to achieve Core Formation before his physical form dissolves into dust."
+   },
+   "character": {
+    "name": "Han Feng",
+    "aliases": [
+     "Elder Han"
+    ],
+    "age": 148,
+    "lifespan_years": 150,
+    "people_id": "human",
+    "description": "An ancient cultivator with a heavily lined face, a long grey beard, and eyes reflecting decades of patience and growing desperation.",
+    "appearance": "Thin, frail-looking frame concealed by loose, faded grey robes. Long, snow-white hair tied in a simple wooden topknot.",
+    "location_id": "spirit-peak",
+    "attributes": {
+     "strength": 2,
+     "speed": 3,
+     "toughness": 3,
+     "wits": 4,
+     "knowledge": 4,
+     "willpower": 5,
+     "charm": 3,
+     "nerve": 4,
+     "bearing": 4
+    },
+    "skills": [
+     {
+      "name": "Qi Refinement",
+      "level": "expert",
+      "notes": "Decades of stagnation have made your control over your existing Qi exceptionally precise."
+     },
+     {
+      "name": "Sword Cultivation",
+      "level": "skilled",
+      "notes": "Your swordsmanship is refined, though hindered by a physical body that tires quickly."
+     },
+     {
+      "name": "Herbology",
+      "level": "fair",
+      "notes": "Familiarity with common spiritual herbs from years of searching for a cure."
+     }
+    ],
+    "traits": [
+     {
+      "name": "Brittle Meridians",
+      "kind": "flaw",
+      "description": "Your spiritual pathways are stiff and aged, making heavy Qi circulation painful and dangerous."
+     },
+     {
+      "name": "Tempered Will",
+      "kind": "gift",
+      "description": "A century and a half of struggle has made your mind immune to ordinary illusions and spiritual intimidation."
+     }
+    ],
+    "talents": [],
+    "powers": [
+     {
+      "id": "foundation-qi",
+      "name": "Foundation Qi Manipulation",
+      "description": "You can manifest your liquid spiritual energy to form defensive shields, project blade beams, or glide short distances.",
+      "kind_id": "qi",
+      "gift": false,
+      "strength": null,
+      "limits": [
+       "Limited by your pool of spiritual energy.",
+       "Overexertion causes physical fatigue and strain on your meridians."
+      ],
+      "costs": [
+       {
+        "kind": "fatigue",
+        "text": "Strains your physical body if used continuously for more than a few minutes."
+       }
+      ],
+      "secret": false,
+      "time": null
+     }
+    ],
+    "techniques": [
+     {
+      "name": "Misty Cloud Sword Stance",
+      "style": "Misty Cloud Sword Art",
+      "effect": "Creates deceptive phantoms of your blade to confuse the opponent's spiritual sense.",
+      "cost": "Moderate Qi expenditure",
+      "requirements": "A spiritual sword"
+     }
+    ],
+    "temperament": {
+     "traits": [
+      "cautious",
+      "resolute",
+      "weathered"
+     ],
+     "values": [
+      "Survival",
+      "Dignity"
+     ],
+     "loves": [
+      "The quiet of the mountains",
+      "A well-brewed spiritual tea"
+     ],
+     "fears": [
+      "Dying in obscurity",
+      "Failing his disciple"
+     ],
+     "wants": [
+      "Break through to Core Formation or I die."
+     ],
+     "voice": "Raspy, calm, and deliberate."
+    },
+    "items": [
+     {
+      "name": "Worn Flying Sword",
+      "kind": "weapon",
+      "description": "A steel sword with a slightly dulled edge, but well-maintained and loyal to your spiritual signature.",
+      "quantity": 1,
+      "carried": true
+     },
+     {
+      "name": "Low-grade Qi-Gathering Pill",
+      "kind": "consumable",
+      "description": "A bitter pill that helps replenish lost spiritual energy over several hours.",
+      "quantity": 3,
+      "carried": true
+     }
+    ],
+    "money": 120,
+    "currency": "spirit stones",
+    "title": "Elder of the Misty Cloud Sect",
+    "rank": "Foundation Establishment (Peak)",
+    "family_name": "Han",
+    "connections": [
+     {
+      "name": "Chen Yi",
+      "kind": "ally",
+      "character_id": "disciple-chen",
+      "note": "Your fiercely loyal sole disciple."
+     }
+    ],
+    "parent_ids": [],
+    "memberships": [
+     {
+      "faction_id": "misty-cloud",
+      "rank": "Outer Elder",
+      "loyalty": 40
+     }
+    ],
+    "ladders": [
+     {
+      "ladder_id": "cultivation-realms",
+      "rung": "Foundation Establishment",
+      "stage": "peak"
+     }
+    ],
+    "axes": {
+     "might": 2,
+     "influence": 2,
+     "wealth": 2,
+     "knowledge": 3,
+     "stealth": 2
+    },
+    "reserves": [
+     {
+      "name": "Spiritual Qi",
+      "level": 100
+     }
+    ],
+    "goals": [
+     "Break through to Core Formation or I die."
+    ],
+    "backstory": [
+     "You joined the Misty Cloud Sect as a young man with average talent.",
+     "You reached the peak of Foundation Establishment eighty years ago, but the barrier to Core Formation remained completely impenetrable.",
+     "As your lifespan dwindles to its absolute limit, you have retreated to Spirit-Severing Peak to make one final, desperate struggle for immortality."
+    ],
+    "hidden_past": []
+   }
+  },
+  "rating": "teen",
+  "premise_id": null,
+  "physics": "fun_first",
+  "gift": null,
+  "released_rules": [],
+  "language": "en",
+  "told": []
+ }
+}

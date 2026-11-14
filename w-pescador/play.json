@@ -15,9 +15,9 @@
  "seed": "play/w-pescador",
  "state": {
   "schema_version": 1,
-  "turn": 4,
+  "turn": 5,
   "timeline_id": "main",
-  "world_s": 13190061,
+  "world_s": 13190106,
   "bible": {
    "title": "La Sirena de Cadaqués",
    "genre": "realisme màgic mariner",
@@ -507,7 +507,7 @@
     "lifespan_years": 0,
     "old_age_span": null,
     "seen_s": 91920,
-    "near_s": 10599320,
+    "near_s": 13190061,
     "met_s": null
    },
    "mateu": {
@@ -594,7 +594,7 @@
         "heart_moved_s": null
        },
        "sergent-torres": {
-        "affinity": 11,
+        "affinity": 5,
         "fear": 0,
         "trust": 0,
         "apparent_affinity": null,
@@ -659,8 +659,8 @@
     "born_s": null,
     "lifespan_years": 0,
     "old_age_span": null,
-    "seen_s": 13190061,
-    "near_s": 10599320,
+    "seen_s": 13190106,
+    "near_s": 13190061,
     "met_s": null
    },
    "sergent-torres": {
@@ -736,6 +736,15 @@
         "grudges": [],
         "attraction": 0,
         "heart_moved_s": null
+       },
+       "sirena": {
+        "affinity": -15,
+        "fear": 0,
+        "trust": 0,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
        }
       }
      },
@@ -795,7 +804,7 @@
     "lifespan_years": 0,
     "old_age_span": null,
     "seen_s": 0,
-    "near_s": 10599320,
+    "near_s": 13190061,
     "met_s": null
    }
   },
@@ -818,7 +827,9 @@
      "fear": 0
     },
     "threat": 0,
-    "relations": {},
+    "relations": {
+     "guardia-civil-local": 15
+    },
     "survivors": [],
     "secrets": [],
     "origin": {
@@ -849,7 +860,7 @@
     },
     "threat": 0,
     "relations": {
-     "confraria-pescadors": 11
+     "confraria-pescadors": 18
     },
     "survivors": [],
     "secrets": [],
@@ -1258,89 +1269,6 @@
      "text": ""
     }
    },
-   "fact-19": {
-    "id": "fact-19",
-    "text": "Confraria de Pescadors works toward Mantenir la pesca tradicional i evitar que els de fora o les noves lleis els prenguin la feina.",
-    "kind": "observation",
-    "importance": 1,
-    "is_true": true,
-    "subject_ids": [
-     "confraria-pescadors"
-    ],
-    "known_by": [
-     "player"
-    ],
-    "turn": 4,
-    "world_s": 5342860,
-    "timeline_id": "main",
-    "origin": {
-     "kind": "agenda",
-     "ref_id": "confraria-pescadors",
-     "text": ""
-    }
-   },
-   "fact-20": {
-    "id": "fact-20",
-    "text": "Destacament de la Guàrdia Civil works toward Controlar el litoral i arrestar qualsevol que sembli sospitós d'activitats clandestines.",
-    "kind": "observation",
-    "importance": 1,
-    "is_true": true,
-    "subject_ids": [
-     "guardia-civil-local"
-    ],
-    "known_by": [],
-    "turn": 4,
-    "world_s": 5342860,
-    "timeline_id": "main",
-    "origin": {
-     "kind": "agenda",
-     "ref_id": "guardia-civil-local",
-     "text": ""
-    }
-   },
-   "fact-21": {
-    "id": "fact-21",
-    "text": "Mateu 'El Vell' cools toward La Sirena ferida.",
-    "kind": "observation",
-    "importance": 1,
-    "is_true": true,
-    "subject_ids": [
-     "mateu",
-     "sirena"
-    ],
-    "known_by": [
-     "mateu"
-    ],
-    "turn": 4,
-    "world_s": 5342860,
-    "timeline_id": "main",
-    "origin": {
-     "kind": "agenda",
-     "ref_id": "mateu",
-     "text": ""
-    }
-   },
-   "fact-23": {
-    "id": "fact-23",
-    "text": "La Sirena ferida works toward their own affairs",
-    "kind": "observation",
-    "importance": 1,
-    "is_true": true,
-    "subject_ids": [
-     "sirena"
-    ],
-    "known_by": [
-     "sirena"
-    ],
-    "turn": 4,
-    "world_s": 5342860,
-    "timeline_id": "main",
-    "origin": {
-     "kind": "agenda",
-     "ref_id": "sirena",
-     "text": ""
-    }
-   },
    "fact-25": {
     "id": "fact-25",
     "text": "Confraria de Pescadors works toward Mantenir la pesca tradicional i evitar que els de fora o les noves lleis els prenguin la feina.",
@@ -1403,27 +1331,6 @@
      "text": ""
     }
    },
-   "fact-28": {
-    "id": "fact-28",
-    "text": "Sergent Torres goes to Mar d'Amunt.",
-    "kind": "observation",
-    "importance": 1,
-    "is_true": true,
-    "subject_ids": [
-     "sergent-torres"
-    ],
-    "known_by": [
-     "sergent-torres"
-    ],
-    "turn": 4,
-    "world_s": 7971090,
-    "timeline_id": "main",
-    "origin": {
-     "kind": "agenda",
-     "ref_id": "sergent-torres",
-     "text": ""
-    }
-   },
    "fact-29": {
     "id": "fact-29",
     "text": "La Sirena ferida warms to Mateu 'El Vell'.",
@@ -1443,27 +1350,6 @@
     "origin": {
      "kind": "agenda",
      "ref_id": "sirena",
-     "text": ""
-    }
-   },
-   "fact-30": {
-    "id": "fact-30",
-    "text": "Sergent Torres comes back to Cadaqués.",
-    "kind": "observation",
-    "importance": 1,
-    "is_true": true,
-    "subject_ids": [
-     "sergent-torres"
-    ],
-    "known_by": [
-     "sergent-torres"
-    ],
-    "turn": 4,
-    "world_s": 8111726,
-    "timeline_id": "main",
-    "origin": {
-     "kind": "agenda",
-     "ref_id": "sergent-torres",
      "text": ""
     }
    },
@@ -1592,6 +1478,113 @@
      "ref_id": "sergent-torres",
      "text": ""
     }
+   },
+   "fact-37": {
+    "id": "fact-37",
+    "text": "Confraria de Pescadors draws closer to Destacament de la Guàrdia Civil.",
+    "kind": "observation",
+    "importance": 1,
+    "is_true": true,
+    "subject_ids": [
+     "confraria-pescadors",
+     "guardia-civil-local"
+    ],
+    "known_by": [
+     "player"
+    ],
+    "turn": 5,
+    "world_s": 13190061,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "agenda",
+     "ref_id": "confraria-pescadors",
+     "text": ""
+    }
+   },
+   "fact-38": {
+    "id": "fact-38",
+    "text": "Destacament de la Guàrdia Civil draws closer to Confraria de Pescadors.",
+    "kind": "observation",
+    "importance": 1,
+    "is_true": true,
+    "subject_ids": [
+     "guardia-civil-local",
+     "confraria-pescadors"
+    ],
+    "known_by": [],
+    "turn": 5,
+    "world_s": 13190061,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "agenda",
+     "ref_id": "guardia-civil-local",
+     "text": ""
+    }
+   },
+   "fact-39": {
+    "id": "fact-39",
+    "text": "Mateu 'El Vell' cools toward Sergent Torres.",
+    "kind": "observation",
+    "importance": 1,
+    "is_true": true,
+    "subject_ids": [
+     "mateu",
+     "sergent-torres"
+    ],
+    "known_by": [
+     "mateu"
+    ],
+    "turn": 5,
+    "world_s": 13190061,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "agenda",
+     "ref_id": "mateu",
+     "text": ""
+    }
+   },
+   "fact-40": {
+    "id": "fact-40",
+    "text": "Sergent Torres cools toward La Sirena ferida.",
+    "kind": "observation",
+    "importance": 1,
+    "is_true": true,
+    "subject_ids": [
+     "sergent-torres",
+     "sirena"
+    ],
+    "known_by": [
+     "sergent-torres"
+    ],
+    "turn": 5,
+    "world_s": 13190061,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "agenda",
+     "ref_id": "sergent-torres",
+     "text": ""
+    }
+   },
+   "fact-41": {
+    "id": "fact-41",
+    "text": "La Sirena ferida works toward their own affairs",
+    "kind": "observation",
+    "importance": 1,
+    "is_true": true,
+    "subject_ids": [
+     "sirena"
+    ],
+    "known_by": [
+     "sirena"
+    ],
+    "turn": 5,
+    "world_s": 13190061,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "agenda",
+     "ref_id": "sirena",
+     "text": ""
+    }
    }
   },
   "goals": {
@@ -1677,8 +1670,8 @@
     },
     "status": "open",
     "opened_turn": 4,
-    "last_active_turn": 4,
-    "taken_up_turn": null,
+    "last_active_turn": 5,
+    "taken_up_turn": 5,
     "closed_turn": null,
     "arc": null,
     "known_by": [
@@ -2268,22 +2261,22 @@
     "id": "event-22",
     "kind": "world.tick",
     "title": "The world moves on",
-    "due_s": 13227550,
+    "due_s": 10707268,
     "timeline_id": "main",
     "needs_player": false,
-    "status": "pending",
+    "status": "applied",
     "subject_ids": [],
     "place_id": null,
     "origin": null,
     "payload": {
      "last_s": 10599320,
-     "stride_s": 2628230
+     "stride_s": 107948
     },
     "seed": "story=play%2Fw-pescador/timeline=main/turn=1/world/schedule/event-4/schedule/event-6/schedule/event-16/schedule/event-18/schedule/event-20/schedule/event-22",
     "created_turn": 4,
     "created_s": 10599320,
-    "applied_turn": null,
-    "applied_s": null
+    "applied_turn": 5,
+    "applied_s": 13190061
    },
    "director-event-2": {
     "id": "director-event-2",
@@ -2292,7 +2285,7 @@
     "due_s": 13276461,
     "timeline_id": "main",
     "needs_player": false,
-    "status": "pending",
+    "status": "cancelled",
     "subject_ids": [],
     "place_id": "casa-player",
     "origin": {
@@ -2325,6 +2318,27 @@
     "created_s": 13190061,
     "applied_turn": null,
     "applied_s": null
+   },
+   "event-23": {
+    "id": "event-23",
+    "kind": "world.tick",
+    "title": "The world moves on",
+    "due_s": 13276461,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "last_s": 13190061,
+     "stride_s": 86400
+    },
+    "seed": "story=play%2Fw-pescador/timeline=main/turn=1/world/schedule/event-4/schedule/event-6/schedule/event-16/schedule/event-18/schedule/event-20/schedule/event-22/schedule/event-23",
+    "created_turn": 5,
+    "created_s": 13190061,
+    "applied_turn": null,
+    "applied_s": null
    }
   },
   "transfers": [],
@@ -2335,13 +2349,13 @@
     "mateu"
    ],
    "positions": [
-    "Ets dret al llindar de la porta de casa teva, aguantant el pom.",
-    "En Mateu 'El Vell' es troba dempeus sota la pluja fina de la cala, aguantant-se el pit."
+    "Ets dret prop de la taula, al costat d'en Mateu.",
+    "En Mateu 'El Vell' es recolza amb pes a la taula de la cuina."
    ],
    "props": [
     "La pipa de fusta de bruc"
    ],
-   "ended_on": "En Mateu es recolza al marc de la porta, tremolant de fred, i et demana entrar d'un fil de veu.",
+   "ended_on": "En Mateu es recolza a la taula mirant-te amb els ulls plens de terror.",
    "encounter": null
   },
   "director": {
@@ -2359,14 +2373,15 @@
     0,
     5520,
     91920,
-    13190061
+    13190061,
+    13190106
    ],
    "frequency_drift": 0.0,
    "recent_sources": [
     "deck:old-friend"
    ],
-   "auto_pictures": 4,
-   "picture_credit": 1.4,
+   "auto_pictures": 5,
+   "picture_credit": 1.5,
    "pictured": [
     "portrait:player",
     "portrait:player:v1",
@@ -2374,7 +2389,9 @@
     "portrait:sirena",
     "portrait:sirena:v1",
     "place:casa-player",
-    "place:casa-player:v1"
+    "place:casa-player:v1",
+    "portrait:mateu",
+    "portrait:mateu:v1"
    ],
    "fight": null,
    "deck_draws": 0,
@@ -2383,10 +2400,10 @@
   "summary": "El vell Pere troba una sirena ferida per l'hèlix d'un motor i l'amaga a casa seva. Davant la manca de remeis, decideix retornar-la a l'aigua perquè es curi sola. Cinc mesos després, mentre la busca cada vespre a la cala, el seu vell amic Mateu es presenta a la seva porta a la nit, amarat i espantat.",
   "chapters": [],
   "id_counters": {
-   "fact": 36,
+   "fact": 41,
    "goal": 1,
    "bond": 0,
-   "event": 22,
+   "event": 23,
    "director-event": 2,
    "rumor": 2,
    "thread": 1
@@ -2418,14 +2435,19 @@
    "turn": 4,
    "narration": "T'assegues a la cadira de boga, mirant el calaix buit, i penses en els dies que vindran, en les matinades de feina i en les nits que passaràs buscant la seva lluentor a la cala.\n\nEl temps s'escola com la sorra fina entre els dits. Cinc mesos passen ràpids sota la fressa de la tramuntana i el balanceig diari del 'Sardinal'. Cada matí surts a feinejar, i cada vespre, quan el sol es pon darrere el Pení, camines fins al racó de la cala amb els ulls posats en l'aigua fosca, somiant retrobar aquella mirada de mar profunda. Avui, la nit de tardor ja ha caigut sobre Cadaqués. Ets dins de casa, amb el caliu de la llar i la pipa encesa, quan sentis un truc fort i precipitat a la porta de fusta emblanquinada. Quan obres, et trobes la silueta de l'amic Mateu. Va amarat d'aigua, esbufegant, amb la cara pàl·lida i els ulls plens de por sota la gorra de llana.",
    "player_action": "Deixo passar dos anys més, pescant i anant cada vespre a la cala per si la torno a veure."
+  },
+  {
+   "turn": 5,
+   "narration": "Agafes en Mateu pel braç humit, notant com el tremolor li sacseja el cos vell sota la jaqueta de sarga, i l'estires suaument cap a l'interior de la casa, tancant la porta darrere seu per protegir-lo del fred i de la pluja fina que s'escola de la cala.\n\nL'amic es deixa guiar, esbufegant, mentre deixa un rastre de gotes d'aigua salada sobre les rajoles de la cuina. Et bades a buscar la ampolla de conyac que creies tenir al rebost per escalfar-li el pit, però de seguida recordes que fa mesos que el canterano és buit, i que només hi queda pols i algun tap de suro ressec. En Mateu es recolza contra la taula de fusta, la mateixa on fa cinc mesos bategava la sirena, i es treu la gorra xopa amb les mans turgents. Et mira fixament, amb els ulls molt oberts, gairebé febrils.\n\n\"Pere...\" murmura amb un fil de veu que sembla venir de l'altre món, recolzant-se en el cantell de la taula per no caure, mentre es mira la llar de foc on encara queden algunes brases calentes. La por que porta a sobre és tan espessa com la boira del Cap de Creus.",
+   "player_action": "Faig entrar en Mateu, li dono un got de conyac i li pregunto què ha passat."
   }
  ],
  "choices": [
-  "Fer entrar en Mateu de pressa i tancar de cop la porta.",
-  "Preguntar-li què ha passat abans de deixar-lo passar a dins.",
-  "Oferir-li un vas de conyac vell vora el caliu de la llar."
+  "Preguntar-li directament què és el que l'ha espantat d'aquesta manera.",
+  "Atansar-li una cadira de boga i posar més llenya al foc.",
+  "Oferir-li un vas d'aigua fresca en comptes del conyac."
  ],
- "cost_usd": 0.26201364,
+ "cost_usd": 0.31485104,
  "draft": {
   "premise": "Sóc un pescador vell de Cadaqués, de setanta-vuit anys. Un matí trobo una sirena ferida a la xarxa.",
   "proposal": {

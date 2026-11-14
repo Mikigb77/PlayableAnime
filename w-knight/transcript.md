@@ -659,3 +659,301 @@ The journey down the muddy border road takes you through the damp, quiet woods u
 }
 ```
 
+## Turn 4 (action), 3.6 s, $0.006
+
+> I take Clara's hand, tell her I'd like to see her again, and kiss her.
+
+**Refused:** {"code": "unreadable_action", "categories": ["minor"], "by": "code", "stage": ""}
+
+## What the screens show (turn 3)
+
+### Memory
+
+```json
+{
+ "character": {
+  "name": "Ser Thomas",
+  "lines": [
+   "A quiet, weathered knight in his thirties who knows his duty and does it without complaint.",
+   "Ser",
+   "Knight"
+  ]
+ },
+ "people": [
+  {
+   "id": "lord-oswald",
+   "name": "Lord Oswald",
+   "lines": [
+    "An aging, stern frontier lord who values duty and order above all else."
+   ],
+   "attitude": "friendly",
+   "attitude_label": "Friendly",
+   "status": "alive",
+   "presumed": false,
+   "status_label": "Alive"
+  },
+  {
+   "id": "ser-rodrick",
+   "name": "Ser Rodrick",
+   "lines": [
+    "A cynical veteran knight who has spent twenty years on these borders and expects little from life."
+   ],
+   "attitude": "friendly",
+   "attitude_label": "Friendly",
+   "status": "alive",
+   "presumed": false,
+   "status_label": "Alive"
+  }
+ ],
+ "places": [
+  {
+   "id": "garrison-yard",
+   "name": "The Garrison Yard",
+   "lines": [
+    "Wilds",
+    "A muddy training yard within the keep's wooden palisade, smelling of horse dung and wet hay.",
+    "You haven't been there."
+   ]
+  },
+  {
+   "id": "border-village",
+   "name": "Lowbridge Village",
+   "lines": [
+    "Village",
+    "A cluster of thatched peasant huts huddled near a strategic river crossing."
+   ]
+  },
+  {
+   "id": "border-keep",
+   "name": "Oswald Keep",
+   "lines": [
+    "Building",
+    "A drafty stone fortress weathered by the northern wind, standing watch over the border lands."
+   ]
+  },
+  {
+   "id": "wild-woods",
+   "name": "The Wild Woods",
+   "lines": [
+    "Wilds",
+    "A dense, ancient forest stretching past the border, unclaimed by any king and home to outlaws.",
+    "You haven't been there."
+   ]
+  }
+ ],
+ "factions": [
+  {
+   "id": "house-oswald",
+   "name": "House Oswald",
+   "lines": [
+    "Family",
+    "A minor noble house tasked with holding this barren stretch of the realm's frontier."
+   ],
+   "esteem": "neutral",
+   "dread": "none",
+   "standing_label": "Neutral"
+  },
+  {
+   "id": "border-bandits",
+   "name": "The Red Cap Bandits",
+   "lines": [
+    "Crew",
+    "A ruthless gang of outlaws and deserters who raid isolated farms along the border."
+   ],
+   "esteem": "neutral",
+   "dread": "none",
+   "standing_label": "Neutral"
+  }
+ ],
+ "deeds": [
+  {
+   "id": "deed-1",
+   "text": "I offer to lead a patrol to Lowbridge at dawn and ask Ser Rodrick to ride with me. (it worked)",
+   "when_label": "Day 1, morning",
+   "seen": "seen",
+   "known_label": "Seen by Lord Oswald and Ser Rodrick"
+  }
+ ],
+ "threads": [
+  {
+   "id": "border-defense",
+   "title": "Defending the Border",
+   "status": "open"
+  }
+ ]
+}
+```
+
+### On record (the player never sees this)
+
+```json
+{
+ "world": {
+  "title": "The Border Knight",
+  "genre": "grounded medieval drama",
+  "era": "High Medieval borderlands: steel swords, chainmail, and horse-travel"
+ },
+ "character": {
+  "id": "player",
+  "name": "Ser Thomas",
+  "prominence": "key",
+  "description": "A quiet, weathered knight in his thirties who knows his duty and does it without complaint.",
+  "appearance": "An average, unassuming build, dark brown hair cut short, wearing a faded green surcoat over simple steel chainmail.",
+  "age": 34,
+  "people_id": "human",
+  "location_id": "border-village",
+  "memberships": [
+   {
+    "faction_id": "house-oswald",
+    "rank": "Knight",
+    "loyalty": 85
+   }
+  ],
+  "origin": {
+   "kind": "premise"
+  },
+  "known_by": [
+   "player"
+  ],
+  "met_by": [
+   "player"
+  ],
+  "lifespan_years": 75
+ },
+ "sheet": {
+  "skills": [
+   {
+    "name": "Swordsmanship",
+    "notes": "Decent with an iron blade, though no match for a true champion."
+   },
+   {
+    "name": "Horsemanship",
+    "notes": "Capable of riding in formation and handling long, exhausting patrols."
+   },
+   {
+    "name": "Shield-work",
+    "level": "novice",
+    "notes": "Trained to keep a wooden shield between himself and incoming blows."
+   }
+  ],
+  "traits": [
+   {
+    "name": "Duty-Bound",
+    "kind": "gift",
+    "description": "He takes his knightly oath seriously, earning him the respect of his lord."
+   },
+   {
+    "name": "Patrol Weariness",
+    "kind": "flaw",
+    "description": "Years of riding in cold rain have left him with stiff joints that ache on damp mornings."
+   }
+  ],
+  "disposition": {
+   "temperament": {
+    "traits": [
+     "practical",
+     "quiet",
+     "reliable"
+    ],
+    "values": [
+     "duty",
+     "survival"
+    ],
+    "loves": [
+     "the warmth of the barracks hearth"
+    ],
+    "fears": [
+     "failing his oath and dishonoring his name"
+    ]
+   }
+  },
+  "resources": {
+   "items": [
+    {
+     "id": "iron-sword",
+     "name": "Iron Sword",
+     "kind": "weapon",
+     "description": "A simple, well-balanced arming sword showing signs of regular sharpening."
+    },
+    {
+     "id": "weathered-chainmail",
+     "name": "Weathered Chainmail",
+     "kind": "armour",
+     "description": "A sturdy suit of iron mail links, worn over a padded gambeson."
+    },
+    {
+     "id": "wooden-shield",
+     "name": "Wooden Shield",
+     "kind": "armour",
+     "description": "A heater-style shield painted with the fading oak leaf of House Oswald."
+    },
+    {
+     "id": "patrol-horse",
+     "name": "Patrol Horse",
+     "kind": "vehicle",
+     "description": "A reliable, short-tempered gelding suited for rough terrain.",
+     "carried": false
+    }
+   ],
+   "money": 14,
+   "currency": "silver coins",
+   "title": "Ser",
+   "rank": "Knight",
+   "connections": [
+    {
+     "name": "Lord Oswald",
+     "kind": "trusts_them",
+     "character_id": "lord-oswald",
+     "note": "Thomas has served him faithfully for nearly a decade."
+    }
+   ]
+  },
+  "backstory": [
+   {
+    "text": "Thomas was knighted after defending a supply wagon during a border skirmish in his twenties."
+   },
+   {
+    "text": "He has spent his entire knightly career in service to House Oswald, patrolling the same muddy forests."
+   }
+  ]
+ },
+ "gift": "none",
+ "extraordinary": [
+  "magic or anything supernatural (none)"
+ ],
+ "peoples": [
+  {
+   "id": "human",
+   "name": "Human",
+   "lifespan_years": 75,
+   "culture": "Feudal borderland culture, focused on hard labor, duty, and keeping watch against raids."
+  }
+ ],
+ "rules": [
+  "Magic and the supernatural do not exist; the physical laws of nature are absolute.",
+  "A knight is bound by holy oath to serve their lord, and breaking fealty brings absolute ruin.",
+  "Wounds fester easily and diseases kill; there are no magical cures, only basic herbalism and amputations."
+ ],
+ "others": [
+  "Clara, peak attribute 3",
+  "Karl One-Eye, 41, peak attribute 3",
+  "Lord Oswald, 58, peak attribute 3",
+  "Ser Rodrick, 45, peak attribute 3"
+ ],
+ "people_in_the_world": 4,
+ "years": {
+  "age": 34.0,
+  "lives_about": 75,
+  "the_record_says_so": true,
+  "old": false,
+  "told_the_end_is_close": false
+ },
+ "waiting": [
+  "world.word 'Word of a deed may get out' in 1488 s",
+  "world.clock_step 'The Red Cap Raid: Bandit scouts are spotted in the forest fringes near Lowbridge Village.' in 21.5 hours",
+  "world.tick 'The world moves on' in 21.5 hours",
+  "world.old_age 'Your years run short' in 44.4 years (stops the player)"
+ ]
+}
+```
+

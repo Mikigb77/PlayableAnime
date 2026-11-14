@@ -1,0 +1,1784 @@
+{
+ "premise": "I'm a young blacksmith in a small medieval village, hopelessly in love with the miller's wife.",
+ "language": "en",
+ "rating": "teen",
+ "settings": {
+  "narration_length": "medium",
+  "tone": null,
+  "difficulty": "balanced",
+  "event_frequency": "normal",
+  "images": "key_moments",
+  "suggestions": true,
+  "language": "en",
+  "accent": null
+ },
+ "seed": "play/o-smith",
+ "state": {
+  "schema_version": 1,
+  "turn": 1,
+  "timeline_id": "main",
+  "world_s": 0,
+  "bible": {
+   "title": "Anvil and Mill",
+   "genre": "grounded medieval romance",
+   "tone": "bittersweet",
+   "era": "A medieval fiefdom: iron tools, horse-drawn carts, watermills, and carrier pigeons.",
+   "extraordinary": [
+    {
+     "id": "supernatural",
+     "kind": "magic or anything supernatural",
+     "prevalence": "none",
+     "reach": "",
+     "rule_ids": [
+      "no-supernatural"
+     ]
+    }
+   ],
+   "peoples": [
+    {
+     "id": "humans",
+     "name": "Humans",
+     "description": "",
+     "lifespan_years": 80,
+     "gifts": [],
+     "culture": "Hardworking feudal peasants and tradesfolk bound by duty, faith, and local gossip.",
+     "relations": [],
+     "path": ""
+    }
+   ],
+   "creatures": [],
+   "nature": [
+    "The seasons dictate the rhythm of life, with harsh winters and heavy autumn harvests."
+   ],
+   "physics": "fun_first",
+   "force": {
+    "tier1_joules": 10000.0,
+    "per_tier": 10.0
+   },
+   "ladders": [],
+   "calendar": {
+    "style": "day_count",
+    "time_of_day": "parts",
+    "epoch": null,
+    "start_second_of_day": 28800,
+    "months": [],
+    "start_year": 1,
+    "start_month": 1,
+    "start_day": 1,
+    "era": ""
+   },
+   "travel": {
+    "description": "People travel on foot or by wooden carts along muddy dirt roads.",
+    "instant_messages": false
+   },
+   "medicine": {
+    "healing": "Simple herbal poultices and basic bloodletting by the village apothecary.",
+    "resurrection": "none",
+    "resurrection_means": ""
+   },
+   "laws": [
+    {
+     "id": "adultery-law",
+     "text": "Adultery is forbidden and punishable by public penance or banishment.",
+     "enforcer": "Bailiff Robert",
+     "enforcer_faction_id": "bailiff-office",
+     "zeal": "high",
+     "corruptible": false
+    }
+   ],
+   "norms": [],
+   "several_partners": false,
+   "unions": "for_life",
+   "rules": [
+    {
+     "id": "no-supernatural",
+     "text": "Magic and the supernatural do not exist; the laws of nature are absolute.",
+     "fixed": true,
+     "topic": "existence"
+    },
+    {
+     "id": "sanctity-of-marriage",
+     "text": "Marriage is a sacred covenant for life, and adultery is a crime punished by public shaming or exile.",
+     "fixed": true,
+     "topic": "law"
+    },
+    {
+     "id": "village-law",
+     "text": "The local bailiff enforces the lord's peace, keeping order in the village with a heavy hand.",
+     "fixed": true,
+     "topic": "law"
+    }
+   ],
+   "mysteries": [
+    {
+     "id": "gwenyths-feelings",
+     "question": "Does Gwenyth share your feelings, or are you truly dreaming in vain?",
+     "answer": "Gwenyth is desperately unhappy in her marriage to the abusive Aldous and feels a deep, secret affection for your kindness, but she is terrified of the town's judgment and damnation.",
+     "clues": [
+      "A hidden bruise on her wrist from Aldous's rough grip.",
+      "A small wooden carving you made that she secretly keeps in her apron.",
+      "The way her eyes linger on you when Aldous isn't looking."
+     ],
+     "thread_id": "forbidden-love",
+     "solved": false
+    }
+   ]
+  },
+  "player_id": "player",
+  "characters": {
+   "player": {
+    "id": "player",
+    "name": "Halvard",
+    "aliases": [
+     "Hal"
+    ],
+    "prominence": "key",
+    "description": "A hardworking young blacksmith with calloused hands and an earnest, lovesick gaze.",
+    "appearance": "Strong, muscular build from years at the forge, soot-smudged face, messy brown hair, wearing a rugged leather smithing apron.",
+    "look_version": 1,
+    "age": 20,
+    "people_id": "humans",
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "blacksmith-forge",
+    "personal_offset_s": 0,
+    "memberships": [
+     {
+      "faction_id": "blackwood-villagers",
+      "rank": "Craftsman",
+      "loyalty": 50
+     }
+    ],
+    "sheet": {
+     "attributes": {
+      "strength": 4,
+      "speed": 3,
+      "toughness": 4,
+      "wits": 3,
+      "knowledge": 2,
+      "willpower": 3,
+      "charm": 3,
+      "nerve": 3,
+      "bearing": 3
+     },
+     "skills": [
+      {
+       "name": "Blacksmithing",
+       "level": "expert",
+       "notes": "Capable of forging fine iron tools, horseshoes, and basic weapons."
+      },
+      {
+       "name": "Brawling",
+       "level": "novice",
+       "notes": "Can hold his own in a rough tavern fight."
+      }
+     ],
+     "traits": [
+      {
+       "name": "Sturdy Build",
+       "kind": "gift",
+       "description": "Your time lifting hammers makes you remarkably strong and resilient."
+      },
+      {
+       "name": "Lovesick distraction",
+       "kind": "flaw",
+       "description": "Your mind is so occupied by Gwenyth that you sometimes miss what is happening right in front of you."
+      }
+     ],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "earnest",
+        "laborious",
+        "romantic"
+       ],
+       "values": [
+        "loyalty",
+        "honesty",
+        "true love"
+       ],
+       "loves": [
+        "Gwenyth",
+        "the ring of the anvil"
+       ],
+       "fears": [
+        "Gwenyth being hurt",
+        "exile"
+       ],
+       "wants": [
+        "Win the miller's wife's heart"
+       ],
+       "voice": "Earnest, humble, and polite, but filled with quiet passion when speaking of Gwenyth."
+      },
+      "attitudes": {}
+     },
+     "resources": {
+      "items": [
+       {
+        "id": "heavy-blacksmith-hammer",
+        "name": "Heavy Blacksmith Hammer",
+        "kind": "weapon",
+        "description": "A heavy iron hammer used for shaping metal, but formidable in a fight.",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       },
+       {
+        "id": "leather-apron",
+        "name": "Leather Apron",
+        "kind": "armour",
+        "description": "Thick hide that protects against sparks and minor scrapes.",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       }
+      ],
+      "money": 12,
+      "currency": "silver pennies",
+      "title": "Village Blacksmith",
+      "rank": "Commoner",
+      "family_name": "",
+      "connections": [
+       {
+        "name": "Gwenyth",
+        "kind": "other",
+        "character_id": "gwenyth",
+        "note": "The woman you are hopelessly in love with."
+       }
+      ]
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 2,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": [
+      {
+       "text": "You took over the forge when your father passed away last year.",
+       "turn": 0
+      },
+      {
+       "text": "Your life was simple and filled with hard work until Gwenyth came to the mill, capturing your heart completely.",
+       "turn": 0
+      }
+     ]
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": 80,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   },
+   "gwenyth": {
+    "id": "gwenyth",
+    "name": "Gwenyth",
+    "aliases": [],
+    "prominence": "key",
+    "description": "The miller's wife, quiet and graceful, with sad eyes that hold a deep, unspoken sorrow.",
+    "appearance": "A young woman with delicate, pale features, sad green eyes, and long blonde hair kept tied beneath a simple linen cap; wearing a worn, flour-dusted kirtle.",
+    "look_version": 1,
+    "age": 21,
+    "people_id": null,
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "village-mill",
+    "personal_offset_s": 0,
+    "memberships": [],
+    "sheet": {
+     "attributes": {
+      "strength": 3,
+      "speed": 3,
+      "toughness": 3,
+      "wits": 3,
+      "knowledge": 3,
+      "willpower": 3,
+      "charm": 3,
+      "nerve": 3,
+      "bearing": 3
+     },
+     "skills": [],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [],
+       "values": [],
+       "loves": [],
+       "fears": [],
+       "wants": [],
+       "voice": ""
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 25,
+        "fear": 0,
+        "trust": 40,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 30,
+        "heart_moved_s": null
+       },
+       "aldous": {
+        "affinity": 0,
+        "fear": 0,
+        "trust": 0,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 49,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": "steadfast",
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   },
+   "aldous": {
+    "id": "aldous",
+    "name": "Aldous the Miller",
+    "aliases": [],
+    "prominence": "key",
+    "description": "A burly, short-tempered miller who guards his business and his wife with fierce, jealous possessiveness.",
+    "appearance": "A burly, thick-necked man with grey-streaked brown hair, a coarse beard, and a perpetually sour expression, dressed in heavy woolen clothes stained with grease and flour.",
+    "look_version": 1,
+    "age": 32,
+    "people_id": null,
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "village-mill",
+    "personal_offset_s": 0,
+    "memberships": [],
+    "sheet": {
+     "attributes": {
+      "strength": 3,
+      "speed": 3,
+      "toughness": 3,
+      "wits": 3,
+      "knowledge": 3,
+      "willpower": 3,
+      "charm": 3,
+      "nerve": 3,
+      "bearing": 3
+     },
+     "skills": [],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [],
+       "values": [],
+       "loves": [],
+       "fears": [],
+       "wants": [],
+       "voice": ""
+      },
+      "attitudes": {
+       "player": {
+        "affinity": -20,
+        "fear": 0,
+        "trust": -10,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       },
+       "gwenyth": {
+        "affinity": 0,
+        "fear": 0,
+        "trust": 0,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 67,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   },
+   "bailiff-robert": {
+    "id": "bailiff-robert",
+    "name": "Bailiff Robert",
+    "aliases": [],
+    "prominence": "key",
+    "description": "A stern, unyielding lawman who values order above all else and despises village drama.",
+    "appearance": "A stern, sharp-eyed man in a fine leather jerkin, carrying a heavy iron-bound baton at his belt.",
+    "look_version": 1,
+    "age": 48,
+    "people_id": null,
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "bailiff-house",
+    "personal_offset_s": 0,
+    "memberships": [],
+    "sheet": {
+     "attributes": {
+      "strength": 3,
+      "speed": 3,
+      "toughness": 3,
+      "wits": 3,
+      "knowledge": 3,
+      "willpower": 3,
+      "charm": 3,
+      "nerve": 3,
+      "bearing": 3
+     },
+     "skills": [],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [],
+       "values": [],
+       "loves": [],
+       "fears": [],
+       "wants": [],
+       "voice": ""
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 0,
+        "fear": 0,
+        "trust": 10,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   }
+  },
+  "factions": {
+   "blackwood-villagers": {
+    "id": "blackwood-villagers",
+    "name": "Blackwood Villagers",
+    "kind": "family",
+    "description": "The tight-knit, gossiping community of farmers and laborers who tolerate no deviance.",
+    "parent_id": null,
+    "status": "intact",
+    "status_history": [],
+    "activity": "active",
+    "leader_ids": [],
+    "goal": "",
+    "methods": "",
+    "strength": "Numbers and public shaming.",
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "threat": 0,
+    "relations": {},
+    "survivors": [],
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ]
+   },
+   "bailiff-office": {
+    "id": "bailiff-office",
+    "name": "The Bailiff's Guard",
+    "kind": "court",
+    "description": "The law-enforcing arm of Lord Blackwood, led by the stern Bailiff Robert.",
+    "parent_id": null,
+    "status": "intact",
+    "status_history": [],
+    "activity": "active",
+    "leader_ids": [],
+    "goal": "",
+    "methods": "",
+    "strength": "Armed guards and the authority of the crown.",
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "threat": 0,
+    "relations": {},
+    "survivors": [],
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "places": {
+   "blackwood-village": {
+    "id": "blackwood-village",
+    "name": "Blackwood Village",
+    "kind": "village",
+    "description": "A small, secluded settlement nestled between dense dark pine woods and rolling wheat fields.",
+    "parent_id": null,
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "blackwood-fief",
+      "travel_s": 10800,
+      "mode": "by cart"
+     },
+     {
+      "to_id": "blacksmith-forge",
+      "travel_s": 360,
+      "mode": "on foot"
+     },
+     {
+      "to_id": "village-mill",
+      "travel_s": 720,
+      "mode": "on foot"
+     },
+     {
+      "to_id": "bailiff-house",
+      "travel_s": 360,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "blacksmith-forge": {
+    "id": "blacksmith-forge",
+    "name": "The Blacksmith's Forge",
+    "kind": "building",
+    "description": "A soot-stained stone building filled with the heat of the hearth and the ringing sound of the anvil.",
+    "parent_id": "blackwood-village",
+    "setting": "indoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "blackwood-village",
+      "travel_s": 360,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [
+     "player"
+    ],
+    "judged": []
+   },
+   "village-mill": {
+    "id": "village-mill",
+    "name": "The Watermill",
+    "kind": "building",
+    "description": "A large wooden mill driven by a rushing stream, where sacks of grain are ground into flour.",
+    "parent_id": "blackwood-village",
+    "setting": "indoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "blackwood-village",
+      "travel_s": 720,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "bailiff-house": {
+    "id": "bailiff-house",
+    "name": "The Bailiff's House",
+    "kind": "building",
+    "description": "The sturdiest stone house in the village, doubling as the local courthouse and lockup.",
+    "parent_id": "blackwood-village",
+    "setting": "indoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "blackwood-village",
+      "travel_s": 360,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "blackwood-fief": {
+    "id": "blackwood-fief",
+    "name": "Blackwood Fief",
+    "kind": "region",
+    "description": "The wider valley ruled by Lord Blackwood, containing several scattered farms and hamlets.",
+    "parent_id": null,
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "blackwood-village",
+      "travel_s": 10800,
+      "mode": "by cart"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   }
+  },
+  "deeds": {},
+  "rumors": {},
+  "bonds": {
+   "bond-1": {
+    "id": "bond-1",
+    "a_id": "gwenyth",
+    "b_id": "aldous",
+    "stage": "married",
+    "end": null,
+    "steps": [
+     {
+      "stage": "married",
+      "turn": 0,
+      "world_s": 0,
+      "by_id": null,
+      "how": "As the story opens."
+     }
+    ]
+   }
+  },
+  "lives": {},
+  "aged_s": null,
+  "changes": {},
+  "strife_s": {},
+  "facts": {
+   "fact-1": {
+    "id": "fact-1",
+    "text": "Aldous is a harsh husband, and Gwenyth rarely smiles.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-2": {
+    "id": "fact-2",
+    "text": "The villagers love to gossip, and any scandal will travel fast.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-3": {
+    "id": "fact-3",
+    "text": "Adultery is a serious crime that Bailiff Robert will not ignore.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   }
+  },
+  "goals": {
+   "goal-1": {
+    "id": "goal-1",
+    "text": "Win the miller's wife's heart",
+    "status": "active",
+    "set_turn": 0,
+    "set_s": null,
+    "lead_id": null,
+    "closed_turn": null,
+    "closed_s": null,
+    "merged_into": null,
+    "progress": "",
+    "moved_turn": null
+   }
+  },
+  "leads": {},
+  "threads": {
+   "forbidden-love": {
+    "id": "forbidden-love",
+    "title": "A Hopeless Romance",
+    "kind": "romance",
+    "stakes": "Winning Gwenyth's heart without causing her ruin or getting yourself exiled by the law.",
+    "involved_ids": [
+     "player",
+     "gwenyth",
+     "aldous"
+    ],
+    "clock_id": "scandal-brewing",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "status": "open",
+    "opened_turn": 0,
+    "last_active_turn": 0,
+    "taken_up_turn": null,
+    "closed_turn": null,
+    "arc": null,
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "clocks": {
+   "scandal-brewing": {
+    "id": "scandal-brewing",
+    "name": "The Gossip Spreads",
+    "steps": [
+     "Whispers begin in the village tavern about your longing stares.",
+     "Aldous hears rumors of your affection for Gwenyth.",
+     "An enraged Aldous publicly confronts you at your forge.",
+     "The Bailiff steps in to charge you with disrupting the peace, forcing a trial."
+    ],
+    "filled": 0,
+    "advances_on": [],
+    "reverses_on": [],
+    "interval_s": 172800,
+    "next_step_s": 172800,
+    "owner_id": null,
+    "thread_id": "forbidden-love",
+    "status": "running",
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "pending_events": {
+   "event-1": {
+    "id": "event-1",
+    "kind": "world.clock_step",
+    "title": "The Gossip Spreads: Whispers begin in the village tavern about your longing stares.",
+    "due_s": 172800,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": {
+     "kind": "clock",
+     "ref_id": "scandal-brewing",
+     "text": ""
+    },
+    "payload": {
+     "clock_id": "scandal-brewing"
+    },
+    "seed": "story=play%2Fo-smith/timeline=main/turn=1/world/schedule/event-1",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-2": {
+    "id": "event-2",
+    "kind": "world.old_age",
+    "title": "Your years run short",
+    "due_s": 1762890395,
+    "timeline_id": "main",
+    "needs_player": true,
+    "status": "pending",
+    "subject_ids": [
+     "player"
+    ],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "phase": "near",
+     "who": "player",
+     "span": 80,
+     "day_s": 1858145777
+    },
+    "seed": "story=play%2Fo-smith/timeline=main/turn=1/world/schedule/event-2",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-3": {
+    "id": "event-3",
+    "kind": "world.tick",
+    "title": "The world moves on",
+    "due_s": 86400,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "last_s": 0,
+     "stride_s": 86400
+    },
+    "seed": "story=play%2Fo-smith/timeline=main/turn=1/world/schedule/event-3",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   }
+  },
+  "transfers": [],
+  "time_effects": [],
+  "scene": {
+   "place_id": "blacksmith-forge",
+   "present_ids": [
+    "player"
+   ],
+   "positions": [
+    "Halvard stands at the anvil, hammer in hand",
+    "Aldous stands near the wooden workbench by the doorway"
+   ],
+   "props": [
+    "heavy-blacksmith-hammer",
+    "glowing iron shoe",
+    "broken flour-chute brace"
+   ],
+   "ended_on": "Aldous folds his arms, waiting for your answer as the broken iron brace sits on the workbench.",
+   "encounter": null
+  },
+  "director": {
+   "turns_without_stakes": 0,
+   "low_stakes_streak": 0,
+   "last_action_key": null,
+   "last_event_turn": null,
+   "last_event_size": null,
+   "last_event_s": {},
+   "last_small_s": null,
+   "recent_moments": [],
+   "recent_clock": [
+    0
+   ],
+   "frequency_drift": 0.0,
+   "recent_sources": [],
+   "auto_pictures": 1,
+   "picture_credit": 1.1,
+   "pictured": [
+    "portrait:player",
+    "portrait:player:v1"
+   ],
+   "fight": null,
+   "deck_draws": 0,
+   "road_stops": 0
+  },
+  "summary": "Halvard, a young blacksmith in Blackwood Village, harbors a deep, forbidden love for the miller's wife, Gwenyth. While working at his anvil in the morning heat of the forge, he is interrupted by Gwenyth's harsh husband, Aldous, who demands a repair on a broken flour-chute brace and drops a sharp remark about his wife's visits.",
+  "chapters": [],
+  "id_counters": {
+   "fact": 3,
+   "goal": 1,
+   "bond": 1,
+   "event": 3
+  },
+  "fallen": [],
+  "opening_due": false,
+  "misses_in_a_row": 0,
+  "openings": [],
+  "journey": null,
+  "untold": [
+   "person:bailiff-robert",
+   "thread:forbidden-love"
+  ]
+ },
+ "scenes": [
+  {
+   "turn": 1,
+   "narration": "You strike the glowing red iron on your anvil, each heavy beat of your hammer matching the throb of your heart as you look through the open doorway toward the watermill down the road. The morning air of Blackwood Fief is cool, but the forge is thick with the dry heat of burning charcoal and the sulfurous scent of coal dust. From this vantage, your eyes drift constantly to the heavy wooden wheel of the mill, churning slowly in the stream.\n\nAs you raise the hammer for another strike, a shadow falls across the threshold. It is not Gwenyth, but her husband, Aldous the Miller. He carries a bent iron flour-chute brace, his face as sour and grey as a winter sky. He drops the heavy piece of metal onto your wooden workbench with a dull thud. 'The mount broke again, blacksmith,' he grunts, not offering a greeting. 'And I need it fixed before the afternoon grinding. My wife said you were the only one who could do it proper, though I think she just likes an excuse to look down the road.' He watches you with a hard, suspicious squint, waiting to see how you respond.",
+   "player_action": null
+  }
+ ],
+ "choices": [
+  "Assure Aldous politely and ask how Gwenyth is doing at the mill.",
+  "Quietly agree to fix the brace for a few silver pennies.",
+  "Deflect his suspicion by complaining about the poor iron quality."
+ ],
+ "cost_usd": 0.116961,
+ "draft": {
+  "premise": "I'm a young blacksmith in a small medieval village, hopelessly in love with the miller's wife.",
+  "proposal": {
+   "world": {
+    "title": "Anvil and Mill",
+    "genre": "grounded medieval romance",
+    "tone": "bittersweet",
+    "era": "A medieval fiefdom: iron tools, horse-drawn carts, watermills, and carrier pigeons.",
+    "extraordinary": [
+     {
+      "id": "supernatural",
+      "kind": "magic or anything supernatural",
+      "prevalence": "none",
+      "reach": ""
+     }
+    ],
+    "rules": [
+     {
+      "id": "no-supernatural",
+      "text": "Magic and the supernatural do not exist; the laws of nature are absolute.",
+      "fixed": true,
+      "topic": "existence",
+      "about": [
+       "supernatural"
+      ]
+     },
+     {
+      "id": "sanctity-of-marriage",
+      "text": "Marriage is a sacred covenant for life, and adultery is a crime punished by public shaming or exile.",
+      "fixed": true,
+      "topic": "law",
+      "about": []
+     },
+     {
+      "id": "village-law",
+      "text": "The local bailiff enforces the lord's peace, keeping order in the village with a heavy hand.",
+      "fixed": true,
+      "topic": "law",
+      "about": []
+     }
+    ],
+    "dropped_rule_ids": [],
+    "peoples": [
+     {
+      "id": "humans",
+      "name": "Humans",
+      "description": "",
+      "lifespan_years": 80,
+      "gifts": [],
+      "culture": "Hardworking feudal peasants and tradesfolk bound by duty, faith, and local gossip.",
+      "relations": [],
+      "path": ""
+     }
+    ],
+    "creatures": [],
+    "nature": [
+     "The seasons dictate the rhythm of life, with harsh winters and heavy autumn harvests."
+    ],
+    "ladders": [],
+    "calendar": {
+     "style": "day_count",
+     "clock_time": false,
+     "epoch": "",
+     "start_hour": 8,
+     "months": [],
+     "start_year": 1,
+     "start_month": 1,
+     "start_day": 1,
+     "era": "Anno Domini"
+    },
+    "travel": {
+     "description": "People travel on foot or by wooden carts along muddy dirt roads.",
+     "instant_messages": false
+    },
+    "medicine": {
+     "healing": "Simple herbal poultices and basic bloodletting by the village apothecary.",
+     "resurrection": "none",
+     "resurrection_means": ""
+    },
+    "laws": [
+     {
+      "id": "adultery-law",
+      "text": "Adultery is forbidden and punishable by public penance or banishment.",
+      "enforcer": "Bailiff Robert",
+      "enforcer_faction_id": "bailiff-office",
+      "zeal": "high",
+      "corruptible": false
+     }
+    ],
+    "norms": [],
+    "several_partners": false,
+    "unions": "for_life",
+    "places": [
+     {
+      "id": "blackwood-village",
+      "name": "Blackwood Village",
+      "kind": "village",
+      "description": "A small, secluded settlement nestled between dense dark pine woods and rolling wheat fields.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "blackwood-fief",
+        "travel_hours": 3.0,
+        "mode": "by cart"
+       }
+      ]
+     },
+     {
+      "id": "blacksmith-forge",
+      "name": "The Blacksmith's Forge",
+      "kind": "building",
+      "description": "A soot-stained stone building filled with the heat of the hearth and the ringing sound of the anvil.",
+      "parent_id": "blackwood-village",
+      "setting": "indoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "blackwood-village",
+        "travel_hours": 0.1,
+        "mode": "on foot"
+       }
+      ]
+     },
+     {
+      "id": "village-mill",
+      "name": "The Watermill",
+      "kind": "building",
+      "description": "A large wooden mill driven by a rushing stream, where sacks of grain are ground into flour.",
+      "parent_id": "blackwood-village",
+      "setting": "indoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "blackwood-village",
+        "travel_hours": 0.2,
+        "mode": "on foot"
+       }
+      ]
+     },
+     {
+      "id": "bailiff-house",
+      "name": "The Bailiff's House",
+      "kind": "building",
+      "description": "The sturdiest stone house in the village, doubling as the local courthouse and lockup.",
+      "parent_id": "blackwood-village",
+      "setting": "indoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "blackwood-village",
+        "travel_hours": 0.1,
+        "mode": "on foot"
+       }
+      ]
+     },
+     {
+      "id": "blackwood-fief",
+      "name": "Blackwood Fief",
+      "kind": "region",
+      "description": "The wider valley ruled by Lord Blackwood, containing several scattered farms and hamlets.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     }
+    ],
+    "factions": [
+     {
+      "id": "blackwood-villagers",
+      "name": "Blackwood Villagers",
+      "kind": "family",
+      "description": "The tight-knit, gossiping community of farmers and laborers who tolerate no deviance.",
+      "parent_id": "",
+      "leader_ids": [],
+      "goal": "",
+      "methods": "",
+      "strength": "Numbers and public shaming.",
+      "relations": [],
+      "secrets": [],
+      "known_to_player": true
+     },
+     {
+      "id": "bailiff-office",
+      "name": "The Bailiff's Guard",
+      "kind": "court",
+      "description": "The law-enforcing arm of Lord Blackwood, led by the stern Bailiff Robert.",
+      "parent_id": "",
+      "leader_ids": [],
+      "goal": "",
+      "methods": "",
+      "strength": "Armed guards and the authority of the crown.",
+      "relations": [],
+      "secrets": [],
+      "known_to_player": true
+     }
+    ],
+    "npcs": [
+     {
+      "id": "gwenyth",
+      "name": "Gwenyth",
+      "aliases": [],
+      "description": "The miller's wife, quiet and graceful, with sad eyes that hold a deep, unspoken sorrow.",
+      "appearance": "Slender build, long braided brown hair, wearing a simple linen dress dusted with flour.",
+      "age": 21,
+      "people_id": "",
+      "location_id": "village-mill",
+      "memberships": [],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [],
+       "values": [],
+       "loves": [],
+       "fears": [],
+       "wants": [],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 3,
+       "speed": 3,
+       "toughness": 3,
+       "wits": 3,
+       "knowledge": 3,
+       "willpower": 3,
+       "charm": 3,
+       "nerve": 3,
+       "bearing": 3
+      },
+      "skills": [],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 25,
+       "fear": 0,
+       "trust": 40,
+       "shown_affinity": null,
+       "attraction": 30
+      },
+      "bond_with_player": null,
+      "partner_id": "aldous",
+      "partner_bond": "married",
+      "faith": "steadfast",
+      "solitary": false,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "met"
+     },
+     {
+      "id": "aldous",
+      "name": "Aldous the Miller",
+      "aliases": [],
+      "description": "A burly, short-tempered miller who guards his business and his wife with fierce, jealous possessiveness.",
+      "appearance": "Broad-shouldered, muscular, with thick mutton chops and hands stained with grain.",
+      "age": 32,
+      "people_id": "",
+      "location_id": "village-mill",
+      "memberships": [],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [],
+       "values": [],
+       "loves": [],
+       "fears": [],
+       "wants": [],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 3,
+       "speed": 3,
+       "toughness": 3,
+       "wits": 3,
+       "knowledge": 3,
+       "willpower": 3,
+       "charm": 3,
+       "nerve": 3,
+       "bearing": 3
+      },
+      "skills": [],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": -20,
+       "fear": 0,
+       "trust": -10,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "met"
+     },
+     {
+      "id": "bailiff-robert",
+      "name": "Bailiff Robert",
+      "aliases": [],
+      "description": "A stern, unyielding lawman who values order above all else and despises village drama.",
+      "appearance": "Graying hair, a stern weatherbeaten face, dressed in a leather doublet bearing the Lord's crest.",
+      "age": 48,
+      "people_id": "",
+      "location_id": "bailiff-house",
+      "memberships": [],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [],
+       "values": [],
+       "loves": [],
+       "fears": [],
+       "wants": [],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 3,
+       "speed": 3,
+       "toughness": 3,
+       "wits": 3,
+       "knowledge": 3,
+       "willpower": 3,
+       "charm": 3,
+       "nerve": 3,
+       "bearing": 3
+      },
+      "skills": [],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 0,
+       "fear": 0,
+       "trust": 10,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "met"
+     }
+    ],
+    "clocks": [
+     {
+      "id": "scandal-brewing",
+      "name": "The Gossip Spreads",
+      "steps": [
+       "Whispers begin in the village tavern about your longing stares.",
+       "Aldous hears rumors of your affection for Gwenyth.",
+       "An enraged Aldous publicly confronts you at your forge.",
+       "The Bailiff steps in to charge you with disrupting the peace, forcing a trial."
+      ],
+      "step_every_hours": 48.0,
+      "owner_id": "",
+      "thread_id": "",
+      "known_to_player": true
+     }
+    ],
+    "threads": [
+     {
+      "id": "forbidden-love",
+      "title": "A Hopeless Romance",
+      "kind": "romance",
+      "stakes": "Winning Gwenyth's heart without causing her ruin or getting yourself exiled by the law.",
+      "involved_ids": [
+       "player",
+       "gwenyth",
+       "aldous"
+      ],
+      "clock_id": "scandal-brewing",
+      "known_to_player": true
+     }
+    ],
+    "mysteries": [
+     {
+      "id": "gwenyths-feelings",
+      "question": "Does Gwenyth share your feelings, or are you truly dreaming in vain?",
+      "answer": "Gwenyth is desperately unhappy in her marriage to the abusive Aldous and feels a deep, secret affection for your kindness, but she is terrified of the town's judgment and damnation.",
+      "clues": [
+       "A hidden bruise on her wrist from Aldous's rough grip.",
+       "A small wooden carving you made that she secretly keeps in her apron.",
+       "The way her eyes linger on you when Aldous isn't looking."
+      ],
+      "thread_id": "forbidden-love",
+      "known_to_player": true
+     }
+    ],
+    "known_facts": [
+     "Aldous is a harsh husband, and Gwenyth rarely smiles.",
+     "The villagers love to gossip, and any scandal will travel fast.",
+     "Adultery is a serious crime that Bailiff Robert will not ignore."
+    ],
+    "opening": {
+     "place_id": "blacksmith-forge",
+     "present_ids": [
+      "player"
+     ],
+     "positions": [
+      "at the anvil"
+     ],
+     "props": [
+      "hammer",
+      "glowing iron shoe"
+     ],
+     "situation": "You strike the glowing red iron on your anvil, each heavy beat of your hammer matching the throb of your heart as you look through the open doorway toward the watermill down the road."
+    },
+    "summary": "In the small, tightly knit medieval community of Blackwood, a young blacksmith works his forge while harboring a dangerous, forbidden love for the miller's wife, Gwenyth."
+   },
+   "character": {
+    "name": "Halvard",
+    "aliases": [
+     "Hal"
+    ],
+    "age": 20,
+    "lifespan_years": 80,
+    "people_id": "humans",
+    "description": "A hardworking young blacksmith with calloused hands and an earnest, lovesick gaze.",
+    "appearance": "Strong, muscular build from years at the forge, soot-smudged face, messy brown hair, wearing a rugged leather smithing apron.",
+    "location_id": "blacksmith-forge",
+    "attributes": {
+     "strength": 4,
+     "speed": 3,
+     "toughness": 4,
+     "wits": 3,
+     "knowledge": 2,
+     "willpower": 3,
+     "charm": 3,
+     "nerve": 3,
+     "bearing": 3
+    },
+    "skills": [
+     {
+      "name": "Blacksmithing",
+      "level": "expert",
+      "notes": "Capable of forging fine iron tools, horseshoes, and basic weapons."
+     },
+     {
+      "name": "Brawling",
+      "level": "novice",
+      "notes": "Can hold his own in a rough tavern fight."
+     }
+    ],
+    "traits": [
+     {
+      "name": "Sturdy Build",
+      "kind": "gift",
+      "description": "Your time lifting hammers makes you remarkably strong and resilient."
+     },
+     {
+      "name": "Lovesick distraction",
+      "kind": "flaw",
+      "description": "Your mind is so occupied by Gwenyth that you sometimes miss what is happening right in front of you."
+     }
+    ],
+    "talents": [],
+    "powers": [],
+    "techniques": [],
+    "temperament": {
+     "traits": [
+      "earnest",
+      "laborious",
+      "romantic"
+     ],
+     "values": [
+      "loyalty",
+      "honesty",
+      "true love"
+     ],
+     "loves": [
+      "Gwenyth",
+      "the ring of the anvil"
+     ],
+     "fears": [
+      "Gwenyth being hurt",
+      "exile"
+     ],
+     "wants": [
+      "Win the miller's wife's heart"
+     ],
+     "voice": "Earnest, humble, and polite, but filled with quiet passion when speaking of Gwenyth."
+    },
+    "items": [
+     {
+      "name": "Heavy Blacksmith Hammer",
+      "kind": "weapon",
+      "description": "A heavy iron hammer used for shaping metal, but formidable in a fight.",
+      "quantity": 1,
+      "carried": true
+     },
+     {
+      "name": "Leather Apron",
+      "kind": "armour",
+      "description": "Thick hide that protects against sparks and minor scrapes.",
+      "quantity": 1,
+      "carried": true
+     }
+    ],
+    "money": 12,
+    "currency": "silver pennies",
+    "title": "Village Blacksmith",
+    "rank": "Commoner",
+    "family_name": "",
+    "connections": [
+     {
+      "name": "Gwenyth",
+      "kind": "other",
+      "character_id": "gwenyth",
+      "note": "The woman you are hopelessly in love with."
+     }
+    ],
+    "parent_ids": [],
+    "memberships": [
+     {
+      "faction_id": "blackwood-villagers",
+      "rank": "Craftsman",
+      "loyalty": 50
+     }
+    ],
+    "ladders": [],
+    "axes": {
+     "might": 2,
+     "influence": 1,
+     "wealth": 1,
+     "knowledge": 1,
+     "stealth": 1
+    },
+    "reserves": [],
+    "goals": [
+     "Win the miller's wife's heart"
+    ],
+    "backstory": [
+     "You took over the forge when your father passed away last year.",
+     "Your life was simple and filled with hard work until Gwenyth came to the mill, capturing your heart completely."
+    ],
+    "hidden_past": []
+   }
+  },
+  "rating": "teen",
+  "premise_id": null,
+  "physics": "fun_first",
+  "gift": null,
+  "released_rules": [],
+  "language": "en",
+  "told": []
+ }
+}

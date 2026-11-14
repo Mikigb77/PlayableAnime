@@ -233,3 +233,28 @@ Grounded: no magic and nothing supernatural, and that won't change.
 }
 ```
 
+## Turn 1 (opening), 5.3 s, $0.042
+
+_From Day 1, 09:00, 09:00 to Day 1, 09:00, 09:00 (0 s). Arthur Pendelton is 17, alive._
+
+Under the high, arched ceiling of the Grand Hall of Boards, the air is cold and carries the hum of a hundred digital touch-screen tables. You stand on the marble-paved floor, your standard academy blazer feeling slightly too large on your shoulders. Above you, a massive, glowing digital leaderboard dominates the room, casting a cold blue light across the gathered crowd of newly enrolled freshmen. At the very peak of the leaderboard, the name Valerie Sterling gleams in gold beside the rank of King. Valerie herself stands before the assembly, pristine in her uniform, her silver-framed glasses catching the light. Beside you, Leo Vance shifts his weight, his messy brown hair as disheveled as his wrinkled collar. Valerie's voice carries absolute authority as she looks down at the new recruits. 'Welcome to Apex Academy,' she says, her gaze sweeping over the crowd until it briefly lingers on you. 'Here, your intellect is your only currency. If you wish to survive, you must play.' Shegestures toward the digital tables, where the glowing touch-screens flicker, awaiting the first challenge of the term.
+
+**Suggestions:**
+1. Approach the nearest game table to examine its strategic interface. (thread)
+2. Ask Leo Vance about Valerie's playstyle and preferred openings. (personal)
+3. Study the digital leaderboard to find a suitable low-ranked opponent. (side)
+
+**Issues:**
+- start_told (goal:goal-1): the story told it
+- start_told (person:leo-vance): the story told it
+- start_told (person:president-valerie): the story told it
+- start_told (thread:path-to-king): the story told it
+
+**Counted:** {"goals_open": 1}
+
+## Turn 2 (action), 4.8 s, $0.008
+
+> After class I ask Valerie out on a date and tell her I like her.
+
+**Refused:** {"code": "unreadable_action", "categories": ["minor"], "by": "code", "stage": ""}
+

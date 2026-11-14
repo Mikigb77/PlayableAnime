@@ -1,0 +1,1948 @@
+{
+ "premise": "I'm a 97-year-old retired schoolteacher living my last quiet days in a small Vermont town with my cat.",
+ "language": "en",
+ "rating": "teen",
+ "settings": {
+  "narration_length": "medium",
+  "tone": null,
+  "difficulty": "balanced",
+  "event_frequency": "calm",
+  "images": "key_moments",
+  "suggestions": true,
+  "language": "en",
+  "accent": null
+ },
+ "seed": "play/o-teacher",
+ "state": {
+  "schema_version": 1,
+  "turn": 2,
+  "timeline_id": "main",
+  "world_s": 1130041,
+  "bible": {
+   "title": "Oakhaven's Autumn",
+   "genre": "Grounded drama",
+   "tone": "Reflective and peaceful",
+   "era": "Modern day Vermont: smartphones, pickup trucks, and wood-burning stoves",
+   "extraordinary": [
+    {
+     "id": "supernatural",
+     "kind": "magic or anything supernatural",
+     "prevalence": "none",
+     "reach": "",
+     "rule_ids": [
+      "no-magic",
+      "human-mortality"
+     ]
+    }
+   ],
+   "peoples": [
+    {
+     "id": "humans",
+     "name": "Humans",
+     "description": "Standard mortal humans living in rural New England.",
+     "lifespan_years": 80,
+     "gifts": [],
+     "culture": "Cozy, tightly-knit community with a deep respect for elders and local history.",
+     "relations": [],
+     "path": ""
+    }
+   ],
+   "creatures": [
+    {
+     "id": "domestic-cat",
+     "name": "Housecat",
+     "description": "A quiet, independent companion.",
+     "tier": 1,
+     "habitat": "Indoors and suburban backyards",
+     "worth": "",
+     "can_be_tamed": false
+    }
+   ],
+   "nature": [],
+   "physics": "fun_first",
+   "force": {
+    "tier1_joules": 10000.0,
+    "per_tier": 10.0
+   },
+   "ladders": [],
+   "calendar": {
+    "style": "gregorian",
+    "time_of_day": "clock",
+    "epoch": "2024-10-15T08:00",
+    "start_second_of_day": 28800,
+    "months": [],
+    "start_year": 1,
+    "start_month": 1,
+    "start_day": 1,
+    "era": ""
+   },
+   "travel": {
+    "description": "Travel is done primarily by car or walking along local country roads. Communication is instant through cell phones and local landlines.",
+    "instant_messages": true
+   },
+   "medicine": {
+    "healing": "Modern rural healthcare, standard checkups, and elder care support.",
+    "resurrection": "none",
+    "resurrection_means": ""
+   },
+   "laws": [
+    {
+     "id": "local-law",
+     "text": "The laws of the United States and the State of Vermont apply, protecting citizens and property.",
+     "enforcer": "Town Sheriff",
+     "enforcer_faction_id": null,
+     "zeal": "medium",
+     "corruptible": false
+    }
+   ],
+   "norms": [],
+   "several_partners": false,
+   "unions": "held",
+   "rules": [
+    {
+     "id": "no-magic",
+     "text": "The world is entirely grounded in reality; there are no supernatural forces, ghosts, or magic.",
+     "fixed": true,
+     "topic": "existence"
+    },
+    {
+     "id": "human-mortality",
+     "text": "The human body naturally wears down with advanced age, and life is ultimately finite.",
+     "fixed": true,
+     "topic": "medicine"
+    }
+   ],
+   "mysteries": []
+  },
+  "player_id": "player",
+  "characters": {
+   "player": {
+    "id": "player",
+    "name": "Arthur Vance",
+    "aliases": [],
+    "prominence": "key",
+    "description": "A respected retired educator with a gentle, patient soul and a wealth of local memories.",
+    "appearance": "Frail build, clean-shaved but deeply lined face, thin wispy white hair, kind blue eyes behind wire-rimmed spectacles. Dressed in a thick woolen sweater.",
+    "look_version": 1,
+    "age": 97,
+    "people_id": null,
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "player-cottage",
+    "personal_offset_s": 0,
+    "memberships": [],
+    "sheet": {
+     "attributes": {
+      "strength": 1,
+      "speed": 1,
+      "toughness": 1,
+      "wits": 4,
+      "knowledge": 4,
+      "willpower": 4,
+      "charm": 4,
+      "nerve": 3,
+      "bearing": 4
+     },
+     "skills": [
+      {
+       "name": "Teaching",
+       "level": "master",
+       "notes": "Decades of explaining complex things with immense clarity and patience."
+      },
+      {
+       "name": "Local History",
+       "level": "expert",
+       "notes": "Deep knowledge of the town's founding families, old secrets, and folklore."
+      },
+      {
+       "name": "Storytelling",
+       "level": "expert",
+       "notes": "Capable of holding anyone's attention with gentle, captivating tales from the past."
+      }
+     ],
+     "traits": [
+      {
+       "name": "Frail Age",
+       "kind": "flaw",
+       "description": "Your physical movements are slow, deliberate, and easily tire your body."
+      },
+      {
+       "name": "Sharpened Mind",
+       "kind": "gift",
+       "description": "Despite your physical wear, your memories, wit, and analytical focus remain remarkably clear."
+      }
+     ],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "patient",
+        "contemplative",
+        "warm-hearted"
+       ],
+       "values": [
+        "education",
+        "peace",
+        "legacy"
+       ],
+       "loves": [
+        "Barnaby",
+        "hot tea",
+        "classic literature"
+       ],
+       "fears": [
+        "unresolved regrets",
+        "being unable to care for Barnaby"
+       ],
+       "wants": [
+        "A peaceful remaining time",
+        "Ensuring Barnaby is cared for"
+       ],
+       "voice": ""
+      },
+      "attitudes": {}
+     },
+     "resources": {
+      "items": [
+       {
+        "id": "thick-woolen-blanket",
+        "name": "Thick Woolen Blanket",
+        "kind": "gear",
+        "description": "An incredibly warm, hand-knit quilt that keeps the drafty Vermont wind at bay.",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       },
+       {
+        "id": "reading-glasses",
+        "name": "Reading Glasses",
+        "kind": "gear",
+        "description": "Strong wire-rimmed spectacles essential for reading small print.",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       }
+      ],
+      "money": 120,
+      "currency": "dollars",
+      "title": "Mr. Vance",
+      "rank": "Retired Teacher",
+      "family_name": "",
+      "connections": [
+       {
+        "name": "Clara Milton",
+        "kind": "trusts_them",
+        "character_id": "clara-milton",
+        "note": "A former student of yours who regularly stops by to check on your health."
+       }
+      ]
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": 100,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   },
+   "barnaby-cat": {
+    "id": "barnaby-cat",
+    "name": "Barnaby",
+    "aliases": [],
+    "prominence": "key",
+    "description": "An old, somewhat chubby calico cat who prefers sleeping in warm patches of sunlight and demands chin scratches.",
+    "appearance": "Thick orange, black, and white fur, green eyes, and a slow, heavy gait.",
+    "look_version": 1,
+    "age": 14,
+    "people_id": null,
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "player-cottage",
+    "personal_offset_s": 0,
+    "memberships": [],
+    "sheet": {
+     "attributes": {
+      "strength": 1,
+      "speed": 1,
+      "toughness": 2,
+      "wits": 2,
+      "knowledge": 1,
+      "willpower": 3,
+      "charm": 4,
+      "nerve": 3,
+      "bearing": 3
+     },
+     "skills": [],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "lazy",
+        "loyal",
+        "stubborn"
+       ],
+       "values": [],
+       "loves": [
+        "tuna",
+        "sunlight",
+        "soft blankets"
+       ],
+       "fears": [],
+       "wants": [],
+       "voice": ""
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 90,
+        "fear": 0,
+        "trust": 100,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       },
+       "clara-milton": {
+        "affinity": -10,
+        "fear": 0,
+        "trust": 0,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": true,
+    "born_s": null,
+    "lifespan_years": 0,
+    "old_age_span": null,
+    "seen_s": 1130041,
+    "near_s": 972000,
+    "met_s": null
+   },
+   "clara-milton": {
+    "id": "clara-milton",
+    "name": "Clara Milton",
+    "aliases": [],
+    "prominence": "key",
+    "description": "The town librarian and a former student of yours from forty years ago, always eager to help you run errands.",
+    "appearance": "Short grey-brown hair, kind smile, wearing knitted cardigans and small reading glasses.",
+    "look_version": 1,
+    "age": 54,
+    "people_id": null,
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "player-cottage",
+    "personal_offset_s": 0,
+    "memberships": [],
+    "sheet": {
+     "attributes": {
+      "strength": 3,
+      "speed": 3,
+      "toughness": 3,
+      "wits": 4,
+      "knowledge": 4,
+      "willpower": 3,
+      "charm": 4,
+      "nerve": 3,
+      "bearing": 3
+     },
+     "skills": [],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "warm",
+        "thoughtful",
+        "dutiful"
+       ],
+       "values": [],
+       "loves": [],
+       "fears": [],
+       "wants": [
+        "To ensure the elderly town residents are well-cared for"
+       ],
+       "voice": ""
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 80,
+        "fear": 0,
+        "trust": 90,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": 0,
+    "old_age_span": null,
+    "seen_s": 1130041,
+    "near_s": 972000,
+    "met_s": null
+   }
+  },
+  "factions": {
+   "town-council": {
+    "id": "town-council",
+    "name": "Oakhaven Town Council",
+    "kind": "court",
+    "description": "A small group of elected residents who manage local affairs and organize community events.",
+    "parent_id": null,
+    "status": "intact",
+    "status_history": [],
+    "activity": "active",
+    "leader_ids": [],
+    "goal": "",
+    "methods": "",
+    "strength": "High local administrative influence but no real physical force.",
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "threat": 0,
+    "relations": {},
+    "survivors": [],
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "places": {
+   "oakhaven": {
+    "id": "oakhaven",
+    "name": "Oakhaven",
+    "kind": "village",
+    "description": "A picturesque, quiet Vermont town nestled among rolling hills covered in fiery autumn leaves.",
+    "parent_id": null,
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "player-cottage",
+      "travel_s": 720,
+      "mode": "on foot"
+     },
+     {
+      "to_id": "maple-diner",
+      "travel_s": 360,
+      "mode": "on foot"
+     },
+     {
+      "to_id": "town-cemetery",
+      "travel_s": 1080,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "player-cottage": {
+    "id": "player-cottage",
+    "name": "Your Cozy Cottage",
+    "kind": "building",
+    "description": "A modest wooden cottage filled with decades of books, old school papers, and the scent of cinnamon tea.",
+    "parent_id": "oakhaven",
+    "setting": "indoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "oakhaven",
+      "travel_s": 720,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [
+     "player"
+    ],
+    "judged": []
+   },
+   "maple-diner": {
+    "id": "maple-diner",
+    "name": "The Maple Leaf Diner",
+    "kind": "building",
+    "description": "The local hub for hot coffee, warm pie, and friendly neighborhood gossip.",
+    "parent_id": "oakhaven",
+    "setting": "indoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "oakhaven",
+      "travel_s": 360,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "town-cemetery": {
+    "id": "town-cemetery",
+    "name": "Oakhaven Cemetery",
+    "kind": "wilds",
+    "description": "A peaceful hillside cemetery where generations of Oakhaven families rest beneath ancient oak trees.",
+    "parent_id": "oakhaven",
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "oakhaven",
+      "travel_s": 1080,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   }
+  },
+  "deeds": {},
+  "rumors": {
+   "rumor-1": {
+    "id": "rumor-1",
+    "text": "The Arrival of Winter: The first heavy blizzard blanket of snow seals Oakhaven into winter.",
+    "is_true": true,
+    "accuracy": 95,
+    "deed_id": null,
+    "about_ids": [],
+    "origin_place_id": null,
+    "reached_place_ids": [],
+    "started_s": 1036800,
+    "timeline_id": "main",
+    "believed_by": [],
+    "heard_at": {},
+    "seen_by": []
+   }
+  },
+  "bonds": {},
+  "lives": {},
+  "aged_s": 0,
+  "changes": {},
+  "strife_s": {},
+  "facts": {
+   "fact-1": {
+    "id": "fact-1",
+    "text": "You spent over forty years teaching the children of Oakhaven in the old schoolhouse.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-2": {
+    "id": "fact-2",
+    "text": "Most of the middle-aged adults in town were once students in your classroom.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-3": {
+    "id": "fact-3",
+    "text": "The Arrival of Winter: The last golden leaves fall from the maples, leaving the branches bare.",
+    "kind": "observation",
+    "importance": 3,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 2,
+    "world_s": 259200,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "clock",
+     "ref_id": "winter-arrival",
+     "text": ""
+    }
+   },
+   "fact-4": {
+    "id": "fact-4",
+    "text": "Barnaby works toward their own affairs",
+    "kind": "observation",
+    "importance": 1,
+    "is_true": true,
+    "subject_ids": [
+     "barnaby-cat"
+    ],
+    "known_by": [
+     "barnaby-cat"
+    ],
+    "turn": 2,
+    "world_s": 324000,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "agenda",
+     "ref_id": "barnaby-cat",
+     "text": ""
+    }
+   },
+   "fact-5": {
+    "id": "fact-5",
+    "text": "The Arrival of Winter: Morning frosts become thick, turning the grass silver every dawn.",
+    "kind": "observation",
+    "importance": 3,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 2,
+    "world_s": 518400,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "clock",
+     "ref_id": "winter-arrival",
+     "text": ""
+    }
+   },
+   "fact-6": {
+    "id": "fact-6",
+    "text": "Oakhaven Town Council works toward its own ends",
+    "kind": "observation",
+    "importance": 1,
+    "is_true": true,
+    "subject_ids": [
+     "town-council"
+    ],
+    "known_by": [],
+    "turn": 2,
+    "world_s": 648000,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "agenda",
+     "ref_id": "town-council",
+     "text": ""
+    }
+   },
+   "fact-7": {
+    "id": "fact-7",
+    "text": "The Arrival of Winter: A freezing wind blows south from Canada, prompting everyone to stack wood.",
+    "kind": "observation",
+    "importance": 3,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 2,
+    "world_s": 777600,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "clock",
+     "ref_id": "winter-arrival",
+     "text": ""
+    }
+   },
+   "fact-8": {
+    "id": "fact-8",
+    "text": "Oakhaven Town Council works toward its own ends",
+    "kind": "observation",
+    "importance": 1,
+    "is_true": true,
+    "subject_ids": [
+     "town-council"
+    ],
+    "known_by": [],
+    "turn": 2,
+    "world_s": 972000,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "agenda",
+     "ref_id": "town-council",
+     "text": ""
+    }
+   },
+   "fact-9": {
+    "id": "fact-9",
+    "text": "Barnaby cools toward Clara Milton.",
+    "kind": "observation",
+    "importance": 1,
+    "is_true": true,
+    "subject_ids": [
+     "barnaby-cat",
+     "clara-milton"
+    ],
+    "known_by": [
+     "barnaby-cat"
+    ],
+    "turn": 2,
+    "world_s": 972000,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "agenda",
+     "ref_id": "barnaby-cat",
+     "text": ""
+    }
+   },
+   "fact-10": {
+    "id": "fact-10",
+    "text": "The Arrival of Winter: The first heavy blizzard blanket of snow seals Oakhaven into winter.",
+    "kind": "observation",
+    "importance": 3,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 2,
+    "world_s": 1036800,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "clock",
+     "ref_id": "winter-arrival",
+     "text": ""
+    }
+   }
+  },
+  "goals": {
+   "goal-1": {
+    "id": "goal-1",
+    "text": "A peaceful remaining time",
+    "status": "active",
+    "set_turn": 0,
+    "set_s": null,
+    "lead_id": null,
+    "closed_turn": null,
+    "closed_s": null,
+    "merged_into": null,
+    "progress": "",
+    "moved_turn": null
+   },
+   "goal-2": {
+    "id": "goal-2",
+    "text": "Ensuring Barnaby is cared for",
+    "status": "active",
+    "set_turn": 0,
+    "set_s": null,
+    "lead_id": null,
+    "closed_turn": null,
+    "closed_s": null,
+    "merged_into": null,
+    "progress": "",
+    "moved_turn": null
+   }
+  },
+  "leads": {},
+  "threads": {
+   "town-memoirs": {
+    "id": "town-memoirs",
+    "title": "Documenting Oakhaven's History",
+    "kind": "quest",
+    "stakes": "Preserving the oral history and old schoolhouse stories before they are lost to time.",
+    "involved_ids": [
+     "player",
+     "clara-milton"
+    ],
+    "clock_id": null,
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "status": "open",
+    "opened_turn": 0,
+    "last_active_turn": 0,
+    "taken_up_turn": null,
+    "closed_turn": null,
+    "arc": null,
+    "known_by": [
+     "player"
+    ]
+   },
+   "thread-1": {
+    "id": "thread-1",
+    "title": "A confidant's secret",
+    "kind": "mystery",
+    "stakes": "Someone the character trusts has been hiding something that concerns them.",
+    "involved_ids": [
+     "player",
+     "clara-milton"
+    ],
+    "clock_id": null,
+    "origin": {
+     "kind": "event",
+     "ref_id": "secret",
+     "text": "A confidant's secret"
+    },
+    "status": "open",
+    "opened_turn": 2,
+    "last_active_turn": 2,
+    "taken_up_turn": null,
+    "closed_turn": null,
+    "arc": null,
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "clocks": {
+   "winter-arrival": {
+    "id": "winter-arrival",
+    "name": "The Arrival of Winter",
+    "steps": [
+     "The last golden leaves fall from the maples, leaving the branches bare.",
+     "Morning frosts become thick, turning the grass silver every dawn.",
+     "A freezing wind blows south from Canada, prompting everyone to stack wood.",
+     "The first heavy blizzard blanket of snow seals Oakhaven into winter."
+    ],
+    "filled": 4,
+    "advances_on": [],
+    "reverses_on": [],
+    "interval_s": 259200,
+    "next_step_s": 1296000,
+    "owner_id": null,
+    "thread_id": null,
+    "status": "ended",
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "pending_events": {
+   "event-1": {
+    "id": "event-1",
+    "kind": "world.clock_step",
+    "title": "The Arrival of Winter: The last golden leaves fall from the maples, leaving the branches bare.",
+    "due_s": 259200,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "applied",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": {
+     "kind": "clock",
+     "ref_id": "winter-arrival",
+     "text": ""
+    },
+    "payload": {
+     "clock_id": "winter-arrival"
+    },
+    "seed": "story=play%2Fo-teacher/timeline=main/turn=1/world/schedule/event-1",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": 2,
+    "applied_s": 259200
+   },
+   "event-2": {
+    "id": "event-2",
+    "kind": "world.old_age",
+    "title": "Your years run short",
+    "due_s": 128856193,
+    "timeline_id": "main",
+    "needs_player": true,
+    "status": "pending",
+    "subject_ids": [
+     "player"
+    ],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "phase": "near",
+     "who": "player",
+     "span": 100,
+     "day_s": 166643268
+    },
+    "seed": "story=play%2Fo-teacher/timeline=main/turn=1/world/schedule/event-2",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-3": {
+    "id": "event-3",
+    "kind": "world.tick",
+    "title": "The world moves on",
+    "due_s": 324000,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "applied",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "last_s": 0,
+     "stride_s": 324000
+    },
+    "seed": "story=play%2Fo-teacher/timeline=main/turn=1/world/schedule/event-3",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": 2,
+    "applied_s": 324000
+   },
+   "director-event-1": {
+    "id": "director-event-1",
+    "kind": "director.event",
+    "title": "A confidant's secret",
+    "due_s": 1130041,
+    "timeline_id": "main",
+    "needs_player": true,
+    "status": "applied",
+    "subject_ids": [
+     "clara-milton"
+    ],
+    "place_id": "player-cottage",
+    "origin": {
+     "kind": "engine",
+     "ref_id": null,
+     "text": "W16 roll inside a time skip (E7)"
+    },
+    "payload": {
+     "pick": {
+      "event": {
+       "size": "personal",
+       "kind": "betrayal",
+       "source": "deck",
+       "source_id": null,
+       "card_id": "secret",
+       "title": "A confidant's secret",
+       "brief": "Someone the character trusts has been hiding something that concerns them.",
+       "themes": [
+        "dark"
+       ],
+       "thread_id": null,
+       "cast_ids": [
+        "clara-milton"
+       ],
+       "place_id": "player-cottage",
+       "needs_decision": true,
+       "consequence": "Unconfronted, the secret does its damage before it comes out.",
+       "plays_out_s": null
+      },
+      "key": "deck:secret",
+      "window_s": 259200,
+      "lingers": true,
+      "lead": false,
+      "thread_kind": "mystery",
+      "thread_title": "A confidant's secret",
+      "involved_ids": [
+       "player"
+      ]
+     }
+    },
+    "seed": "story=play%2Fo-teacher/timeline=main/turn=2/director/stretch/0/step/1",
+    "created_turn": 2,
+    "created_s": 0,
+    "applied_turn": 2,
+    "applied_s": 1130041
+   },
+   "event-4": {
+    "id": "event-4",
+    "kind": "world.clock_step",
+    "title": "The Arrival of Winter: Morning frosts become thick, turning the grass silver every dawn.",
+    "due_s": 518400,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "applied",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": {
+     "kind": "clock",
+     "ref_id": "winter-arrival",
+     "text": ""
+    },
+    "payload": {
+     "clock_id": "winter-arrival"
+    },
+    "seed": "story=play%2Fo-teacher/timeline=main/turn=1/world/schedule/event-1/schedule/event-4",
+    "created_turn": 2,
+    "created_s": 259200,
+    "applied_turn": 2,
+    "applied_s": 518400
+   },
+   "event-5": {
+    "id": "event-5",
+    "kind": "world.tick",
+    "title": "The world moves on",
+    "due_s": 648000,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "applied",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "last_s": 324000,
+     "stride_s": 324000
+    },
+    "seed": "story=play%2Fo-teacher/timeline=main/turn=1/world/schedule/event-3/schedule/event-5",
+    "created_turn": 2,
+    "created_s": 324000,
+    "applied_turn": 2,
+    "applied_s": 648000
+   },
+   "event-6": {
+    "id": "event-6",
+    "kind": "world.clock_step",
+    "title": "The Arrival of Winter: A freezing wind blows south from Canada, prompting everyone to stack wood.",
+    "due_s": 777600,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "applied",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": {
+     "kind": "clock",
+     "ref_id": "winter-arrival",
+     "text": ""
+    },
+    "payload": {
+     "clock_id": "winter-arrival"
+    },
+    "seed": "story=play%2Fo-teacher/timeline=main/turn=1/world/schedule/event-1/schedule/event-4/schedule/event-6",
+    "created_turn": 2,
+    "created_s": 518400,
+    "applied_turn": 2,
+    "applied_s": 777600
+   },
+   "event-7": {
+    "id": "event-7",
+    "kind": "world.tick",
+    "title": "The world moves on",
+    "due_s": 972000,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "applied",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "last_s": 648000,
+     "stride_s": 324000
+    },
+    "seed": "story=play%2Fo-teacher/timeline=main/turn=1/world/schedule/event-3/schedule/event-5/schedule/event-7",
+    "created_turn": 2,
+    "created_s": 648000,
+    "applied_turn": 2,
+    "applied_s": 972000
+   },
+   "event-8": {
+    "id": "event-8",
+    "kind": "world.clock_step",
+    "title": "The Arrival of Winter: The first heavy blizzard blanket of snow seals Oakhaven into winter.",
+    "due_s": 1036800,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "applied",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": {
+     "kind": "clock",
+     "ref_id": "winter-arrival",
+     "text": ""
+    },
+    "payload": {
+     "clock_id": "winter-arrival"
+    },
+    "seed": "story=play%2Fo-teacher/timeline=main/turn=1/world/schedule/event-1/schedule/event-4/schedule/event-6/schedule/event-8",
+    "created_turn": 2,
+    "created_s": 777600,
+    "applied_turn": 2,
+    "applied_s": 1036800
+   },
+   "event-9": {
+    "id": "event-9",
+    "kind": "world.tick",
+    "title": "The world moves on",
+    "due_s": 1296000,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "last_s": 972000,
+     "stride_s": 324000
+    },
+    "seed": "story=play%2Fo-teacher/timeline=main/turn=1/world/schedule/event-3/schedule/event-5/schedule/event-7/schedule/event-9",
+    "created_turn": 2,
+    "created_s": 972000,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-10": {
+    "id": "event-10",
+    "kind": "clock_end",
+    "title": "The first heavy blizzard blanket of snow seals Oakhaven into winter.",
+    "due_s": 1036800,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "applied",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": {
+     "kind": "clock",
+     "ref_id": "winter-arrival",
+     "text": ""
+    },
+    "payload": {
+     "clock_id": "winter-arrival"
+    },
+    "seed": "story=play%2Fo-teacher/timeline=main/turn=1/world/schedule/event-1/schedule/event-4/schedule/event-6/schedule/event-8/schedule/event-10",
+    "created_turn": 2,
+    "created_s": 1036800,
+    "applied_turn": 2,
+    "applied_s": 1036800
+   },
+   "director-event-2": {
+    "id": "director-event-2",
+    "kind": "director.plays_out",
+    "title": "A confidant's secret: left alone",
+    "due_s": 1389241,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [
+     "clara-milton"
+    ],
+    "place_id": "player-cottage",
+    "origin": {
+     "kind": "event",
+     "ref_id": "thread-1",
+     "text": "A confidant's secret"
+    },
+    "payload": {
+     "event": {
+      "size": "personal",
+      "kind": "betrayal",
+      "source": "deck",
+      "source_id": null,
+      "card_id": "secret",
+      "title": "A confidant's secret",
+      "brief": "Someone the character trusts has been hiding something that concerns them.",
+      "themes": [
+       "dark"
+      ],
+      "thread_id": "thread-1",
+      "cast_ids": [
+       "clara-milton"
+      ],
+      "place_id": "player-cottage",
+      "needs_decision": true,
+      "consequence": "Unconfronted, the secret does its damage before it comes out.",
+      "plays_out_s": 1389241
+     },
+     "thread_id": "thread-1",
+     "lingers": true
+    },
+    "seed": null,
+    "created_turn": 2,
+    "created_s": 1130041,
+    "applied_turn": null,
+    "applied_s": null
+   }
+  },
+  "transfers": [],
+  "time_effects": [],
+  "scene": {
+   "place_id": "player-cottage",
+   "present_ids": [
+    "player",
+    "barnaby-cat",
+    "clara-milton"
+   ],
+   "positions": [
+    "Arthur sits in his rocking chair near the table",
+    "Clara sits in the wooden chair opposite Arthur",
+    "Barnaby sits on the windowsill"
+   ],
+   "props": [
+    "empty leather journal",
+    "fresh pumpkin bread"
+   ],
+   "ended_on": "Clara sits quietly at the kitchen table, avoiding your eyes as she tightly clasps her hands together.",
+   "encounter": null
+  },
+  "director": {
+   "turns_without_stakes": 0,
+   "low_stakes_streak": 0,
+   "last_action_key": null,
+   "last_event_turn": 2,
+   "last_event_size": "personal",
+   "last_event_s": {
+    "personal": 1130041
+   },
+   "last_small_s": null,
+   "recent_moments": [],
+   "recent_clock": [
+    0,
+    1130041
+   ],
+   "frequency_drift": 0.0,
+   "recent_sources": [
+    "deck:secret"
+   ],
+   "auto_pictures": 2,
+   "picture_credit": 1.2,
+   "pictured": [
+    "portrait:player",
+    "portrait:player:v1",
+    "cover"
+   ],
+   "fight": null,
+   "deck_draws": 0,
+   "road_stops": 0
+  },
+  "summary": "You are Arthur, a 97-year-old retired schoolteacher living your quiet final days in the sleepy Vermont town of Oakhaven. Together with your loyal old cat, Barnaby, you watch the seasons change as the town prepares for the coming winter.",
+  "chapters": [],
+  "id_counters": {
+   "fact": 10,
+   "goal": 2,
+   "bond": 0,
+   "event": 10,
+   "director-event": 2,
+   "rumor": 1,
+   "thread": 1
+  },
+  "fallen": [],
+  "opening_due": false,
+  "misses_in_a_row": 0,
+  "openings": [],
+  "journey": null,
+  "untold": [
+   "goal:goal-1",
+   "goal:goal-2",
+   "thread:town-memoirs"
+  ]
+ },
+ "scenes": [
+  {
+   "turn": 1,
+   "narration": "You sit comfortably in your favorite rocking chair by the crackling woodstove, holding a warm cup of chamomile tea as Barnaby purrs softly against your ankle. The morning sun filters through the frost-rimed windowpanes of your cozy cottage, casting long, golden patches across the worn pine floorboards. At fourteen, Barnaby is quite old for a cat, his heavy calico form shifting contentedly as he seeks the absolute warmest spot near your slippers. Beyond the glass, the brilliant red and gold autumn leaves of Oakhaven are beginning to fall, carpeting the quiet country lane in amber. Your mind is perfectly clear, drifting pleasantly through decades of memories of the children who once sat in your classroom. On the small wooden table beside your chair lies an empty leather-bound journal, its pages waiting for the stories of this town only you still remember. From the kitchen, the steady tick of the wall clock is the only sound marking the peaceful flow of the morning.",
+   "player_action": null
+  },
+  {
+   "turn": 2,
+   "narration": "Over the passing days, you settle into a gentle rhythm. You spend hours reading your favorite volumes of poetry and history by the frosted window, the autumn light slowly weakening as October deepens. Patiently, with the steady hand of a master teacher, you begin writing letters to your former students, addressing each one with fond memories of their schoolhouse days.\n\nThe morning of October twenty-eighth brings a crisp, biting frost that coats the fallen amber leaves outside your cottage. Barnaby sits on the windowsill, his green eyes watching a pair of chickadees in the bare maple branches. Your letter-writing is quietly interrupted by a soft knock at the heavy wooden door, followed by the familiar face of Clara Milton. She steps inside, wearing her favorite knitted cardigan and carrying a fresh loaf of pumpkin bread, yet her kind smile is tight, lacking its usual warmth.\n\nAs Clara sets the bread on your small kitchen table, she avoids your direct gaze, busying herself with hanging her coat. There is a nervous energy in her slow movements that you haven't seen in all the decades you have known her. When she finally sits across from you, clutching her hands in her lap, she looks around your modest cottage with a strange, heavy sadness. It is clear that she carries some difficult news or a quiet secret that she is hesitant to voice to her old teacher.",
+   "player_action": "I spend the next few months reading by the window and writing letters to my old students."
+  }
+ ],
+ "choices": [
+  "Ask Clara what is troubling her so deeply.",
+  "Offer her a cup of hot chamomile tea to ease her.",
+  "Gently show her the memoirs you have started to write."
+ ],
+ "cost_usd": 0.1372638,
+ "draft": {
+  "premise": "I'm a 97-year-old retired schoolteacher living my last quiet days in a small Vermont town with my cat.",
+  "proposal": {
+   "world": {
+    "title": "Oakhaven's Autumn",
+    "genre": "Grounded drama",
+    "tone": "Reflective and peaceful",
+    "era": "Modern day Vermont: smartphones, pickup trucks, and wood-burning stoves",
+    "extraordinary": [
+     {
+      "id": "supernatural",
+      "kind": "magic or anything supernatural",
+      "prevalence": "none",
+      "reach": ""
+     }
+    ],
+    "rules": [
+     {
+      "id": "no-magic",
+      "text": "The world is entirely grounded in reality; there are no supernatural forces, ghosts, or magic.",
+      "fixed": true,
+      "topic": "existence",
+      "about": [
+       "supernatural"
+      ]
+     },
+     {
+      "id": "human-mortality",
+      "text": "The human body naturally wears down with advanced age, and life is ultimately finite.",
+      "fixed": true,
+      "topic": "medicine",
+      "about": [
+       "supernatural"
+      ]
+     }
+    ],
+    "dropped_rule_ids": [],
+    "peoples": [
+     {
+      "id": "humans",
+      "name": "Humans",
+      "description": "Standard mortal humans living in rural New England.",
+      "lifespan_years": 80,
+      "gifts": [],
+      "culture": "Cozy, tightly-knit community with a deep respect for elders and local history.",
+      "relations": [],
+      "path": ""
+     }
+    ],
+    "creatures": [
+     {
+      "id": "domestic-cat",
+      "name": "Housecat",
+      "description": "A quiet, independent companion.",
+      "rung": "",
+      "habitat": "Indoors and suburban backyards",
+      "worth": "",
+      "can_be_tamed": false
+     }
+    ],
+    "nature": [],
+    "ladders": [],
+    "calendar": {
+     "style": "gregorian",
+     "clock_time": true,
+     "epoch": "2024-10-15T08:00",
+     "start_hour": 8,
+     "months": [],
+     "start_year": 1,
+     "start_month": 1,
+     "start_day": 1,
+     "era": ""
+    },
+    "travel": {
+     "description": "Travel is done primarily by car or walking along local country roads. Communication is instant through cell phones and local landlines.",
+     "instant_messages": true
+    },
+    "medicine": {
+     "healing": "Modern rural healthcare, standard checkups, and elder care support.",
+     "resurrection": "none",
+     "resurrection_means": ""
+    },
+    "laws": [
+     {
+      "id": "local-law",
+      "text": "The laws of the United States and the State of Vermont apply, protecting citizens and property.",
+      "enforcer": "Town Sheriff",
+      "enforcer_faction_id": "",
+      "zeal": "medium",
+      "corruptible": false
+     }
+    ],
+    "norms": [],
+    "several_partners": false,
+    "unions": "held",
+    "places": [
+     {
+      "id": "oakhaven",
+      "name": "Oakhaven",
+      "kind": "village",
+      "description": "A picturesque, quiet Vermont town nestled among rolling hills covered in fiery autumn leaves.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "player-cottage",
+      "name": "Your Cozy Cottage",
+      "kind": "building",
+      "description": "A modest wooden cottage filled with decades of books, old school papers, and the scent of cinnamon tea.",
+      "parent_id": "oakhaven",
+      "setting": "indoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "oakhaven",
+        "travel_hours": 0.2,
+        "mode": "on foot"
+       }
+      ]
+     },
+     {
+      "id": "maple-diner",
+      "name": "The Maple Leaf Diner",
+      "kind": "building",
+      "description": "The local hub for hot coffee, warm pie, and friendly neighborhood gossip.",
+      "parent_id": "oakhaven",
+      "setting": "indoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "oakhaven",
+        "travel_hours": 0.1,
+        "mode": "on foot"
+       }
+      ]
+     },
+     {
+      "id": "town-cemetery",
+      "name": "Oakhaven Cemetery",
+      "kind": "wilds",
+      "description": "A peaceful hillside cemetery where generations of Oakhaven families rest beneath ancient oak trees.",
+      "parent_id": "oakhaven",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "oakhaven",
+        "travel_hours": 0.3,
+        "mode": "on foot"
+       }
+      ]
+     }
+    ],
+    "factions": [
+     {
+      "id": "town-council",
+      "name": "Oakhaven Town Council",
+      "kind": "court",
+      "description": "A small group of elected residents who manage local affairs and organize community events.",
+      "parent_id": "",
+      "leader_ids": [],
+      "goal": "",
+      "methods": "",
+      "strength": "High local administrative influence but no real physical force.",
+      "relations": [],
+      "secrets": [],
+      "known_to_player": true
+     }
+    ],
+    "npcs": [
+     {
+      "id": "barnaby-cat",
+      "name": "Barnaby",
+      "aliases": [],
+      "description": "An old, somewhat chubby calico cat who prefers sleeping in warm patches of sunlight and demands chin scratches.",
+      "appearance": "Thick orange, black, and white fur, green eyes, and a slow, heavy gait.",
+      "age": 14,
+      "people_id": "domestic-cat",
+      "location_id": "player-cottage",
+      "memberships": [],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "lazy",
+        "loyal",
+        "stubborn"
+       ],
+       "values": [],
+       "loves": [
+        "tuna",
+        "sunlight",
+        "soft blankets"
+       ],
+       "fears": [],
+       "wants": [],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 1,
+       "speed": 1,
+       "toughness": 2,
+       "wits": 2,
+       "knowledge": 1,
+       "willpower": 3,
+       "charm": 4,
+       "nerve": 3,
+       "bearing": 3
+      },
+      "skills": [],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 90,
+       "fear": 0,
+       "trust": 100,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": true,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "met"
+     },
+     {
+      "id": "clara-milton",
+      "name": "Clara Milton",
+      "aliases": [],
+      "description": "The town librarian and a former student of yours from forty years ago, always eager to help you run errands.",
+      "appearance": "Short grey-brown hair, kind smile, wearing knitted cardigans and small reading glasses.",
+      "age": 54,
+      "people_id": "",
+      "location_id": "maple-diner",
+      "memberships": [],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "warm",
+        "thoughtful",
+        "dutiful"
+       ],
+       "values": [],
+       "loves": [],
+       "fears": [],
+       "wants": [
+        "To ensure the elderly town residents are well-cared for"
+       ],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 3,
+       "speed": 3,
+       "toughness": 3,
+       "wits": 4,
+       "knowledge": 4,
+       "willpower": 3,
+       "charm": 4,
+       "nerve": 3,
+       "bearing": 3
+      },
+      "skills": [],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 80,
+       "fear": 0,
+       "trust": 90,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "met"
+     }
+    ],
+    "clocks": [
+     {
+      "id": "winter-arrival",
+      "name": "The Arrival of Winter",
+      "steps": [
+       "The last golden leaves fall from the maples, leaving the branches bare.",
+       "Morning frosts become thick, turning the grass silver every dawn.",
+       "A freezing wind blows south from Canada, prompting everyone to stack wood.",
+       "The first heavy blizzard blanket of snow seals Oakhaven into winter."
+      ],
+      "step_every_hours": 72.0,
+      "owner_id": "",
+      "thread_id": "",
+      "known_to_player": true
+     }
+    ],
+    "threads": [
+     {
+      "id": "town-memoirs",
+      "title": "Documenting Oakhaven's History",
+      "kind": "quest",
+      "stakes": "Preserving the oral history and old schoolhouse stories before they are lost to time.",
+      "involved_ids": [
+       "player",
+       "clara-milton"
+      ],
+      "clock_id": "",
+      "known_to_player": true
+     }
+    ],
+    "mysteries": [],
+    "known_facts": [
+     "You spent over forty years teaching the children of Oakhaven in the old schoolhouse.",
+     "Most of the middle-aged adults in town were once students in your classroom."
+    ],
+    "opening": {
+     "place_id": "player-cottage",
+     "present_ids": [
+      "barnaby-cat"
+     ],
+     "positions": [],
+     "props": [],
+     "situation": "You sit comfortably in your favorite rocking chair by the crackling woodstove, holding a warm cup of chamomile tea as Barnaby purrs softly against your ankle."
+    },
+    "summary": "You are Arthur, a 97-year-old retired schoolteacher living your quiet final days in the sleepy Vermont town of Oakhaven. Together with your loyal old cat, Barnaby, you watch the seasons change as the town prepares for the coming winter."
+   },
+   "character": {
+    "name": "Arthur Vance",
+    "aliases": [],
+    "age": 97,
+    "lifespan_years": 100,
+    "people_id": "",
+    "description": "A respected retired educator with a gentle, patient soul and a wealth of local memories.",
+    "appearance": "Frail build, clean-shaved but deeply lined face, thin wispy white hair, kind blue eyes behind wire-rimmed spectacles. Dressed in a thick woolen sweater.",
+    "location_id": "player-cottage",
+    "attributes": {
+     "strength": 1,
+     "speed": 1,
+     "toughness": 1,
+     "wits": 4,
+     "knowledge": 4,
+     "willpower": 4,
+     "charm": 4,
+     "nerve": 3,
+     "bearing": 4
+    },
+    "skills": [
+     {
+      "name": "Teaching",
+      "level": "master",
+      "notes": "Decades of explaining complex things with immense clarity and patience."
+     },
+     {
+      "name": "Local History",
+      "level": "expert",
+      "notes": "Deep knowledge of the town's founding families, old secrets, and folklore."
+     },
+     {
+      "name": "Storytelling",
+      "level": "expert",
+      "notes": "Capable of holding anyone's attention with gentle, captivating tales from the past."
+     }
+    ],
+    "traits": [
+     {
+      "name": "Frail Age",
+      "kind": "flaw",
+      "description": "Your physical movements are slow, deliberate, and easily tire your body."
+     },
+     {
+      "name": "Sharpened Mind",
+      "kind": "gift",
+      "description": "Despite your physical wear, your memories, wit, and analytical focus remain remarkably clear."
+     }
+    ],
+    "talents": [],
+    "powers": [],
+    "techniques": [],
+    "temperament": {
+     "traits": [
+      "patient",
+      "contemplative",
+      "warm-hearted"
+     ],
+     "values": [
+      "education",
+      "peace",
+      "legacy"
+     ],
+     "loves": [
+      "Barnaby",
+      "hot tea",
+      "classic literature"
+     ],
+     "fears": [
+      "unresolved regrets",
+      "being unable to care for Barnaby"
+     ],
+     "wants": [
+      "A peaceful remaining time",
+      "Ensuring Barnaby is cared for"
+     ],
+     "voice": ""
+    },
+    "items": [
+     {
+      "name": "Thick Woolen Blanket",
+      "kind": "gear",
+      "description": "An incredibly warm, hand-knit quilt that keeps the drafty Vermont wind at bay.",
+      "quantity": 1,
+      "carried": true
+     },
+     {
+      "name": "Reading Glasses",
+      "kind": "gear",
+      "description": "Strong wire-rimmed spectacles essential for reading small print.",
+      "quantity": 1,
+      "carried": true
+     }
+    ],
+    "money": 120,
+    "currency": "dollars",
+    "title": "Mr. Vance",
+    "rank": "Retired Teacher",
+    "family_name": "",
+    "connections": [
+     {
+      "name": "Clara Milton",
+      "kind": "trusts_them",
+      "character_id": "clara-milton",
+      "note": "A former student of yours who regularly stops by to check on your health."
+     }
+    ],
+    "parent_ids": [],
+    "memberships": [],
+    "ladders": [],
+    "axes": {
+     "might": 1,
+     "influence": 1,
+     "wealth": 1,
+     "knowledge": 1,
+     "stealth": 1
+    },
+    "reserves": [],
+    "goals": [
+     "A peaceful remaining time",
+     "Ensuring Barnaby is cared for"
+    ],
+    "backstory": [],
+    "hidden_past": []
+   }
+  },
+  "rating": "teen",
+  "premise_id": null,
+  "physics": "fun_first",
+  "gift": null,
+  "released_rules": [],
+  "language": "en",
+  "told": []
+ }
+}

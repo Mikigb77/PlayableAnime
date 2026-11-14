@@ -871,3 +871,30 @@ El temps s'escola com la sorra fina entre els dits. Cinc mesos passen ràpids so
 }
 ```
 
+## Turn 5 (action), 10.5 s, $0.053
+
+> Faig entrar en Mateu, li dono un got de conyac i li pregunto què ha passat.
+
+_From Day 153, evening, 21:54 to Day 153, evening, 21:55 (45 s). Pere is 78, alive._
+
+**Read and decided:**
+- read as exchange, 'help' on mateu, 15 s: Faig entrar en Mateu dins de casa.
+- read as exchange, 'give' on mateu, 30 s: Li dono un got de conyac.
+- read as conversation, 'persuade' on mateu, 30 s: Li pregunto què ha passat.
+- Faig entrar en Mateu dins de casa. [certain, success]: Nothing stands in the way.
+- Li dono un got de conyac. [ruled_out, failure]: You have no un got de conyac.
+- unplayed: ["Li pregunto què ha passat."]
+
+Agafes en Mateu pel braç humit, notant com el tremolor li sacseja el cos vell sota la jaqueta de sarga, i l'estires suaument cap a l'interior de la casa, tancant la porta darrere seu per protegir-lo del fred i de la pluja fina que s'escola de la cala.
+
+L'amic es deixa guiar, esbufegant, mentre deixa un rastre de gotes d'aigua salada sobre les rajoles de la cuina. Et bades a buscar la ampolla de conyac que creies tenir al rebost per escalfar-li el pit, però de seguida recordes que fa mesos que el canterano és buit, i que només hi queda pols i algun tap de suro ressec. En Mateu es recolza contra la taula de fusta, la mateixa on fa cinc mesos bategava la sirena, i es treu la gorra xopa amb les mans turgents. Et mira fixament, amb els ulls molt oberts, gairebé febrils.
+
+"Pere..." murmura amb un fil de veu que sembla venir de l'altre món, recolzant-se en el cantell de la taula per no caure, mentre es mira la llar de foc on encara queden algunes brases calentes. La por que porta a sobre és tan espessa com la boira del Cap de Creus.
+
+**Suggestions:**
+1. Preguntar-li directament què és el que l'ha espantat d'aquesta manera. (thread)
+2. Atansar-li una cadira de boga i posar més llenya al foc. (personal)
+3. Oferir-li un vas d'aigua fresca en comptes del conyac. (side)
+
+**Counted:** {"refused": 1, "goals_open": 1}
+
