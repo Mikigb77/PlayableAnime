@@ -14,6 +14,7 @@ from graph.drafting.named import (
     called,
     named,
     one_aim,
+    stated_aim,
     timed,
     times_ahead,
     told_of,
@@ -435,6 +436,52 @@ def test_one_short_sentence_that_says_an_aim_is_one_aim(said, language):
 )
 def test_words_that_say_more_or_less_than_an_aim_are_not_one_aim(said, language):
     assert not one_aim(said, language)
+    assert stated_aim(said, language) == ""
+
+
+@pytest.mark.parametrize(
+    ("said", "language"),
+    [
+        ("I want to be a pirate.", EN),
+        ("i want to become the strongest swordsman in the world", EN),
+        ("My dream is to open a bakery!", EN),
+        ("I must survive the tournament.", EN),
+        ("I'm looking for my sister.", EN),
+        ("I just want to see the sea", EN),
+        ("¡Quiero ser el rey de los piratas!", ES),
+        ("Mi sueño es abrir una panadería.", ES),
+        ("Vull ser la millor cuinera del regne.", CA),
+        ("He de trobar la meva germana.", CA),
+    ],
+)
+def test_one_short_sentence_that_opens_on_an_aim_states_it(said, language):
+    # G2: the player's own words are the goal, whatever a drafter made of them.
+    assert stated_aim(said, language) == said
+    assert aimed(said, said, language)
+
+
+@pytest.mark.parametrize(
+    ("said", "language"),
+    [
+        # An aim's word in a sentence that is after nothing.
+        ("My dream died with her.", EN),
+        ("I decided to stay home.", EN),
+        # What is only to come, or only supposed.
+        ("I will die in three days.", EN),
+        ("I'll never be a knight.", EN),
+        ("I must have been cursed.", EN),
+        # What they don't want says no goal a story can follow.
+        ("I must not fail.", EN),
+        ("No quiero morir.", ES),
+        ("No vull morir.", CA),
+    ],
+)
+def test_one_short_sentence_with_an_aims_word_in_it_states_none(said, language):
+    assert stated_aim(said, language) == ""
+
+
+def test_a_stated_aim_is_given_as_one_line():
+    assert stated_aim("  I want  to be a pirate. ", EN) == "I want to be a pirate."
 
 
 def test_an_aim_is_said_about_what_it_names():

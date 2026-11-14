@@ -98,10 +98,11 @@ can count what they pay and lose (C10).
 - What the character is after is the player's to say. Write a goal, or something they want \
 (temperament.wants), only where the premise says it as an aim ("I must pass the knight exam", \
 "I came to the city to find my sister"), each as one short line that uses the premise's words \
-for what it names ("Pass the knight exam"), never the premise repeated. What is coming, and \
-what has happened, is no aim: "the knight exam is in 3 days" gives a clock and no goal, and \
-"someone killed my father" gives a mystery and no goal. A premise that says no aim leaves both \
-empty: the player sets their goals in play.
+for what it names ("Pass the knight exam"), never the premise repeated. A premise that is \
+nothing but one aim still gives it: "I want to be a pirate." gives "Become a pirate". What is \
+coming, and what has happened, is no aim: "the knight exam is in 3 days" gives a clock and no \
+goal, and "someone killed my father" gives a mystery and no goal. A premise that says no aim \
+leaves both empty: the player sets their goals in play.
 - Talents say how fast the character learns, never how good they already are. What they can \
 already do is their attributes, skills, powers, techniques and rung: "the strongest sorcerer \
 alive", "the best hacker in the city", "a legendary swordsman" and "an overpowered skill" say \

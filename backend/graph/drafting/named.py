@@ -209,6 +209,42 @@ def one_aim(said: str, language: Language) -> bool:
     return bool(_AIM[language].search(sentences[0]))
 
 
+# How a sentence opens when it says outright, of its own speaker, what they are after. An aim's
+# word further on says less ("My dream died with her."), and so does what is only to come ("I
+# will die in three days.") or only supposed ("I must have been cursed.").
+_OPENS_ON_AIM = {
+    Language.EN: (
+        r"(?:i|we) (?:(?:really|only|just) )?"
+        r"(?:(?:want|wish|need|have|intend|plan|mean|aim|hope|long) to|must(?! have))\b"
+        r"|(?:i['’]m|i am|we['’]re|we are) (?:looking|searching) for\b"
+        r"|my (?:goal|dream|aim|ambition|mission|purpose|quest) is\b"
+    ),
+    Language.ES: (
+        r"(?:(?:solo|sólo) )?(?:quiero|queremos|deseo|necesito|debo|tengo que|he de|busco)\b"
+        r"|mi (?:objetivo|meta|sueño|ambición|misión|propósito) es\b"
+    ),
+    Language.CA: (
+        r"(?:només )?(?:vull|volem|desitjo|necessito|he de|haig de|tinc de|busco)\b"
+        r"|(?:el meu (?:objectiu|somni|propòsit)|la meva (?:meta|ambició|missió)) és\b"
+    ),
+}
+_NO_AIM = r"(?! (?:not|never|no|nunca|jamás|mai)\b)"
+_STATED = {
+    language: re.compile(rf"\W*(?:{opens}){_NO_AIM}", re.IGNORECASE)
+    for language, opens in _OPENS_ON_AIM.items()
+}
+
+
+def stated_aim(said: str, language: Language) -> str:
+    """The aim that `said`, the player's own words, give when they are one short sentence that
+    opens on what its speaker is after and says nothing more ("I want to be a pirate."): the
+    words themselves, which are the goal whatever a drafter made of them. The real drafter,
+    asked to write no goal the player didn't state, also left such a premise with none (the
+    live check of 2026-11-14). Empty for any other words."""
+    words = " ".join(said.split())
+    return words if one_aim(said, language) and _STATED[language].match(words) else ""
+
+
 def _done_for(words: list[str], lead: str, language: Language) -> bool:
     """Whether the words say `lead`, an aim's own first word, as what something is done for."""
     for phrase in _FOR[language]:
