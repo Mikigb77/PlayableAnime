@@ -395,10 +395,12 @@ a new one.
   the player character knows of it or its thread involves them, its end comes to them
   (`clocks.comes_to_player`). `on_clock_end` then marks the event as needing the player, so a
   time skip stops on it and the director makes it the scene's event, adds the living people
-  its thread involves to the event's subjects, so the scene has them wherever the record put
-  them (`due.world_event`, `pipeline.brought`), and writes the clock's name before its last
-  step as the event's brief. `clocks.ended_with_player` is that applied event, for the
-  thread's lifecycle.
+  its thread involves and those its own words name (`clocks.comes_with`, read by
+  `engine.naming`: the last step as a sentence, the title for names of several words only) to
+  the event's subjects, so the scene has them wherever the record put them
+  (`due.world_event`, `pipeline.brought`), and writes the clock's name before its last step
+  as the event's brief. `clocks.ended_with_player` is that applied event, for the thread's
+  lifecycle.
 - **The cast stays bounded** (W15, K8). At most 8 key NPCs and 4 factions are active; the least
   involved go dormant, kept in state, never deleted, and come back on stage when the story returns
   to them (in the scene, in an open thread, with something on its way). New characters and factions (an avenger, a

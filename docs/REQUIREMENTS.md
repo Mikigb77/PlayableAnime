@@ -1874,8 +1874,9 @@ clock ends where its event says, else where its owner is, and the player is in i
 are there. A clock nobody owns, with no place on record, is the story's own countdown ("the
 commander arrives at your door", "winter closes the pass"): when the character knows of it, or
 its thread involves them, its end happens where they are, as the scene's event, with the
-people its thread involves, and it stops a time skip on the day it runs out. Its thread is
-then theirs to play out: it stays open while they are at it, and closes as resolved, never as
+people its thread involves and those its own words name (its last step, and a name of several
+words in its title), and it stops a time skip on the day it runs out. Its thread is then
+theirs to play out: it stays open while they are at it, and closes as resolved, never as
 resolved without them, once they have left it alone. One that is neither known to them nor
 about them is the world's own business (C6).
 

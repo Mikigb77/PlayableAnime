@@ -12,11 +12,13 @@ rivalries and romances stay open, since the people in them remain.
 Where it ends is where its event says, else where its owner is. A clock nobody owns, with no
 place on record, is the story's own countdown ("the commander arrives at your door", "winter
 closes the pass"): when the player character knows of it, or its thread involves them, its end
-comes to them wherever they are, with the people its thread involves (`comes_to_player`). The
-first plays on the real models (2026-11-14) had thirteen clocks of sixteen drafted that way,
-and every one that ran out did so in silence, a search of the player's own house among them.
+comes to them wherever they are (`comes_to_player`), with the people its thread involves and
+those its own words name (`comes_with`). The first plays on the real models (2026-11-14) had
+thirteen clocks of sixteen drafted that way, and every one that ran out did so in silence, a
+search of the player's own house among them.
 """
 
+from engine.naming import named_in
 from engine.state.records import (
     Clock,
     ClockStatus,
@@ -209,6 +211,23 @@ def comes_to_player(state: WorldState, event: PendingEvent, clock: Clock) -> boo
     )
 
 
+def comes_with(state: WorldState, clock: Clock, thread: Thread | None) -> list[str]:
+    """W10: who a countdown that comes to the player brings, among the living on record: the
+    people its thread involves, and those its own words name, since the drafter doesn't always
+    put them in the thread ("The Bailiff steps in to charge you" ran on a romance's thread
+    that held only the lovers). Its last step is read as a sentence is. Its name is a title,
+    where any word may have a capital, so only a name of several words counts there ("La
+    vigilància del Sergent Torres"), never the "Royal" of "The Royal Envoy's Search" for a
+    Royal Guard."""
+    others = [c.id for c in by_id(state.characters.values()) if c.alive and c.id != state.player_id]
+    involved = set(thread.involved_ids) if thread is not None else set()
+    named = {
+        *named_in(state, [clock.steps[-1]], others, anywhere=True),
+        *named_in(state, [clock.name.lower()], others),
+    }
+    return [i for i in others if i in involved or i in named]
+
+
 def ended_with_player(state: WorldState, clock_id: str) -> PendingEvent | None:
     """The end of this clock as it happened, when it happened with the player character: the
     applied event, which says on which turn. None when it has yet to end, or ended without
@@ -242,15 +261,11 @@ def on_clock_end(w: World, event: PendingEvent) -> bool:
     where = where_it_ends(w, event, clock)
     thread = thread_of(state, clock)
     if where is None and comes_to_player(state, event, clock):
-        # It happens where they are, and the people its thread involves come with it: they are
-        # the event's own, so the scene has them (W10, `director.due.brings`).
+        # It happens where they are, and its people come with it: they are the event's own,
+        # so the scene has them (W10, `director.due.brings`).
         where = state.player.location_id
         event.needs_player = True
-        coming = [
-            i
-            for i in (thread.involved_ids if thread is not None else [])
-            if i != state.player_id and i in state.characters and state.characters[i].alive
-        ]
+        coming = comes_with(state, clock, thread)
         event.subject_ids = list(dict.fromkeys([*event.subject_ids, *coming]))
         # The scene's event says which countdown ran out, as well as how (`due.world_event`).
         event.payload.setdefault("event", {"brief": f"{clock.name}: {clock.steps[-1]}"})

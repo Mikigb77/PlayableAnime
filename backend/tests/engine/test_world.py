@@ -1049,6 +1049,31 @@ def test_a_countdown_of_their_own_with_no_thread_comes_to_them_and_brings_nobody
     assert end.needs_player and end.subject_ids == []
 
 
+def test_the_people_a_countdowns_words_name_come_with_it():
+    # "The Bailiff steps in to charge you" ran on a thread that held only the lovers, and "La
+    # vigilància del Sergent Torres" names the sergeant in the clock's name alone.
+    state = cultivation_world()
+    countdown(state, thread=False)
+    state.clocks["envoy"].steps[-1] = "Mo arrives at your door."
+    assert end_of(idle(state, 2 * DAY + HOUR)[0], "envoy").subject_ids == ["elder-mo"]
+
+    state = cultivation_world()
+    countdown(state)
+    state.clocks["envoy"].name = "The Watch of Elder Mo"
+    assert end_of(idle(state, 2 * DAY + HOUR)[0], "envoy").subject_ids == ["elder-mo", "zhao"]
+
+
+def test_one_word_of_a_countdowns_title_names_nobody():
+    # A title has a capital on any word: "The Elder Road" is not Elder Mo.
+    state = cultivation_world()
+    countdown(state, thread=False)
+    state.clocks["envoy"].name = "The Elder Road"
+
+    after, _ = idle(state, 2 * DAY + HOUR)
+
+    assert end_of(after, "envoy").subject_ids == []
+
+
 def test_the_dead_do_not_come_with_a_countdown():
     state = cultivation_world()
     countdown(state)
