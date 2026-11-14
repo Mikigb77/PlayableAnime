@@ -1,0 +1,2149 @@
+{
+ "premise": "A farm boy with no talent for cultivation at all, the worst in his village. One day he finds a ring with the soul of an ancient master inside.",
+ "language": "en",
+ "rating": "teen",
+ "settings": {
+  "narration_length": "medium",
+  "tone": null,
+  "difficulty": "balanced",
+  "event_frequency": "normal",
+  "images": "key_moments",
+  "suggestions": true,
+  "language": "en",
+  "accent": null
+ },
+ "seed": "play/w-ring",
+ "state": {
+  "schema_version": 1,
+  "turn": 3,
+  "timeline_id": "main",
+  "world_s": 259260,
+  "bible": {
+   "title": "Echoes of the Ancient Path",
+   "genre": "cultivation",
+   "tone": "wonder",
+   "era": "Ancient Eastern fantasy: simple farming tools, spiritual herbs, and powerful sects.",
+   "extraordinary": [
+    {
+     "id": "qi",
+     "kind": "qi cultivation",
+     "prevalence": "common",
+     "reach": "Cultivators can manipulate elements, fly on swords, and attain immortality.",
+     "rule_ids": [
+      "qi-flow",
+      "meridian-limit"
+     ]
+    },
+    {
+     "id": "ancient-souls",
+     "kind": "spirit remnants",
+     "prevalence": "rare",
+     "reach": "Souls of dead masters can bind to spiritual vessels, sharing knowledge and guidance.",
+     "rule_ids": [
+      "soul-preservation",
+      "ancient-souls-exists"
+     ]
+    }
+   ],
+   "peoples": [
+    {
+     "id": "human",
+     "name": "Human",
+     "description": "",
+     "lifespan_years": 80,
+     "gifts": [],
+     "culture": "A society organized around agrarian villages and grand cultivation sects.",
+     "relations": [],
+     "path": ""
+    }
+   ],
+   "creatures": [
+    {
+     "id": "spirit-wolf",
+     "name": "Spiritual Wolf",
+     "description": "A forest beast infused with wild qi, dangerous to mortals.",
+     "tier": 2,
+     "habitat": "Azure Hills forests",
+     "worth": "Qi core and spiritual fur",
+     "can_be_tamed": true
+    }
+   ],
+   "nature": [
+    "Gravity is slightly weaker near high-qi spiritual veins, allowing for massive floating peaks."
+   ],
+   "physics": "fun_first",
+   "force": {
+    "tier1_joules": 10000.0,
+    "per_tier": 10.0
+   },
+   "ladders": [
+    {
+     "id": "cultivation-realms",
+     "name": "cultivation realms",
+     "axis": "might",
+     "rungs": [
+      {
+       "name": "Qi Condensation",
+       "tier": 2,
+       "description": "Gathering qi into the meridians to strengthen the physical body.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 100,
+       "added_s": null
+      },
+      {
+       "name": "Foundation Establishment",
+       "tier": 4,
+       "description": "Purifying the gathered qi into a liquid spiritual sea.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 200,
+       "added_s": null
+      },
+      {
+       "name": "Core Formation",
+       "tier": 6,
+       "description": "Condensing the spiritual sea into a solid golden core of immense power.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 500,
+       "added_s": null
+      },
+      {
+       "name": "Nascent Soul",
+       "tier": 8,
+       "description": "Birthing a spiritual avatar within, granting true flight and massive lifespan.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 1000,
+       "added_s": null
+      },
+      {
+       "name": "Soul Transformation",
+       "tier": 10,
+       "description": "Merging the mortal body with the spiritual soul, becoming a demigod.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 3000,
+       "added_s": null
+      }
+     ],
+     "standing_follows": true,
+     "sensing": true,
+     "rung_levels": 1,
+     "shrugs_off": 3,
+     "known_to_all": 3
+    }
+   ],
+   "calendar": {
+    "style": "day_count",
+    "time_of_day": "parts",
+    "epoch": null,
+    "start_second_of_day": 28800,
+    "months": [],
+    "start_year": 1,
+    "start_month": 1,
+    "start_day": 1,
+    "era": ""
+   },
+   "travel": {
+    "description": "Most travel on foot or by horse-drawn cart. High-level cultivators fly on spiritual swords.",
+    "instant_messages": false
+   },
+   "medicine": {
+    "healing": "Spiritual herbs and qi-infused pills can mend broken bones in hours.",
+    "resurrection": "none",
+    "resurrection_means": ""
+   },
+   "laws": [
+    {
+     "id": "sect-law",
+     "text": "Cultivators must not slaughter mortals without cause.",
+     "enforcer": "Disciplinary Hall Elders",
+     "enforcer_faction_id": "jade-peak-sect",
+     "zeal": "high",
+     "corruptible": false
+    }
+   ],
+   "norms": [],
+   "several_partners": false,
+   "unions": "held",
+   "rules": [
+    {
+     "id": "qi-flow",
+     "text": "Qi flows through all living things and can be gathered to refine the body and soul.",
+     "fixed": true,
+     "topic": "existence"
+    },
+    {
+     "id": "meridian-limit",
+     "text": "A person's talent is decided by their meridians; blocked meridians cannot normally absorb qi.",
+     "fixed": true,
+     "topic": "nature"
+    },
+    {
+     "id": "soul-preservation",
+     "text": "An ancient soul bound to an object cannot cross over to the afterlife until the object is destroyed.",
+     "fixed": false,
+     "topic": "limits"
+    },
+    {
+     "id": "ancient-souls-exists",
+     "text": "Spirit remnants: real, and rare.",
+     "fixed": true,
+     "topic": "existence"
+    }
+   ],
+   "mysteries": [
+    {
+     "id": "mo-origin",
+     "question": "Who was the master trapped inside the ring?",
+     "answer": "Master Mo was once the Grand Elder of a rival sect that was destroyed by Jade Peak's founders.",
+     "clues": [
+      "An inscription on the inside of the ring matching an ancient, forbidden sect crest.",
+      "Master Mo's extreme hostility whenever the Jade Peak Sect's founding ancestors are mentioned."
+     ],
+     "thread_id": "awaken-master",
+     "solved": false
+    }
+   ]
+  },
+  "player_id": "player",
+  "characters": {
+   "player": {
+    "id": "player",
+    "name": "Xiao Chen",
+    "aliases": [
+     "The No-Talent Boy"
+    ],
+    "prominence": "key",
+    "description": "A scruffy, hardworking farm boy with calloused hands and a stubborn glint in his eyes.",
+    "appearance": "Messy black hair tied with a simple hemp string, a wiry build from years of farm work, wearing a patched grey cotton tunic.",
+    "look_version": 1,
+    "age": 15,
+    "people_id": "human",
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "mountain-cave",
+    "personal_offset_s": 0,
+    "memberships": [],
+    "sheet": {
+     "attributes": {
+      "strength": 3,
+      "speed": 3,
+      "toughness": 4,
+      "wits": 3,
+      "knowledge": 1,
+      "willpower": 5,
+      "charm": 3,
+      "nerve": 4,
+      "bearing": 2
+     },
+     "skills": [
+      {
+       "name": "Farming",
+       "level": "skilled",
+       "notes": "Excellent at weeding, planting, and predicting the weather."
+      },
+      {
+       "name": "Endurance",
+       "level": "fair",
+       "notes": "Accustomed to working long hours under the hot sun."
+      }
+     ],
+     "traits": [
+      {
+       "name": "Blocked Meridians",
+       "kind": "flaw",
+       "description": "Your pathways for qi are completely clogged, making standard cultivation exercises useless."
+      },
+      {
+       "name": "Unyielding Will",
+       "kind": "gift",
+       "description": "The harder things get, the more stubborn you become. Mental attacks struggle to shake you."
+      }
+     ],
+     "talents": [
+      {
+       "id": "cultivation-talent",
+       "name": "Cultivation Talent",
+       "covers": "Gathering and refining ambient qi through standard breathing methods.",
+       "strength": "slow",
+       "general": false,
+       "reason": ""
+      }
+     ],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "stubborn",
+        "resilient",
+        "diligent"
+       ],
+       "values": [
+        "family",
+        "persistence"
+       ],
+       "loves": [
+        "a warm meal",
+        "quiet moments in nature"
+       ],
+       "fears": [
+        "remaining weak forever",
+        "letting his family down"
+       ],
+       "wants": [],
+       "voice": "Polite but firm, with a slightly rough rustic accent."
+      },
+      "attitudes": {}
+     },
+     "resources": {
+      "items": [
+       {
+        "id": "ancient-ring",
+        "name": "Ancient Ring",
+        "kind": "treasure",
+        "description": "A heavy, tarnished bronze ring carved with foreign spiritual runes. It feels warm to the touch.",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       },
+       {
+        "id": "rusty-hoe",
+        "name": "Rusty Hoe",
+        "kind": "gear",
+        "description": "A well-worn farming implement with a chipped wooden shaft.",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       }
+      ],
+      "money": 12,
+      "currency": "copper coins",
+      "title": "Mortal Farmer",
+      "rank": "Mortally Bound",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": 80,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   },
+   "master-mo": {
+    "id": "master-mo",
+    "name": "Master Mo",
+    "aliases": [
+     "The Ancient Master"
+    ],
+    "prominence": "key",
+    "description": "A wispy, floating spirit with a critical eye, sharp wit, and centuries of lost knowledge.",
+    "appearance": "A translucent old man wearing flowing robes of a bygone era, with long silver hair and beard.",
+    "look_version": 1,
+    "age": 3000,
+    "people_id": "human",
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "mountain-cave",
+    "personal_offset_s": 0,
+    "memberships": [],
+    "sheet": {
+     "attributes": {
+      "strength": 1,
+      "speed": 1,
+      "toughness": 1,
+      "wits": 5,
+      "knowledge": 5,
+      "willpower": 5,
+      "charm": 3,
+      "nerve": 4,
+      "bearing": 5
+     },
+     "skills": [
+      {
+       "name": "Qi Mastery",
+       "level": "master",
+       "notes": ""
+      },
+      {
+       "name": "Alchemy",
+       "level": "expert",
+       "notes": ""
+      }
+     ],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "stern",
+        "knowledgeable",
+        "demanding"
+       ],
+       "values": [
+        "legacy",
+        "excellence"
+       ],
+       "loves": [
+        "rare herbs",
+        "diligent students"
+       ],
+       "fears": [
+        "fading away completely"
+       ],
+       "wants": [
+        "to find a worthy successor and rebuild his physical body"
+       ],
+       "voice": "A dry, echoing whisper that speaks directly into your mind."
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 0,
+        "fear": 0,
+        "trust": 0,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": {
+     "goal": "Test the player character's resolve and teach them unorthodox cultivation paths.",
+     "method": "Using spiritual resonance from the ring to guide the player's internal energy.",
+     "secret": "",
+     "clock_id": null
+    },
+    "secrets": [
+     "He was betrayed by his own disciples, which is how his soul became sealed in the ring."
+    ],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": true,
+    "born_s": null,
+    "lifespan_years": 4460,
+    "old_age_span": null,
+    "seen_s": 259260,
+    "near_s": 259200,
+    "met_s": 0
+   },
+   "li-wei": {
+    "id": "li-wei",
+    "name": "Li Wei",
+    "aliases": [],
+    "prominence": "key",
+    "description": "The arrogant son of the village chief, widely considered the most talented youth in Greenwood.",
+    "appearance": "A tall, broad-shouldered youth wearing fine silk robes that are too expensive for a farmer.",
+    "look_version": 1,
+    "age": 16,
+    "people_id": "human",
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "mountain-cave",
+    "personal_offset_s": 0,
+    "memberships": [
+     {
+      "faction_id": "greenwood-council",
+      "rank": "Chief's Heir",
+      "loyalty": 50
+     }
+    ],
+    "sheet": {
+     "attributes": {
+      "strength": 3,
+      "speed": 3,
+      "toughness": 3,
+      "wits": 2,
+      "knowledge": 2,
+      "willpower": 2,
+      "charm": 2,
+      "nerve": 3,
+      "bearing": 3
+     },
+     "skills": [
+      {
+       "name": "Martial Arts",
+       "level": "novice",
+       "notes": ""
+      }
+     ],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "arrogant",
+        "impatient",
+        "ambitious"
+       ],
+       "values": [
+        "strength",
+        "status"
+       ],
+       "loves": [
+        "praise",
+        "fine tea"
+       ],
+       "fears": [
+        "failure",
+        "humiliation"
+       ],
+       "wants": [
+        "to join the Jade Peak Sect and leave this village behind"
+       ],
+       "voice": "Loud, mocking, and overly confident."
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 0,
+        "fear": 0,
+        "trust": 0,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": 0,
+    "old_age_span": null,
+    "seen_s": 259260,
+    "near_s": 259200,
+    "met_s": null
+   }
+  },
+  "factions": {
+   "jade-peak-sect": {
+    "id": "jade-peak-sect",
+    "name": "Jade Peak Sect",
+    "kind": "sect",
+    "description": "The dominant cultivation sect of the Azure Hills, recruiting talented youths.",
+    "parent_id": null,
+    "status": "intact",
+    "status_history": [],
+    "activity": "active",
+    "leader_ids": [],
+    "goal": "",
+    "methods": "",
+    "strength": "",
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "threat": 0,
+    "relations": {},
+    "survivors": [],
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ]
+   },
+   "greenwood-council": {
+    "id": "greenwood-council",
+    "name": "Greenwood Elder Council",
+    "kind": "court",
+    "description": "The group of village elders who handle farming disputes and yearly taxes.",
+    "parent_id": null,
+    "status": "intact",
+    "status_history": [],
+    "activity": "active",
+    "leader_ids": [],
+    "goal": "",
+    "methods": "",
+    "strength": "",
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "threat": 0,
+    "relations": {},
+    "survivors": [],
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "places": {
+   "azure-hills": {
+    "id": "azure-hills",
+    "name": "Azure Hills",
+    "kind": "region",
+    "description": "A picturesque, mist-shrouded region of rolling green hills and deep forests.",
+    "parent_id": null,
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "greenwood-village",
+      "travel_s": 3600,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "greenwood-village": {
+    "id": "greenwood-village",
+    "name": "Greenwood Village",
+    "kind": "village",
+    "description": "A small, quiet farming village nestled at the foot of the mountains.",
+    "parent_id": "azure-hills",
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "azure-hills",
+      "travel_s": 3600,
+      "mode": "on foot"
+     },
+     {
+      "to_id": "greenwood-fields",
+      "travel_s": 1800,
+      "mode": "on foot"
+     },
+     {
+      "to_id": "jade-peak-sect",
+      "travel_s": 21600,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "greenwood-fields": {
+    "id": "greenwood-fields",
+    "name": "Greenwood Fields",
+    "kind": "wilds",
+    "description": "The terraced rice and barley fields where the villagers labor daily.",
+    "parent_id": "greenwood-village",
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "greenwood-village",
+      "travel_s": 1800,
+      "mode": "on foot"
+     },
+     {
+      "to_id": "mountain-cave",
+      "travel_s": 360,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "mountain-cave": {
+    "id": "mountain-cave",
+    "name": "Damp Cave",
+    "kind": "wilds",
+    "description": "A cool, dark cave hidden behind thick briars at the edge of the fields.",
+    "parent_id": "greenwood-fields",
+    "setting": "underground",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "greenwood-fields",
+      "travel_s": 360,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [
+     "player"
+    ],
+    "judged": []
+   },
+   "jade-peak-sect": {
+    "id": "jade-peak-sect",
+    "name": "Jade Peak Sect",
+    "kind": "building",
+    "description": "A towering sect built upon steep mountain peaks, home to proud cultivators.",
+    "parent_id": "azure-hills",
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "greenwood-village",
+      "travel_s": 21600,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   }
+  },
+  "deeds": {
+   "deed-1": {
+    "id": "deed-1",
+    "actor_id": "player",
+    "kind": "persuade",
+    "text": "I ask Li Wei what has been happening in the village while I was away. (it failed)",
+    "turn": 3,
+    "world_s": 259260,
+    "timeline_id": "main",
+    "place_id": "mountain-cave",
+    "victim_ids": [],
+    "target_ids": [
+     "li-wei"
+    ],
+    "wronged_ids": [],
+    "severity": 1,
+    "visibility": "witnessed",
+    "witness_ids": [
+     "li-wei",
+     "master-mo"
+    ],
+    "unnoticed_witness_ids": [],
+    "traces": [],
+    "in_stopped_time": false,
+    "discovered": false,
+    "known_by": [
+     "player",
+     "li-wei",
+     "master-mo"
+    ],
+    "known_by_factions": [],
+    "heard_by": {},
+    "heard_by_factions": {},
+    "terms": null,
+    "broke_terms": false,
+    "went_to_tell": {},
+    "word_out_s": null
+   }
+  },
+  "rumors": {
+   "rumor-1": {
+    "id": "rumor-1",
+    "text": "Sect Recruitment: The chosen disciples depart, leaving the rest behind.",
+    "is_true": true,
+    "accuracy": 95,
+    "deed_id": null,
+    "about_ids": [],
+    "origin_place_id": "mountain-cave",
+    "reached_place_ids": [
+     "mountain-cave"
+    ],
+    "started_s": 259200,
+    "timeline_id": "main",
+    "believed_by": [
+     "master-mo",
+     "player"
+    ],
+    "heard_at": {
+     "master-mo": 259200,
+     "player": 259200
+    },
+    "seen_by": [
+     "master-mo",
+     "player"
+    ]
+   }
+  },
+  "bonds": {},
+  "lives": {},
+  "aged_s": 0,
+  "changes": {},
+  "strife_s": {},
+  "facts": {
+   "fact-1": {
+    "id": "fact-1",
+    "text": "You have blocked meridians, which makes you unable to cultivate qi through normal breathing exercises.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-2": {
+    "id": "fact-2",
+    "text": "The village bullies, led by Li Wei, mock you constantly for being the worst in Greenwood.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-3": {
+    "id": "fact-3",
+    "text": "The Jade Peak Sect is holding its recruitment trial in three days.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-4": {
+    "id": "fact-4",
+    "text": "Sect Recruitment: The Jade Peak Sect heralds arrive in Greenwood.",
+    "kind": "observation",
+    "importance": 3,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 2,
+    "world_s": 86400,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "clock",
+     "ref_id": "sect-recruitment",
+     "text": ""
+    }
+   },
+   "fact-5": {
+    "id": "fact-5",
+    "text": "Sect Recruitment: The youth of the village line up to have their spiritual roots tested.",
+    "kind": "observation",
+    "importance": 3,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 2,
+    "world_s": 172800,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "clock",
+     "ref_id": "sect-recruitment",
+     "text": ""
+    }
+   },
+   "fact-6": {
+    "id": "fact-6",
+    "text": "Sect Recruitment: The chosen disciples depart, leaving the rest behind.",
+    "kind": "observation",
+    "importance": 3,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 2,
+    "world_s": 259200,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "clock",
+     "ref_id": "sect-recruitment",
+     "text": ""
+    }
+   }
+  },
+  "goals": {},
+  "leads": {},
+  "threads": {
+   "awaken-master": {
+    "id": "awaken-master",
+    "title": "The Master's Guidance",
+    "kind": "quest",
+    "stakes": "Gaining the ancient master's trust and learning his lost techniques.",
+    "involved_ids": [
+     "player",
+     "master-mo"
+    ],
+    "clock_id": null,
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "status": "open",
+    "opened_turn": 0,
+    "last_active_turn": 2,
+    "taken_up_turn": 2,
+    "closed_turn": null,
+    "arc": null,
+    "known_by": [
+     "player"
+    ]
+   },
+   "sect-trials": {
+    "id": "sect-trials",
+    "title": "Jade Peak Sect Trials",
+    "kind": "ambition",
+    "stakes": "Escaping village life and gaining access to real cultivation resources.",
+    "involved_ids": [
+     "player",
+     "li-wei"
+    ],
+    "clock_id": "sect-recruitment",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "status": "open",
+    "opened_turn": 0,
+    "last_active_turn": 3,
+    "taken_up_turn": 3,
+    "closed_turn": null,
+    "arc": null,
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "clocks": {
+   "sect-recruitment": {
+    "id": "sect-recruitment",
+    "name": "Sect Recruitment",
+    "steps": [
+     "The Jade Peak Sect heralds arrive in Greenwood.",
+     "The youth of the village line up to have their spiritual roots tested.",
+     "The chosen disciples depart, leaving the rest behind."
+    ],
+    "filled": 3,
+    "advances_on": [],
+    "reverses_on": [],
+    "interval_s": 86400,
+    "next_step_s": 345600,
+    "owner_id": null,
+    "thread_id": "sect-trials",
+    "status": "ended",
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "pending_events": {
+   "event-1": {
+    "id": "event-1",
+    "kind": "world.clock_step",
+    "title": "Sect Recruitment: The Jade Peak Sect heralds arrive in Greenwood.",
+    "due_s": 86400,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "applied",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": {
+     "kind": "clock",
+     "ref_id": "sect-recruitment",
+     "text": ""
+    },
+    "payload": {
+     "clock_id": "sect-recruitment"
+    },
+    "seed": "story=play%2Fw-ring/timeline=main/turn=1/world/schedule/event-1",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": 2,
+    "applied_s": 86400
+   },
+   "event-2": {
+    "id": "event-2",
+    "kind": "world.old_age",
+    "title": "Your years run short",
+    "due_s": 2002468992,
+    "timeline_id": "main",
+    "needs_player": true,
+    "status": "pending",
+    "subject_ids": [
+     "player"
+    ],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "phase": "near",
+     "who": "player",
+     "span": 80,
+     "day_s": 2064049511
+    },
+    "seed": "story=play%2Fw-ring/timeline=main/turn=1/world/schedule/event-2",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-3": {
+    "id": "event-3",
+    "kind": "world.tick",
+    "title": "The world moves on",
+    "due_s": 86400,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "applied",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "last_s": 0,
+     "stride_s": 86400
+    },
+    "seed": "story=play%2Fw-ring/timeline=main/turn=1/world/schedule/event-3",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": 2,
+    "applied_s": 86400
+   },
+   "event-4": {
+    "id": "event-4",
+    "kind": "world.clock_step",
+    "title": "Sect Recruitment: The youth of the village line up to have their spiritual roots tested.",
+    "due_s": 172800,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "applied",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": {
+     "kind": "clock",
+     "ref_id": "sect-recruitment",
+     "text": ""
+    },
+    "payload": {
+     "clock_id": "sect-recruitment"
+    },
+    "seed": "story=play%2Fw-ring/timeline=main/turn=1/world/schedule/event-1/schedule/event-4",
+    "created_turn": 2,
+    "created_s": 86400,
+    "applied_turn": 2,
+    "applied_s": 172800
+   },
+   "event-5": {
+    "id": "event-5",
+    "kind": "world.tick",
+    "title": "The world moves on",
+    "due_s": 172800,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "applied",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "last_s": 86400,
+     "stride_s": 86400
+    },
+    "seed": "story=play%2Fw-ring/timeline=main/turn=1/world/schedule/event-3/schedule/event-5",
+    "created_turn": 2,
+    "created_s": 86400,
+    "applied_turn": 2,
+    "applied_s": 172800
+   },
+   "event-6": {
+    "id": "event-6",
+    "kind": "world.clock_step",
+    "title": "Sect Recruitment: The chosen disciples depart, leaving the rest behind.",
+    "due_s": 259200,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "applied",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": {
+     "kind": "clock",
+     "ref_id": "sect-recruitment",
+     "text": ""
+    },
+    "payload": {
+     "clock_id": "sect-recruitment"
+    },
+    "seed": "story=play%2Fw-ring/timeline=main/turn=1/world/schedule/event-1/schedule/event-4/schedule/event-6",
+    "created_turn": 2,
+    "created_s": 172800,
+    "applied_turn": 2,
+    "applied_s": 259200
+   },
+   "event-7": {
+    "id": "event-7",
+    "kind": "world.tick",
+    "title": "The world moves on",
+    "due_s": 259200,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "applied",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "last_s": 172800,
+     "stride_s": 86400
+    },
+    "seed": "story=play%2Fw-ring/timeline=main/turn=1/world/schedule/event-3/schedule/event-5/schedule/event-7",
+    "created_turn": 2,
+    "created_s": 172800,
+    "applied_turn": 2,
+    "applied_s": 259200
+   },
+   "event-8": {
+    "id": "event-8",
+    "kind": "clock_end",
+    "title": "The chosen disciples depart, leaving the rest behind.",
+    "due_s": 259200,
+    "timeline_id": "main",
+    "needs_player": true,
+    "status": "applied",
+    "subject_ids": [
+     "li-wei"
+    ],
+    "place_id": null,
+    "origin": {
+     "kind": "clock",
+     "ref_id": "sect-recruitment",
+     "text": ""
+    },
+    "payload": {
+     "clock_id": "sect-recruitment",
+     "event": {
+      "brief": "Sect Recruitment: The chosen disciples depart, leaving the rest behind."
+     }
+    },
+    "seed": "story=play%2Fw-ring/timeline=main/turn=1/world/schedule/event-1/schedule/event-4/schedule/event-6/schedule/event-8",
+    "created_turn": 2,
+    "created_s": 259200,
+    "applied_turn": 2,
+    "applied_s": 259200
+   },
+   "event-9": {
+    "id": "event-9",
+    "kind": "world.tick",
+    "title": "The world moves on",
+    "due_s": 345600,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "last_s": 259200,
+     "stride_s": 86400
+    },
+    "seed": "story=play%2Fw-ring/timeline=main/turn=1/world/schedule/event-3/schedule/event-5/schedule/event-7/schedule/event-9",
+    "created_turn": 2,
+    "created_s": 259200,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-10": {
+    "id": "event-10",
+    "kind": "world.rumor",
+    "title": "Word reaches Greenwood Fields: Sect Recruitment: The chosen disciples depart, leaving the rest behind.",
+    "due_s": 262210,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": "greenwood-fields",
+    "origin": null,
+    "payload": {
+     "rumor_id": "rumor-1",
+     "place_id": "greenwood-fields",
+     "hops_left": 2,
+     "accuracy": 89
+    },
+    "seed": "story=play%2Fw-ring/timeline=main/turn=1/world/schedule/event-1/schedule/event-4/schedule/event-6/schedule/event-8/schedule/event-10",
+    "created_turn": 2,
+    "created_s": 259200,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-11": {
+    "id": "event-11",
+    "kind": "world.word",
+    "title": "Word of a deed may get out",
+    "due_s": 261473,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "deed_id": "deed-1",
+     "again": false
+    },
+    "seed": "story=play%2Fw-ring/timeline=main/turn=3/play_out/step/0/deed/0/schedule/event-11",
+    "created_turn": 3,
+    "created_s": 259260,
+    "applied_turn": null,
+    "applied_s": null
+   }
+  },
+  "transfers": [],
+  "time_effects": [],
+  "scene": {
+   "place_id": "mountain-cave",
+   "present_ids": [
+    "master-mo",
+    "li-wei"
+   ],
+   "positions": [
+    "You are sitting cross-legged on the floor.",
+    "Master Mo's spirit hovers faintly near your hand.",
+    "Li Wei stands blocking the cave mouth."
+   ],
+   "props": [
+    "ancient-ring",
+    "rusty-hoe"
+   ],
+   "ended_on": "Li Wei sneers down at you, blocking the exit with his arms folded, while Master Mo hovers silently by your side.",
+   "encounter": null
+  },
+  "director": {
+   "turns_without_stakes": 0,
+   "low_stakes_streak": 0,
+   "last_action_key": null,
+   "last_event_turn": 2,
+   "last_event_size": "personal",
+   "last_event_s": {
+    "personal": 259200
+   },
+   "last_small_s": null,
+   "recent_moments": [],
+   "recent_clock": [
+    0,
+    259200,
+    259260
+   ],
+   "frequency_drift": 0.0,
+   "recent_sources": [],
+   "auto_pictures": 3,
+   "picture_credit": 1.3,
+   "pictured": [
+    "portrait:player",
+    "portrait:player:v1",
+    "cover",
+    "portrait:master-mo",
+    "portrait:master-mo:v1"
+   ],
+   "fight": null,
+   "deck_draws": 0,
+   "road_stops": 0
+  },
+  "summary": "A farm boy with no talent for cultivation finds an ancient ring in a hidden cave. Inside the ring lies the soul of a powerful master from a bygone era, offering a path to power.",
+  "chapters": [],
+  "id_counters": {
+   "fact": 6,
+   "goal": 0,
+   "bond": 0,
+   "event": 11,
+   "rumor": 1,
+   "deed": 1
+  },
+  "fallen": [],
+  "opening_due": false,
+  "misses_in_a_row": 0,
+  "openings": [],
+  "journey": null,
+  "untold": []
+ },
+ "scenes": [
+  {
+   "turn": 1,
+   "narration": "In the cold, damp gloom of the mountain cave, you crouch among the wet stones. Your fingers brush a heavy, tarnished bronze ring half-buried in the dirt. At your touch, the ancient metal thrums, and a soft, golden light spills from its runic carvings, washing over the dark cavern walls. The air grows warm and heavy with wild qi, humming against your blocked meridians like a distant drum.\n\nFrom the ring, a mist of silver spiritual light rises, swirling into the translucent form of an old man. His long silver beard and ancient robes float as if underwater. Master Mo looks down at you with a sharp, critical eye that seems to pierce straight through your soul.\n\n\"A mortal boy with completely ruined pathways,\" a dry, echoing voice whispers directly inside your mind, sounding deeply unimpressed. \"To think my long slumber would be broken by one who cannot even draw a single breath of qi. Tell me, boy, why should I not return to my sleep and leave you to rot in this dirt?\"",
+   "player_action": null
+  },
+  {
+   "turn": 2,
+   "narration": "You sit cross-legged on the damp cave floor, gritting your teeth as you attempt to draw the ambient qi through standard breathing methods. You focus your unyielding will, dragging the warm spiritual energy toward your chest, but it slams uselessly against your completely blocked meridians, dispersing into nothingness.\n\nFor three grueling days, you stubbornly repeat the cycle. You ignore the damp chill and push your endurance to its absolute limit, yet your pathways remain stubbornly sealed. Floating above his glowing bronze ring, Master Mo watches your futile struggles with a dry, knowing sigh. \"Stupidity is not a substitute for open pathways, boy,\" his whispering voice echoes in your mind.\n\nOn the morning of the fourth day, heavy footsteps crunch on the gravel outside. The briars at the cave's mouth are cast aside, and Li Wei steps into the dim light, his expensive silk robes looking entirely out of place in the dirt. He sneers at your dusty, exhausted form.\n\n\"So this is where the village trash has been hiding,\" Li Wei mocks, folding his arms. \"The Jade Peak Sect recruitment elders have arrived in the village plaza. I came to ensure you don't embarrass Greenwood by showing your pathetic face at the trials.\"",
+   "player_action": "I stay in the mountain cave and cultivate for a week."
+  },
+  {
+   "turn": 3,
+   "narration": "Sitting cross-legged on the cold stone, you look up at the youth blocking the light. You keep your voice steady, trying to carry yourself with a calm that belies your sore limbs. \"What has been happening while I was away?\" you ask, your rustic accent echoing in the damp space.\n\nLi Wei lets out a sharp, barking laugh, the silk of his sleeves rustling as he slaps his knee. He has no intention of making polite conversation with the village joke. \"Are you deaf as well as useless, Xiao Chen?\" he sneers, stepping further into the cave and kicking a loose pebble toward your knee. \"I just told you. The grand Jade Peak Sect has arrived. The village square is packed with actual talent. But I suppose a dirt-scratcher like you wouldn't understand. You've spent a week shivering in a hole while the rest of Greenwood prepares for glory.\"\n\nFrom the bronze ring on your finger, a faint prickle of warmth stirs. Master Mo's translucent figure drifts slightly closer, though he remains invisible to Li Wei's arrogant eyes. The ancient spirit's dry whisper ripples into your mind, ignoring the bully entirely. *\"A minor cultivator at the gate, and you ask him for gossip? If you spent half as much effort seeking an unorthodox path as you do questioning fools, your meridians might already be clear.\"*",
+   "player_action": "I ask what happened while I was away."
+  }
+ ],
+ "choices": [
+  "Push past Li Wei to head for the village square trials.",
+  "Ask Master Mo in my mind for an unorthodox path.",
+  "Grab my rusty hoe and demand he get out of my way."
+ ],
+ "cost_usd": 0.20602933,
+ "draft": {
+  "premise": "A farm boy with no talent for cultivation at all, the worst in his village. One day he finds a ring with the soul of an ancient master inside.",
+  "proposal": {
+   "world": {
+    "title": "Echoes of the Ancient Path",
+    "genre": "cultivation",
+    "tone": "wonder",
+    "era": "Ancient Eastern fantasy: simple farming tools, spiritual herbs, and powerful sects.",
+    "extraordinary": [
+     {
+      "id": "qi",
+      "kind": "qi cultivation",
+      "prevalence": "common",
+      "reach": "Cultivators can manipulate elements, fly on swords, and attain immortality."
+     },
+     {
+      "id": "ancient-souls",
+      "kind": "spirit remnants",
+      "prevalence": "rare",
+      "reach": "Souls of dead masters can bind to spiritual vessels, sharing knowledge and guidance."
+     }
+    ],
+    "rules": [
+     {
+      "id": "qi-flow",
+      "text": "Qi flows through all living things and can be gathered to refine the body and soul.",
+      "fixed": true,
+      "topic": "existence",
+      "about": [
+       "qi"
+      ]
+     },
+     {
+      "id": "meridian-limit",
+      "text": "A person's talent is decided by their meridians; blocked meridians cannot normally absorb qi.",
+      "fixed": true,
+      "topic": "nature",
+      "about": [
+       "qi"
+      ]
+     },
+     {
+      "id": "soul-preservation",
+      "text": "An ancient soul bound to an object cannot cross over to the afterlife until the object is destroyed.",
+      "fixed": false,
+      "topic": "limits",
+      "about": [
+       "ancient-souls"
+      ]
+     }
+    ],
+    "dropped_rule_ids": [],
+    "peoples": [
+     {
+      "id": "human",
+      "name": "Human",
+      "description": "",
+      "lifespan_years": 80,
+      "gifts": [],
+      "culture": "A society organized around agrarian villages and grand cultivation sects.",
+      "relations": [],
+      "path": ""
+     }
+    ],
+    "creatures": [
+     {
+      "id": "spirit-wolf",
+      "name": "Spiritual Wolf",
+      "description": "A forest beast infused with wild qi, dangerous to mortals.",
+      "rung": "Qi Condensation",
+      "habitat": "Azure Hills forests",
+      "worth": "Qi core and spiritual fur",
+      "can_be_tamed": true
+     }
+    ],
+    "nature": [
+     "Gravity is slightly weaker near high-qi spiritual veins, allowing for massive floating peaks."
+    ],
+    "ladders": [
+     {
+      "id": "cultivation-realms",
+      "name": "cultivation realms",
+      "axis": "might",
+      "rungs": [
+       {
+        "name": "Qi Condensation",
+        "description": "Gathering qi into the meridians to strengthen the physical body.",
+        "lifespan_years": 100
+       },
+       {
+        "name": "Foundation Establishment",
+        "description": "Purifying the gathered qi into a liquid spiritual sea.",
+        "lifespan_years": 200
+       },
+       {
+        "name": "Core Formation",
+        "description": "Condensing the spiritual sea into a solid golden core of immense power.",
+        "lifespan_years": 500
+       },
+       {
+        "name": "Nascent Soul",
+        "description": "Birthing a spiritual avatar within, granting true flight and massive lifespan.",
+        "lifespan_years": 1000
+       },
+       {
+        "name": "Soul Transformation",
+        "description": "Merging the mortal body with the spiritual soul, becoming a demigod.",
+        "lifespan_years": 3000
+       }
+      ],
+      "known_to_all": 3,
+      "sensing": true,
+      "standing_follows": true,
+      "lengthens_life": true
+     }
+    ],
+    "calendar": {
+     "style": "day_count",
+     "clock_time": false,
+     "epoch": "",
+     "start_hour": 8,
+     "months": [],
+     "start_year": 1,
+     "start_month": 1,
+     "start_day": 1,
+     "era": ""
+    },
+    "travel": {
+     "description": "Most travel on foot or by horse-drawn cart. High-level cultivators fly on spiritual swords.",
+     "instant_messages": false
+    },
+    "medicine": {
+     "healing": "Spiritual herbs and qi-infused pills can mend broken bones in hours.",
+     "resurrection": "none",
+     "resurrection_means": ""
+    },
+    "laws": [
+     {
+      "id": "sect-law",
+      "text": "Cultivators must not slaughter mortals without cause.",
+      "enforcer": "Disciplinary Hall Elders",
+      "enforcer_faction_id": "jade-peak-sect",
+      "zeal": "high",
+      "corruptible": false
+     }
+    ],
+    "norms": [],
+    "several_partners": false,
+    "unions": "held",
+    "places": [
+     {
+      "id": "azure-hills",
+      "name": "Azure Hills",
+      "kind": "region",
+      "description": "A picturesque, mist-shrouded region of rolling green hills and deep forests.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "greenwood-village",
+      "name": "Greenwood Village",
+      "kind": "village",
+      "description": "A small, quiet farming village nestled at the foot of the mountains.",
+      "parent_id": "azure-hills",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "azure-hills",
+        "travel_hours": 1.0,
+        "mode": "on foot"
+       }
+      ]
+     },
+     {
+      "id": "greenwood-fields",
+      "name": "Greenwood Fields",
+      "kind": "wilds",
+      "description": "The terraced rice and barley fields where the villagers labor daily.",
+      "parent_id": "greenwood-village",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "greenwood-village",
+        "travel_hours": 0.5,
+        "mode": "on foot"
+       }
+      ]
+     },
+     {
+      "id": "mountain-cave",
+      "name": "Damp Cave",
+      "kind": "wilds",
+      "description": "A cool, dark cave hidden behind thick briars at the edge of the fields.",
+      "parent_id": "greenwood-fields",
+      "setting": "underground",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "greenwood-fields",
+        "travel_hours": 0.1,
+        "mode": "on foot"
+       }
+      ]
+     },
+     {
+      "id": "jade-peak-sect",
+      "name": "Jade Peak Sect",
+      "kind": "building",
+      "description": "A towering sect built upon steep mountain peaks, home to proud cultivators.",
+      "parent_id": "azure-hills",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "greenwood-village",
+        "travel_hours": 6.0,
+        "mode": "on foot"
+       }
+      ]
+     }
+    ],
+    "factions": [
+     {
+      "id": "jade-peak-sect",
+      "name": "Jade Peak Sect",
+      "kind": "sect",
+      "description": "The dominant cultivation sect of the Azure Hills, recruiting talented youths.",
+      "parent_id": "",
+      "leader_ids": [],
+      "goal": "",
+      "methods": "",
+      "strength": "",
+      "relations": [],
+      "secrets": [],
+      "known_to_player": true
+     },
+     {
+      "id": "greenwood-council",
+      "name": "Greenwood Elder Council",
+      "kind": "court",
+      "description": "The group of village elders who handle farming disputes and yearly taxes.",
+      "parent_id": "",
+      "leader_ids": [],
+      "goal": "",
+      "methods": "",
+      "strength": "",
+      "relations": [],
+      "secrets": [],
+      "known_to_player": true
+     }
+    ],
+    "npcs": [
+     {
+      "id": "master-mo",
+      "name": "Master Mo",
+      "aliases": [
+       "The Ancient Master"
+      ],
+      "description": "A wispy, floating spirit with a critical eye, sharp wit, and centuries of lost knowledge.",
+      "appearance": "A translucent old man wearing flowing robes of a bygone era, with long silver hair and beard.",
+      "age": 3000,
+      "people_id": "human",
+      "location_id": "mountain-cave",
+      "memberships": [],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "stern",
+        "knowledgeable",
+        "demanding"
+       ],
+       "values": [
+        "legacy",
+        "excellence"
+       ],
+       "loves": [
+        "rare herbs",
+        "diligent students"
+       ],
+       "fears": [
+        "fading away completely"
+       ],
+       "wants": [
+        "to find a worthy successor and rebuild his physical body"
+       ],
+       "voice": "A dry, echoing whisper that speaks directly into your mind."
+      },
+      "attributes": {
+       "strength": 1,
+       "speed": 1,
+       "toughness": 1,
+       "wits": 5,
+       "knowledge": 5,
+       "willpower": 5,
+       "charm": 3,
+       "nerve": 4,
+       "bearing": 5
+      },
+      "skills": [
+       {
+        "name": "Qi Mastery",
+        "level": "master",
+        "notes": ""
+       },
+       {
+        "name": "Alchemy",
+        "level": "expert",
+        "notes": ""
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 0,
+       "fear": 0,
+       "trust": 0,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": true,
+      "agenda": {
+       "goal": "Test the player character's resolve and teach them unorthodox cultivation paths.",
+       "method": "Using spiritual resonance from the ring to guide the player's internal energy.",
+       "secret": "",
+       "clock_id": ""
+      },
+      "secrets": [
+       "He was betrayed by his own disciples, which is how his soul became sealed in the ring."
+      ],
+      "player_knows": "unknown"
+     },
+     {
+      "id": "li-wei",
+      "name": "Li Wei",
+      "aliases": [],
+      "description": "The arrogant son of the village chief, widely considered the most talented youth in Greenwood.",
+      "appearance": "A tall, broad-shouldered youth wearing fine silk robes that are too expensive for a farmer.",
+      "age": 16,
+      "people_id": "human",
+      "location_id": "greenwood-village",
+      "memberships": [
+       {
+        "faction_id": "greenwood-council",
+        "rank": "Chief's Heir",
+        "loyalty": 50
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "arrogant",
+        "impatient",
+        "ambitious"
+       ],
+       "values": [
+        "strength",
+        "status"
+       ],
+       "loves": [
+        "praise",
+        "fine tea"
+       ],
+       "fears": [
+        "failure",
+        "humiliation"
+       ],
+       "wants": [
+        "to join the Jade Peak Sect and leave this village behind"
+       ],
+       "voice": "Loud, mocking, and overly confident."
+      },
+      "attributes": {
+       "strength": 3,
+       "speed": 3,
+       "toughness": 3,
+       "wits": 2,
+       "knowledge": 2,
+       "willpower": 2,
+       "charm": 2,
+       "nerve": 3,
+       "bearing": 3
+      },
+      "skills": [
+       {
+        "name": "Martial Arts",
+        "level": "novice",
+        "notes": ""
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 0,
+       "fear": 0,
+       "trust": 0,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "met"
+     }
+    ],
+    "clocks": [
+     {
+      "id": "sect-recruitment",
+      "name": "Sect Recruitment",
+      "steps": [
+       "The Jade Peak Sect heralds arrive in Greenwood.",
+       "The youth of the village line up to have their spiritual roots tested.",
+       "The chosen disciples depart, leaving the rest behind."
+      ],
+      "step_every_hours": 24.0,
+      "owner_id": "",
+      "thread_id": "",
+      "known_to_player": true
+     }
+    ],
+    "threads": [
+     {
+      "id": "awaken-master",
+      "title": "The Master's Guidance",
+      "kind": "quest",
+      "stakes": "Gaining the ancient master's trust and learning his lost techniques.",
+      "involved_ids": [
+       "player",
+       "master-mo"
+      ],
+      "clock_id": "",
+      "known_to_player": true
+     },
+     {
+      "id": "sect-trials",
+      "title": "Jade Peak Sect Trials",
+      "kind": "ambition",
+      "stakes": "Escaping village life and gaining access to real cultivation resources.",
+      "involved_ids": [
+       "player",
+       "li-wei"
+      ],
+      "clock_id": "sect-recruitment",
+      "known_to_player": true
+     }
+    ],
+    "mysteries": [
+     {
+      "id": "mo-origin",
+      "question": "Who was the master trapped inside the ring?",
+      "answer": "Master Mo was once the Grand Elder of a rival sect that was destroyed by Jade Peak's founders.",
+      "clues": [
+       "An inscription on the inside of the ring matching an ancient, forbidden sect crest.",
+       "Master Mo's extreme hostility whenever the Jade Peak Sect's founding ancestors are mentioned."
+      ],
+      "thread_id": "awaken-master",
+      "known_to_player": false
+     }
+    ],
+    "known_facts": [
+     "You have blocked meridians, which makes you unable to cultivate qi through normal breathing exercises.",
+     "The village bullies, led by Li Wei, mock you constantly for being the worst in Greenwood.",
+     "The Jade Peak Sect is holding its recruitment trial in three days."
+    ],
+    "opening": {
+     "place_id": "mountain-cave",
+     "present_ids": [
+      "player"
+     ],
+     "positions": [],
+     "props": [
+      "ancient-ring"
+     ],
+     "situation": "In a dark corner of a damp cave near your family's fields, your fingers brush against a cold, dust-covered ring that suddenly thrums with a faint, warm light."
+    },
+    "summary": "A farm boy with no talent for cultivation finds an ancient ring in a hidden cave. Inside the ring lies the soul of a powerful master from a bygone era, offering a path to power."
+   },
+   "character": {
+    "name": "Xiao Chen",
+    "aliases": [
+     "The No-Talent Boy"
+    ],
+    "age": 15,
+    "lifespan_years": 80,
+    "people_id": "human",
+    "description": "A scruffy, hardworking farm boy with calloused hands and a stubborn glint in his eyes.",
+    "appearance": "Messy black hair tied with a simple hemp string, a wiry build from years of farm work, wearing a patched grey cotton tunic.",
+    "location_id": "mountain-cave",
+    "attributes": {
+     "strength": 3,
+     "speed": 3,
+     "toughness": 4,
+     "wits": 3,
+     "knowledge": 1,
+     "willpower": 5,
+     "charm": 3,
+     "nerve": 4,
+     "bearing": 2
+    },
+    "skills": [
+     {
+      "name": "Farming",
+      "level": "skilled",
+      "notes": "Excellent at weeding, planting, and predicting the weather."
+     },
+     {
+      "name": "Endurance",
+      "level": "fair",
+      "notes": "Accustomed to working long hours under the hot sun."
+     }
+    ],
+    "traits": [
+     {
+      "name": "Blocked Meridians",
+      "kind": "flaw",
+      "description": "Your pathways for qi are completely clogged, making standard cultivation exercises useless."
+     },
+     {
+      "name": "Unyielding Will",
+      "kind": "gift",
+      "description": "The harder things get, the more stubborn you become. Mental attacks struggle to shake you."
+     }
+    ],
+    "talents": [
+     {
+      "name": "Cultivation Talent",
+      "covers": "Gathering and refining ambient qi through standard breathing methods.",
+      "strength": "slow",
+      "general": false,
+      "reason": ""
+     }
+    ],
+    "powers": [],
+    "techniques": [],
+    "temperament": {
+     "traits": [
+      "stubborn",
+      "resilient",
+      "diligent"
+     ],
+     "values": [
+      "family",
+      "persistence"
+     ],
+     "loves": [
+      "a warm meal",
+      "quiet moments in nature"
+     ],
+     "fears": [
+      "remaining weak forever",
+      "letting his family down"
+     ],
+     "wants": [],
+     "voice": "Polite but firm, with a slightly rough rustic accent."
+    },
+    "items": [
+     {
+      "name": "Ancient Ring",
+      "kind": "treasure",
+      "description": "A heavy, tarnished bronze ring carved with foreign spiritual runes. It feels warm to the touch.",
+      "quantity": 1,
+      "carried": true
+     },
+     {
+      "name": "Rusty Hoe",
+      "kind": "gear",
+      "description": "A well-worn farming implement with a chipped wooden shaft.",
+      "quantity": 1,
+      "carried": true
+     }
+    ],
+    "money": 12,
+    "currency": "copper coins",
+    "title": "Mortal Farmer",
+    "rank": "Mortally Bound",
+    "family_name": "",
+    "connections": [],
+    "parent_ids": [],
+    "memberships": [],
+    "ladders": [],
+    "axes": {
+     "might": 1,
+     "influence": 1,
+     "wealth": 1,
+     "knowledge": 1,
+     "stealth": 1
+    },
+    "reserves": [],
+    "goals": [],
+    "backstory": [],
+    "hidden_past": []
+   }
+  },
+  "rating": "teen",
+  "premise_id": null,
+  "physics": "fun_first",
+  "gift": null,
+  "released_rules": [],
+  "language": "en",
+  "told": []
+ }
+}
