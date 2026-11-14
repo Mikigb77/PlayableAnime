@@ -307,6 +307,90 @@ def test_words_that_only_tell_of_it_say_no_aim(said, aim, language):
     assert not aimed(said, aim, language)
 
 
+@pytest.mark.parametrize(
+    ("said", "aim", "language"),
+    [
+        # The first plays on the real models (2026-11-14): "I want to be a pirate" showed no
+        # goal, since the drafter says the deed in a verb of its own.
+        ("I want to be a pirate.", "Become a pirate", EN),
+        ("I'm seeking revenge on the clan that burned my village.", "Avenge my village", EN),
+        ("Quiero ser caballero.", "Convertirme en caballero", ES),
+        ("Vull ser cavaller.", "Esdevenir cavaller", CA),
+    ],
+)
+def test_an_aim_said_in_another_verb_is_the_players_too(said, aim, language):
+    # The sentence says an aim and what follows the aim's first word, the deed.
+    assert not named(said, aim, language)
+    assert aimed(said, aim, language)
+
+
+@pytest.mark.parametrize(
+    ("said", "aim", "language"),
+    [
+        (
+            "My lifespan of 150 years is almost spent: I break through to Core Formation or I die.",
+            "Break through to Core Formation or I die.",
+            EN,
+        ),
+        ("We hold the pass or we'll die here.", "Hold the pass", EN),
+        ("O encuentro a mi hermana o muero.", "Encontrar a mi hermana", ES),
+        ("O trobo la meva germana o moro.", "Trobar la meva germana", CA),
+    ],
+)
+def test_what_it_is_to_them_says_an_aim(said, aim, language):
+    # "I do it or I die" says what the character is after as surely as "I must".
+    assert aimed(said, aim, language)
+
+
+@pytest.mark.parametrize(
+    ("said", "aim", "language"),
+    [
+        # What the real drafter made of premises that say no aim (2026-11-14).
+        (
+            "I'm a young blacksmith in a small medieval village, hopelessly in love with the "
+            "miller's wife.",
+            "Win the miller's wife's heart",
+            EN,
+        ),
+        (
+            "A 17-year-old chess prodigy who just enrolled in an elite academy where "
+            "everything, even your rank, is decided by strategy games.",
+            "Climb to the rank of King",
+            EN,
+        ),
+        (
+            "A beautiful courtesan and spy in the imperial capital. She can make almost anyone "
+            "fall for her, and she uses it to steal secrets for the rebellion.",
+            "Steal the palace guard schedules from Minister Gong",
+            EN,
+        ),
+        (
+            "A 300-year-old elf ranger, still young for her kind, guarding a forest that humans "
+            "have started to cut down.",
+            "Guard the forest from the human lumberjacks.",
+            EN,
+        ),
+        (
+            "Sóc un pescador vell de Cadaqués, de setanta-vuit anys. Un matí trobo una sirena "
+            "ferida a la xarxa.",
+            "Curar la sirena ferida",
+            CA,
+        ),
+        # An aim the premise says, made into more than it said.
+        (
+            "I want to be a pirate.",
+            "Become a legendary pirate captain and sail the open ocean.",
+            EN,
+        ),
+        # The deed alone is no aim's name: another verb needs the rest of it said.
+        ("I want to win.", "Win the tournament", EN),
+        ("I pay the debt every month.", "Pay the debt", EN),
+    ],
+)
+def test_what_a_drafter_makes_of_a_premise_is_no_aim_of_the_players(said, aim, language):
+    assert not aimed(said, aim, language)
+
+
 def test_an_aim_is_said_about_what_it_names():
     # A word for wanting says an aim only of what its own words name.
     assert not aimed("I want to win the tournament.", "Find out who killed my father", EN)

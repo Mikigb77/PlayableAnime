@@ -477,14 +477,14 @@ def test_a_goal_is_theirs_once_their_words_say_it_as_an_aim(fake, llm):
 
 
 def test_a_story_opens_on_the_drafts_state_with_what_was_read_and_what_was_not():
-    # G1, G18, C6: the rung the draft's rules named is heard of, and the rival, the elder, the
-    # goal and the tournament, which the bare premise never named, are held back from Memory.
+    # G1, G18, C6: the rung the draft's rules named is heard of, and the rival, the elder and
+    # the tournament, which the bare premise never named, are held back from Memory.
     draft = _cultivation_draft()
 
     opened = chain.opening(draft)
 
     assert ("realms", 4) in [(h.ladder_id, h.rung) for h in opened.player.sheet.rungs_heard]
-    assert opened.untold == ["goal:goal-1", "person:elder-mo", "person:zhao", "thread:tournament"]
+    assert opened.untold == ["person:elder-mo", "person:zhao", "thread:tournament"]
     assert (memory_view(opened).people, memory_view(opened).goals) == ([], [])
     # The draft's own state is the one its screen reads, and is never changed.
     assert (draft.state().untold, draft.state().player.sheet.rungs_heard) == ([], [])
@@ -492,10 +492,48 @@ def test_a_story_opens_on_the_drafts_state_with_what_was_read_and_what_was_not()
 
     # What a change of theirs named is theirs to see from the first moment.
     asked = _cultivation_draft(told=frozenset({"person:zhao", "clock:tournament"}))
-    assert chain.opening(asked).untold == ["goal:goal-1", "person:elder-mo"]
+    assert chain.opening(asked).untold == ["person:elder-mo"]
     # A draft whose every opener their words named holds nothing back.
     spoken = "I must survive the ranking tournament. Zhao Kun and Elder Mo are watching me."
     assert chain.opening(replace(draft, premise=spoken)).untold == []
+
+
+def test_a_story_starts_with_no_goal_and_no_want_its_player_never_gave(fake, llm):
+    # G1, G2, N2: what the character is after is the player's to say. The drafter wrote a goal
+    # and a want the bare premise never said as an aim, so the story starts with neither, on
+    # record as on its screens: no scene is told toward an aim the player can't see.
+    draft = _cultivation_draft()
+
+    def aims(draft: chain.Draft) -> tuple[list[str], list[str]]:
+        opened = chain.opening(draft)
+        goals = [goal.text for goal in opened.goals.values()]
+        return goals, opened.player.sheet.disposition.temperament.wants
+
+    assert aims(draft) == ([], [])
+    # The draft itself keeps what the drafter wrote, for a change of theirs to name.
+    assert [goal.text for goal in draft.state().goals.values()] == [
+        "Survive the ranking tournament."
+    ]
+
+    # An aim their premise says is theirs from the first moment, and shows in Memory.
+    sworn = replace(draft, premise=f"{draft.premise} I must survive the ranking tournament.")
+    assert aims(sworn) == (["Survive the ranking tournament."], [])
+    assert [goal.text for goal in memory_view(chain.opening(sworn)).goals] == [
+        "Survive the ranking tournament."
+    ]
+
+    # So is one a change of theirs gives: asked in plain words anywhere, when it says an aim,
+    # or at the row of what the character is after.
+    fake.script(Node.DRAFTER, Reply(json=CharacterChange(goals=["Find my sister Mei"])))
+    asked = run(chain.revise(llm, draft, "character", "I came to the sect to find my sister Mei."))
+    assert aims(asked) == (["Find my sister Mei"], [])
+    fake.script(Node.DRAFTER, Reply(json=CharacterChange()))
+    at_row = run(chain.revise(llm, draft, "character", "To climb, whatever it costs.", aim=True))
+    assert aims(at_row) == ([], ["to climb"])
+    # A change that speaks of something else gives none.
+    fake.script(Node.DRAFTER, Reply(json=CharacterChange()))
+    other = run(chain.revise(llm, draft, "character", "The ranking tournament is brutal."))
+    assert aims(other) == ([], [])
 
 
 def test_a_deadline_comes_when_the_premise_says_whatever_the_steps_add_up_to(fake, llm):

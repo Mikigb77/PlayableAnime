@@ -4,7 +4,9 @@ A draft's summary never gives away how the story starts (Miki, 2026-11-10): its 
 first event and the first people in the character's life are the story's surprise. So a deadline,
 a question, a goal or a person is shown before the story starts only when the player's own words
 name it: the premise ("the trial of knighthood is in three days") or a change they asked for.
-The drafter still writes the rest, and the story tells it in play.
+The drafter still writes the rest, and the story tells it in play, all but a goal or a want
+their words don't say: that is no surprise but a guess, and the story starts without it
+(`graph.drafting.openers.own_aims`).
 
 Plain Python: no model reads the premise for this. The player's words name a thing (`named`)
 when they say more than two thirds of it, or all of it but one word where two of those words
@@ -17,7 +19,7 @@ nothing else (`called`): what a premise says of its own character ("the weakest 
 disciple") fits half the people around them, so a description names nobody. And what the
 character is after, a goal or a want, is theirs only where a sentence of theirs says it as an
 aim (`aimed`): "the knight exam is in 3 days" names "Pass the knight exam" and says no aim, so
-the goal stays the story's until "I must pass the knight exam" makes it the player's.
+there is no such goal until "I must pass the knight exam" makes it the player's.
 """
 
 import re
@@ -114,10 +116,11 @@ def called(said: str, name: str, language: Language) -> bool:
 
 
 # G1, G2: the words that say a thing as something the character is after, by language: wanting,
-# having to, meaning to, looking for, and the names of an aim, in the first, second and third
-# person a premise is written in. The summary's own labels for a goal and a want are among
-# them, so a line of it the player rewrote says one too. They count only beside the aim's own
-# words (`aimed`), so "going to the market" says none.
+# having to, meaning to, looking for, the names of an aim, and what it is to them ("I break
+# through or I die"), in the first, second and third person a premise is written in. The
+# summary's own labels for a goal and a want are among them, so a line of it the player rewrote
+# says one too. They count only beside the aim's own words (`aimed`), so "going to the market"
+# says none.
 _AIMS = {
     Language.EN: """want(?:s|ed|ing)? wanna wish(?:es|ed)? desires? long(?:s|ing)?_to
         need(?:s|ed)?_to must ha(?:ve|s|d)_to got_to gotta (?:i|we|you)['’]ll
@@ -126,17 +129,20 @@ _AIMS = {
         resolved decided set_out swor[en] swears? vow(?:s|ed)? oath promis(?:e|es|ed)
         looking_for search(?:ing)?_for seek(?:s|ing)? sought hunt(?:s|ing)? chas(?:e|es|ing)
         dream(?:s|ed|t)? goals? ambitions? mission quest purpose objective in_order_to
-        so_as_to so_(?:that_)?(?:i|we|you)_can""",
+        so_as_to so_(?:that_)?(?:i|we|you)_can
+        or_(?:(?:i|we|you|he|she|they)(?:['’]ll|_will)?_)?(?:dies?|perish(?:es)?)""",
     Language.ES: """quier[oea]s? queremos quería quisiera dese[oa]s? ansí[oa]s? necesit[oa]s?
         deb[oe]s? t(?:engo|ienes?)_que h(?:e|as?)_de v(?:oy|as?)_a piens[oa]s? pretend[oe]s?
         intent[oa]s? busc[oa]s? buscando persig[oa] persigues? jur[éoó] juraste jurado
         promet[íoe] prometiste prometido espero sueñ[oa]s? objetivos? metas? ambici[oó]n
-        misi[oó]n prop[oó]sito decidid[oa] con_el_fin_de a_fin_de""",
+        misi[oó]n prop[oó]sito decidid[oa] con_el_fin_de a_fin_de
+        o_(?:me_|se_)?(?:muer[oe]s?|morir[éá]s?)""",
     Language.CA: """vull vols? volem volia voldria desitj[oa] desitges anhel[oa] anheles
         necessit[oa] necessites h(?:e|as?)_de haig_de tinc_de tens_de cal_que penso penses
         pretenc pretens pretén intent[oa] intentes busc[oa] busques buscant persegueix(?:o|es)?
         juro jures jurat vaig_jurar vas_jurar prometo promets promès espero somi[oa] somies
-        somnis? objectius? metes? meta ambició missió propòsit decidi[td]a? per_tal_de a_fi_de""",
+        somnis? objectius? metes? meta ambició missió propòsit decidi[td]a? per_tal_de a_fi_de
+        o_(?:em_|es_)?(?:mor[oi]?s?|morir[éà]s?)""",
 }
 # Each marker stands as whole words; a `_` in one is the space between two of its words.
 _AIM = {
@@ -163,21 +169,23 @@ _NOT_FOR = frozenset(
 def aimed(said: str, text: str, language: Language) -> bool:
     """Whether `said`, the player's own words, say the thing `text` tells of as something the
     character is after: a sentence of theirs says an aim ("I want to", "I must", "my goal is",
-    "looking for", or "to" before the aim's own first word) and names it (`named`), or says its
-    first word where their words as a whole name it, as "Someone killed my father. I will find
-    out who." does for "Find out who killed my father". "I take the knight exam in 3 days" sets
-    a deadline and says no aim, so the goal a drafter makes of it is theirs, not the
-    player's."""
+    "looking for", "or I die", or "to" before the aim's own first word) and names it (`named`),
+    or says its first word where their words as a whole name it, as "Someone killed my father.
+    I will find out who." does for "Find out who killed my father". An aim's first word is the
+    deed, which a drafter says in a verb of its own, so a sentence that says an aim names it
+    also by what follows that word: "I want to be a pirate" gives "Become a pirate". "I take
+    the knight exam in 3 days" sets a deadline and says no aim, so the goal a drafter makes of
+    it is theirs, not the player's."""
     its = content(text, language)
     if not its:
         return False
-    lead = its[0]
+    lead, rest = its[0], " ".join(its[1:])
     whole: bool | None = None
     for sentence in _SENTENCE.split(said):
         words = [core(word) for word in WORD.findall(sentence)]
         if not (_AIM[language].search(sentence) or _done_for(words, lead, language)):
             continue
-        if named(sentence, text, language):
+        if named(sentence, text, language) or named(sentence, rest, language):
             return True
         if any(alike(word, lead) for word in words):
             if whole is None:

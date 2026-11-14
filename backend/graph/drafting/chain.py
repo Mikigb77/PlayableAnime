@@ -25,7 +25,15 @@ from engine.state import GiftStrength, PhysicsMode, WorldState
 from graph.drafting import direct
 from graph.drafting.assemble import DraftOptions, assemble, drafted_clocks, slug
 from graph.drafting.catalog import PremiseTemplate, starter, wordings
-from graph.drafting.openers import Said, carried, clock_times, kept_back, moved, named_by
+from graph.drafting.openers import (
+    Said,
+    carried,
+    clock_times,
+    kept_back,
+    moved,
+    named_by,
+    own_aims,
+)
 from graph.drafting.prompts import (
     current_rules,
     draft_prompt,
@@ -121,8 +129,10 @@ def opening(draft: Draft) -> WorldState:
     read by then (G1, G18, C6). What they read before starting, the character knows from the
     first moment: a rung their own premise or the draft's screen named is one they have heard
     of (`engine.path`). What the screen kept a surprise, the story's own screens hold back
-    until a scene tells it (`engine.untold`). The draft's own state is never changed."""
-    state = draft.state()
+    until a scene tells it (`engine.untold`). What the character is after is no such surprise:
+    a goal or a want the player's words don't say is the drafter's, and the story starts
+    without it (`own_aims`, N2). The draft's own state is never changed."""
+    state = own_aims(draft.state(), draft.language, draft.said)
     read = f"{draft.premise}\n{shown(state, draft.language, draft.said)}"
     state, _ = pipeline.settle_path(state, read)
     kept = kept_back(state, draft.language, draft.said)

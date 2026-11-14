@@ -4,8 +4,13 @@ An opener is one of the things that give a story's start away: a deadline, an op
 key person, a connection of the character's, or a goal or a want of theirs. The drafter writes
 them and the story tells them in play; the summary shows one only when the player's own words
 name it (`graph.drafting.named`). A goal or a want is named only where those words say it as
-something the character is after: "the knight exam is in 3 days" sets a deadline, and the goal a
-drafter makes of it ("Pass the knight exam") is the story's to tell.
+something the character is after: "the knight exam is in 3 days" sets a deadline and no goal.
+
+What the character is after is the player's to say (N2), so a goal or a want their words don't
+say is no surprise the story keeps: it is the drafter's guess, and a story never starts with it
+(`own_aims`). The first plays on the real models (2026-11-14) had such a goal or want in ten
+of twenty drafts ("Win the miller's wife's heart" for a smith in love with her), off the
+player's screens and steering every scene.
 
 The premise is the player's own words, and the draft keeps it, so it is read each time. A change
 they ask for later is not kept: when it is made, code notes which openers its words named
@@ -17,8 +22,9 @@ A deadline their words set a time for comes at that time (`clock_times`, E2): th
 it into steps, and code makes the steps add up to what the player said.
 
 What the summary kept a surprise, the story's own screens keep back too (C6, `engine.untold`):
-the people the character knows, their goals and the threads already running that the player's
-words don't name (`kept_back`) stay off Memory until a scene's own words name them (`told_by`).
+the people the character knows and the threads already running that the player's words don't
+name (`kept_back`) stay off Memory until a scene's own words name them (`told_by`). A story
+started before 2026-11-14 may hold a goal back the same way.
 """
 
 import re
@@ -173,18 +179,36 @@ def clock_times(state: WorldState, words: str, language: Language) -> dict[str, 
     return found
 
 
+def own_aims(state: WorldState, language: Language, said: Said) -> WorldState:
+    """G1, G2, N2: the state with only the aims that are the player's: of the character's
+    active goals and of what they want, each one the player's own words say as an aim (`names`).
+    The drafter is asked to write no other, and writes one all the same, so code drops it: no
+    story starts with an aim its player never gave and can't see. The state itself is never
+    changed: where an aim goes, a new one is returned."""
+    unsaid = [
+        goal.id
+        for goal in state.goals.values()
+        if goal.status is GoalStatus.ACTIVE and not said.names(of_goal(state, goal), language)
+    ]
+    wants = state.player.sheet.disposition.temperament.wants
+    theirs = [want for want in wants if said.names(of_want(state, want), language)]
+    if not unsaid and theirs == wants:
+        return state
+    kept = state.model_copy(deep=True)
+    for goal_id in unsaid:
+        del kept.goals[goal_id]
+    kept.player.sheet.disposition.temperament.wants = theirs
+    return kept
+
+
 def kept_back(state: WorldState, language: Language, said: Said) -> list[str]:
     """G1, C6: what a story holds back from the player's screens when it starts, as the keys of
-    `engine.untold`: of the people the character knows, their goals and the threads they know
-    of, each one the player's own words don't name. It is what the draft's summary kept a
-    surprise, so a story never shows on its first screen what the draft wouldn't."""
+    `engine.untold`: of the people the character knows and the threads they know of, each one
+    the player's own words don't name. It is what the draft's summary kept a surprise, so a
+    story never shows on its first screen what the draft wouldn't. A goal is never among them:
+    the story starts with the player's own alone (`own_aims`)."""
     you = state.player_id
     keys = [untold.key(untold.PERSON, c.id) for c in state.npcs() if you in c.known_by]
-    keys += [
-        untold.key(untold.GOAL, goal.id)
-        for goal in state.goals.values()
-        if goal.status is GoalStatus.ACTIVE
-    ]
     keys += [untold.key(untold.THREAD, t.id) for t in state.threads.values() if you in t.known_by]
     return sorted(
         key
@@ -222,8 +246,9 @@ def told_by(state: WorldState, scene: str, language: Language) -> list[str]:
 
 def _behind(state: WorldState, key: str) -> list[Opener]:
     """The openers that stand for a record the story's screens hold back: the person, the
-    goal, or the thread with the deadline it follows and the questions it carries, since words
-    that name the tournament have named its thread."""
+    goal (in a story started before 2026-11-14), or the thread with the deadline it follows
+    and the questions it carries, since words that name the tournament have named its
+    thread."""
     kind, _, record_id = key.partition(":")
     if kind == untold.PERSON:
         character = state.characters.get(record_id)
