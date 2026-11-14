@@ -1735,7 +1735,25 @@ flowchart LR
   id, and the change's references to the new id move with it. A removal takes the record from the
   list it names (also in the singular), or else from the one list that holds its id, and from
   none when several or none do. A text or list the change leaves empty stays as it was. A change
-  to the character still comes back as the whole character, which is small. Direct edits
+  to the character comes back the same way (`schema.CharacterChange`, G2), and
+  `chain.apply_character_change` merges it in. Nothing in the form is required, so "call her
+  Nora" is answered with a name. A text left empty, a number or a whole list left null and an
+  attribute, a tier or a part of the temperament left null stay as they were, and a text is
+  emptied only when the change lists it in `cleared`. In the lists of records (skills, traits,
+  talents, powers, techniques, items, connections, memberships, ladders, reserves) a record
+  under a name the character already has (`CHARACTER_KEYS`: the name, a power's id or name, a
+  membership's faction, a ladder position's ladder) changes that record only in the fields the
+  answer gives (`model_fields_set`), and a null in a record says nothing, so a power whose
+  limits change keeps its kind, its costs, its hold on time and that it is the gift. A record
+  under a new name is added when it has what a record needs (`PowerChange` and
+  `LadderPositionChange` let one the character has be given without its kind or its rung), and
+  one listed in `removed` goes, from the list it names (also in the singular) or the one list
+  that holds it, unless the change gives it again. A change thinks at `low` and its answer is
+  cut at 6,000 tokens (`CHARACTER_CHANGE`). Until 2026-11-14 the model wrote the whole
+  character back: on the live build "call her Nora" was answered in 3 s with a name, an age and
+  two traits, which became the whole character, and "she is also a decent cook" took 87 s over
+  two tries, the first cut at the drafter's 16,384 output tokens, and moved two attributes.
+  Direct edits
   (`plan_edit`, then `finish_edit`) make code-only changes at once and call the model only for
   rewritten summary lines, rewritten rules, a new gift strength or a rating lowered to Teen, one
   call for the world and one for the character. Rules the player wrote stay word for word, their
@@ -1748,7 +1766,7 @@ flowchart LR
   outcome, never the premise or the prompt (T6).
 - **Offline.** With `LLM_PROVIDER=fake`, `samples.offline_backend` answers with a full sample draft:
   the Naples vendetta for a grounded starter, the cultivation sample otherwise. A change to the
-  world comes back empty, so the world stays as it is.
+  world or to the character comes back empty, so both stay as they are.
 
 ## Carrying a story on as someone else
 
@@ -2093,6 +2111,9 @@ example or a content-line case has no scenario. Run them with `uv run python -m 
   characters described in a line and reads each record in code, with no judge: which talents
   the words gave and at what strength, whether each quotes the premise, who has a power, who
   masters what, and whether old age can come to everyone. Its metrics say what each draft gave.
+  The eval of a change to the character (`t17.change-touches-only-what-it-names`, G2) drafts
+  one character, asks the real drafter for four small changes in plain words and compares the
+  character before and after each, part by part: only what the change names may differ.
   Its stories name the troll, the courtyard
   and the stone in their own language, as a story's world does, and a judgement of lines that
   fails lists the lines the judge read in the run's log, since its reasons only point at them

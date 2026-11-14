@@ -232,7 +232,7 @@ def test_each_response_format_is_sent_as_its_node_asks_for_it(backend, capsys):
         (Node.SUMMARIZER, "ChapterOutput"),
         (Node.DRAFTER, "DraftProposal"),
         (Node.DRAFTER, "WorldChange"),
-        (Node.DRAFTER, "CharacterProposal"),
+        (Node.DRAFTER, "CharacterChange"),
         (Node.PICTURE_NOTE, "PictureNote"),
         (Node.WORDING, "Said"),  # S10: a turn's lines in the story's language
     ]

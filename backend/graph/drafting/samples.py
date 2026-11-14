@@ -12,6 +12,7 @@ from graph.drafting.schema import (
     AttributesP,
     AxesP,
     CalendarP,
+    CharacterChange,
     CharacterProposal,
     ClockP,
     ConnectionP,
@@ -502,8 +503,8 @@ def offline_backend(*, grounded: bool) -> FakeBackend:
         title = (request.json_schema or {}).get("title")
         if title == "WorldChange":
             return Reply(json=WorldChange())  # no model to make the change: the world stays
-        if title == "CharacterProposal":
-            return Reply(json=sample.character)
+        if title == "CharacterChange":
+            return Reply(json=CharacterChange())  # nor the character: they stay as they are
         if title == "SuccessorProposal":
             return Reply(json=SUCCESSOR)
         return Reply(json=sample)

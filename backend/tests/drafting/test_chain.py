@@ -9,18 +9,26 @@ import pytest
 from engine.context import Language
 from engine.state import GiftStrength, PhysicsMode, Unions
 from engine.visibility import memory_view
-from graph.drafting import chain, samples
+from graph.drafting import chain, direct, lenient, samples
 from graph.drafting.catalog import starter
 from graph.drafting.direct import Fields
-from graph.drafting.prompts import SYSTEM, WORLD_CHANGE, current_rules
+from graph.drafting.prompts import CHARACTER_CHANGE, SYSTEM, WORLD_CHANGE, current_rules
 from graph.drafting.schema import (
+    AttributesChange,
+    CharacterChange,
+    CharacterRemovalP,
     DraftProposal,
     ExtraordinaryP,
+    ItemP,
+    LadderPositionChange,
     NpcP,
     PeopleP,
     PlaceP,
+    PowerChange,
     RemovalP,
     RuleP,
+    SkillP,
+    TemperamentChange,
     WorldChange,
 )
 from graph.drafting.view import character_lines, gift_strength, public_rules, world_lines
@@ -234,22 +242,55 @@ def test_a_fixed_rule_outlasts_a_change_that_forgets_to_drop_it(fake, llm):
     assert "no-supernatural" in {r.id for r in state.bible.rules}
 
 
-def test_a_character_revision_replaces_only_the_character(fake, llm):
-    character = samples.naples_character()
-    character.name = "Gennaro Esposito"
-    fake.script(Node.DRAFTER, Reply(json=character))
+def test_a_character_revision_asks_for_only_the_change_and_keeps_everything_else(fake, llm):
+    # G2. On 2026-11-14 the real model answered "Call her Nora" with a name, an age and two
+    # traits, and the whole character came back as that: so the answer is a change, and the
+    # one thing it gives is the one thing that changes.
+    fake.script(Node.DRAFTER, Reply(json={"name": "Gennaro Esposito"}))
     draft = _naples_draft()
 
     revised = run(chain.revise(llm, draft, "character", "Rename me Gennaro."))
 
-    assert fake.calls(Node.DRAFTER)[0].json_schema["title"] == "CharacterProposal"
+    [request] = fake.calls(Node.DRAFTER)
+    assert request.json_schema["title"] == "CharacterChange"
+    assert not request.json_schema.get("required")  # nothing has to be written back
+    text = _prompt_text(request)
+    assert "Rename me Gennaro." in text and CHARACTER_CHANGE in text
+    assert "never copy the character back" in text
+    # A change is a few records: an answer that runs away is cut long before the drafter's
+    # own limit, and thinks as little as any change.
+    assert (request.options.thinking, request.options.max_output_tokens) == ("low", 6000)
     assert revised.state().player.name == "Gennaro Esposito"
-    assert revised.proposal.world == draft.proposal.world
+    # Everything else is word for word what it was, but for the name where the draft says it.
+    assert revised.proposal == direct.renamed(draft.proposal, "Gennaro Esposito")
+    kept = revised.proposal.character.model_copy(update={"name": "Luca Esposito"})
+    assert kept == draft.proposal.character
+    assert "Luca" in draft.proposal.world.model_dump_json()
+    assert "Luca" not in revised.proposal.world.model_dump_json()
+
+
+def test_a_name_asked_for_in_plain_words_takes_the_old_ones_place_everywhere(fake, llm):
+    # As a name the player types does (`direct`): the goal that said the old name is the
+    # same goal, still theirs to see, and no line of the draft calls them by the old one.
+    asked = "My goal is to show the elders what Lin Feng is worth."
+    goal = CharacterChange(goals=["Show the elders what Lin Feng is worth"])
+    fake.script(Node.DRAFTER, Reply(json=goal))
+    draft = run(chain.revise(llm, _cultivation_draft(), "character", asked))
+    fake.script(Node.DRAFTER, Reply(json={"name": "Zhang Wei"}))
+
+    renamed = run(chain.revise(llm, draft, "character", "Call him Zhang Wei."))
+
+    assert renamed.proposal.character.name == "Zhang Wei"
+    assert renamed.told == {"goal:show the elders what zhang wei is worth"}
+    lines = character_lines(renamed.state(), renamed.language, renamed.said)
+    assert "Goal: Show the elders what Zhang Wei is worth." in lines
+    assert "Lin Feng" not in renamed.proposal.model_dump_json()
+    assert renamed.proposal == direct.renamed(draft.proposal, "Zhang Wei")
 
 
 def test_a_change_asked_at_a_part_of_the_summary_says_which(fake, llm):
     # "Better at this" says what "this" is: the line the player asked it at, as they read it.
-    fake.script(Node.DRAFTER, Reply(json=samples.naples_character()))
+    fake.script(Node.DRAFTER, Reply(json=CharacterChange()))
     draft = _naples_draft()
     skills = "Skilled: pistol. Fair: knife, driving."
 
@@ -259,7 +300,7 @@ def test_a_change_asked_at_a_part_of_the_summary_says_which(fake, llm):
     about = f"They ask it about this part of the summary they read:\n{skills}"
     assert f"Better at this.\n\n{about}" in asked
     # With no part, the request stands alone.
-    fake.script(Node.DRAFTER, Reply(json=samples.naples_character()))
+    fake.script(Node.DRAFTER, Reply(json=CharacterChange()))
     run(chain.revise(llm, draft, "character", "Older."))
     assert "They ask it about" not in _prompt_text(fake.calls(Node.DRAFTER)[1])
 
@@ -309,8 +350,7 @@ def test_the_plain_fields_are_edits_code_makes_alone(fake, llm):
 
 def test_a_new_name_keeps_what_the_player_named_under_it(fake, llm):
     # G1: a goal that says the old name is the same goal under the new one.
-    character = samples.cultivation().character
-    named = character.model_copy(update={"goals": ["Show the elders what Lin Feng is worth"]})
+    named = CharacterChange(goals=["Show the elders what Lin Feng is worth"])
     fake.script(Node.DRAFTER, Reply(json=named))
     asked = "My goal is to show the elders what Lin Feng is worth."
     draft = run(chain.revise(llm, _cultivation_draft(), "character", asked))
@@ -421,7 +461,7 @@ def test_a_goal_is_theirs_once_their_words_say_it_as_an_aim(fake, llm):
     def goals(words: str = "", **how) -> list[str]:
         asked = draft
         if words:
-            fake.script(Node.DRAFTER, Reply(json=draft.proposal.character))
+            fake.script(Node.DRAFTER, Reply(json=CharacterChange()))
             asked = run(chain.revise(llm, draft, "character", words, **how))
         lines = character_lines(asked.state(), asked.language, asked.said)
         return [line for line in lines if line.startswith("Goal:")]
@@ -495,7 +535,7 @@ def test_a_deadline_the_player_moves_stays_where_they_moved_it(fake, llm):
     later = run(chain.revise(llm, moved, "world", "More rain."))
     assert later.proposal.world.clocks == moved.proposal.world.clocks
     # A time asked for at the character's box is the player's word all the same.
-    fake.script(Node.DRAFTER, Reply(json=samples.cultivation().character))
+    fake.script(Node.DRAFTER, Reply(json=CharacterChange()))
     sooner = run(chain.revise(llm, later, "character", "I fight in the tournament in 3 days."))
     assert "The ranking tournament: in 3 days." in world_lines(
         sooner.state(), sooner.language, sooner.said
@@ -508,13 +548,12 @@ def test_a_goal_the_player_asked_for_keeps_its_place_when_a_change_rewords_it(fa
         line.startswith("Goal:")
         for line in character_lines(draft.state(), draft.language, draft.said)
     )
-    character = samples.cultivation().character
-    fake.script(Node.DRAFTER, Reply(json=character.model_copy(update={"goals": ["Avenge Mei"]})))
+    fake.script(Node.DRAFTER, Reply(json=CharacterChange(goals=["Avenge Mei"])))
     revised = run(chain.revise(llm, draft, "character", "My goal is to avenge Mei."))
     assert revised.told == {"goal:avenge mei"}
 
     # The next change says the same goal in other words: it is still the one they asked for.
-    reworded = character.model_copy(update={"goals": ["Avenge Mei's death"], "age": 17})
+    reworded = CharacterChange(goals=["Avenge Mei's death"], age=17)
     fake.script(Node.DRAFTER, Reply(json=reworded))
     older = run(chain.revise(llm, revised, "character", "Make him 17."))
     assert older.told == {"goal:avenge mei's death"}
@@ -522,9 +561,10 @@ def test_a_goal_the_player_asked_for_keeps_its_place_when_a_change_rewords_it(fa
     assert "Goal: Avenge Mei's death." in lines
 
     # And a change that takes the goal away takes its key with it.
-    fake.script(Node.DRAFTER, Reply(json=character.model_copy(update={"goals": []})))
+    fake.script(Node.DRAFTER, Reply(json=CharacterChange(goals=[])))
     gone = run(chain.revise(llm, older, "character", "He has no goal yet."))
     assert gone.told == frozenset()
+    assert gone.proposal.character.age == 17  # and nothing else
 
 
 def test_a_line_the_player_wrote_is_theirs_and_the_drafters_words_in_it_are_not(fake, llm):
@@ -556,12 +596,14 @@ def test_a_line_the_player_wrote_is_theirs_and_the_drafters_words_in_it_are_not(
 
 def test_a_stronger_gift_asks_the_model_for_a_new_gift(fake, llm):
     draft = _cultivation_draft(gift=GiftStrength.SMALL)
-    fake.script(Node.DRAFTER, Reply(json=samples.cultivation_character()))
+    fake.script(Node.DRAFTER, Reply(json=CharacterChange()))
 
     edited = run(chain.edit(llm, draft, chain.Edits(gift=GiftStrength.OVERPOWERED)))
 
     [request] = fake.calls(Node.DRAFTER)
+    assert request.json_schema["title"] == "CharacterChange"
     assert "picked 'overpowered'" in _prompt_text(request)
+    assert "removing the old one where another power takes its place" in _prompt_text(request)
     assert gift_strength(edited.state()) is GiftStrength.OVERPOWERED
 
 
@@ -897,6 +939,206 @@ def test_texts_and_parts_change_only_when_the_change_gives_them():
         before.nature,
     )
     assert (world.calendar, world.opening) == (before.calendar, before.opening)
+
+
+# A change to the character (G2), merged by code as a change to the world is.
+
+
+def _answered(answer: dict) -> CharacterChange:
+    """A change as the client reads it from the model's answer."""
+    return CharacterChange.model_validate(answer, context=lenient.model_output())
+
+
+def test_an_empty_change_leaves_the_character_exactly_as_they_were():
+    for character in (samples.naples_character(), samples.cultivation_character()):
+        assert chain.apply_character_change(character, CharacterChange()) == character
+        # However the model writes "nothing": every field at its empty value, as it is sent.
+        nothing = _answered(CharacterChange().model_dump(mode="json"))
+        assert chain.apply_character_change(character, nothing) == character
+
+
+def test_a_new_name_alone_renames_them_and_loses_nothing():
+    # The answer the real model gave to "Call her Nora", which wiped the barista it renamed.
+    character = samples.naples_character()
+    answer = {"name": "Nora", "age": 24, "traits": [{"name": "a hot temper"}]}
+
+    renamed = chain.apply_character_change(character, _answered(answer))
+
+    assert renamed == character.model_copy(update={"name": "Nora"})
+    assert renamed.attributes.nerve == 5 and len(renamed.skills) == 3
+    assert [t.kind for t in renamed.traits] == ["gift", "flaw"]  # the trait kept its kind
+
+
+def test_a_record_under_a_new_name_is_added_and_the_rest_stay_as_they_were():
+    # "She is also a decent cook" moved two attributes down a point when the whole character
+    # came back with it.
+    character = samples.naples_character()
+    change = _answered({"skills": [{"name": "Cooking", "level": "fair"}]})
+
+    cook = chain.apply_character_change(character, change)
+
+    assert [s.name for s in cook.skills] == ["pistol", "knife work", "driving", "Cooking"]
+    assert cook.model_copy(update={"skills": character.skills}) == character
+
+
+def test_a_record_the_character_has_changes_only_in_the_fields_the_change_gives():
+    character = samples.cultivation_character()
+    held = character.powers[0]
+    answer = {
+        "skills": [{"name": "Herb Lore", "level": "skilled"}],
+        "items": [{"name": "jade slip", "quantity": 1}],
+        "powers": [{"id": "time-stop", "limits": ["five heartbeats per use"], "time": None}],
+        "ladders": [{"ladder_id": "realms", "stage": "peak"}],
+        "reserves": [{"name": "qi", "level": 90}],
+        "memberships": [{"faction_id": "outer-court", "loyalty": 70}],
+    }
+
+    changed = chain.apply_character_change(character, _answered(answer))
+
+    assert changed.skills == [SkillP(name="Herb Lore", level="skilled")]
+    assert changed.items == [ItemP(name="jade slip")]
+    # The power keeps its name, its kind, that it is the gift, its cost and its hold on time:
+    # a null says nothing, as a field left out does.
+    assert changed.powers == [held.model_copy(update={"limits": ["five heartbeats per use"]})]
+    assert (changed.ladders[0].rung, changed.ladders[0].stage) == ("Qi Condensation", "peak")
+    assert changed.reserves[0].level == 90
+    assert (changed.memberships[0].rank, changed.memberships[0].loyalty) == ("outer disciple", 70)
+    assert _state_of(changed).player.sheet.powers[0].strength is GiftStrength.OVERPOWERED
+
+
+def _state_of(character):
+    draft = _cultivation_draft()
+    proposal = DraftProposal(world=draft.proposal.world, character=character)
+    return replace(draft, proposal=proposal).state()
+
+
+def test_a_power_is_found_by_its_id_or_by_its_name_and_keeps_its_id():
+    character = samples.cultivation_character()
+    by_name = PowerChange(id="stillness", name="Time Stop", description="Stops the world.")
+    renamed = PowerChange(id="time-stop", name="The Still Moment")
+
+    described = chain.apply_character_change(character, CharacterChange(powers=[by_name]))
+    called = chain.apply_character_change(character, CharacterChange(powers=[renamed]))
+
+    [power] = described.powers
+    assert (power.id, power.name, power.description) == (
+        "time-stop",
+        "Time Stop",
+        "Stops the world.",
+    )
+    assert (power.gift, power.kind_id) == (True, "time-powers")
+    [power] = called.powers
+    assert (power.id, power.name, power.secret) == ("time-stop", "The Still Moment", True)
+
+
+def test_a_new_record_needs_what_a_record_cant_be_without():
+    character = samples.cultivation_character()
+    change = CharacterChange(
+        powers=[
+            PowerChange(name="Qi sight", kind_id="qi", description="Sees the flow of qi."),
+            PowerChange(name="Nameless spark"),  # no kind: nothing to add
+        ],
+        ladders=[LadderPositionChange(ladder_id="alchemy", stage="early")],  # no rung
+    )
+
+    changed = chain.apply_character_change(character, change)
+
+    assert [(p.id, p.name) for p in changed.powers] == [
+        ("time-stop", "time stop"),
+        ("qi-sight", "Qi sight"),
+    ]
+    assert changed.ladders == character.ladders
+
+
+def test_a_change_removes_what_it_lists_and_a_rename_swaps_the_record():
+    character = samples.naples_character()
+    change = CharacterChange(
+        skills=[SkillP(name="marksmanship", level="skilled")],
+        removed=[
+            CharacterRemovalP(section="skills", name="Pistol"),  # the old name of the new skill
+            CharacterRemovalP(section="item", name="flick knife"),  # the list, a little off
+            CharacterRemovalP(section="things", name="three loyal soldiers"),  # wherever it is
+            CharacterRemovalP(section="skills", name="driving"),
+            CharacterRemovalP(section="things", name="nobody"),  # nothing by that name
+        ],
+        items=[ItemP(name="a silver lighter")],
+    )
+
+    changed = chain.apply_character_change(character, change)
+
+    assert [s.name for s in changed.skills] == ["knife work", "marksmanship"]
+    assert [i.name for i in changed.items] == [
+        "Beretta pistol",
+        "Alfa Romeo Giulia",
+        "a silver lighter",
+    ]
+    assert changed.connections == []
+    assert changed.traits == character.traits and changed.memberships == character.memberships
+
+
+def test_a_record_removed_and_given_again_is_changed_in_place():
+    character = samples.naples_character()
+    change = CharacterChange(
+        skills=[SkillP(name="pistol", level="master")],
+        removed=[CharacterRemovalP(section="skills", name="pistol")],
+    )
+
+    changed = chain.apply_character_change(character, change)
+
+    assert [(s.name, s.level) for s in changed.skills] == [
+        ("pistol", "master"),
+        ("knife work", "skilled"),
+        ("driving", "fair"),
+    ]
+
+
+def test_numbers_lists_and_parts_change_only_where_the_change_gives_them():
+    character = samples.naples_character()
+    change = CharacterChange(
+        age=40,
+        money=0,
+        attributes=AttributesChange(strength=4),
+        temperament=TemperamentChange(wants=["to leave Naples"]),
+        backstory=["Ran numbers for his uncle at fourteen."],
+        goals=[],
+    )
+
+    changed = chain.apply_character_change(character, change)
+
+    assert (changed.age, changed.money, changed.goals) == (40, 0, [])
+    assert changed.attributes == character.attributes.model_copy(update={"strength": 4})
+    assert changed.temperament.wants == ["to leave Naples"]
+    assert changed.temperament.traits == ["hot-headed", "loyal"]
+    assert changed.temperament.voice == character.temperament.voice
+    assert changed.backstory == ["Ran numbers for his uncle at fourteen."]
+    assert (changed.axes, changed.aliases, changed.lifespan_years) == (
+        character.axes,
+        character.aliases,
+        character.lifespan_years,
+    )
+
+
+def test_a_text_is_emptied_only_when_the_change_lists_it_as_cleared():
+    character = samples.naples_character()
+    change = CharacterChange(
+        rank="capo", cleared=["family_name", "Rank", "name", "goals", "no such text"]
+    )
+
+    changed = chain.apply_character_change(character, change)
+
+    assert (changed.family_name, changed.rank) == ("", "capo")  # what it gives, it has
+    assert (changed.name, changed.goals) == (character.name, character.goals)
+    assert changed.description == character.description
+
+
+def test_a_whole_character_written_back_is_merged_like_any_change():
+    # A model that copies the character back all the same changes what it wrote differently.
+    character = samples.cultivation_character()
+    older = character.model_copy(update={"age": 17, "rank": "inner disciple"})
+
+    changed = chain.apply_character_change(character, _answered(older.model_dump(mode="json")))
+
+    assert changed == older
 
 
 def test_a_draft_round_trips_through_json():
