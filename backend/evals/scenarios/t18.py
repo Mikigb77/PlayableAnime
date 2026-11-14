@@ -45,7 +45,7 @@ from evals.scenario import LIVE_ONLY, REGISTRY
 from evals.scenarios.common import act, attack, plan, skill, step
 from graph.language import written_in
 from graph.llm import Node
-from graph.turn import saying
+from graph.turn import last_lines, saying
 from media.notes import SceneText, note_prompt
 from media.prompts import FRAMING, GROUNDED, build_prompt
 from moderation.evals import build_world, load_cases
@@ -234,6 +234,13 @@ async def action_told_first(ev: Eval) -> None:
 # to decide and hasn't yet, which is where a narrator is most tempted.
 LOOK_AT_THE_THIEF = "I stop in the barn door and look at the man asleep in my hay"
 STAND_ON_THE_BRIDGE = "I stop in the middle of the bridge and look at the three of them"
+# What the scripted narrator shows, and the move it then tells the player, as the real one did.
+IN_THE_HAY = "(scripted) Jorn Hask sleeps on in the hay, one arm over a sack from the smokehouse."
+ON_THE_BRIDGE = "(scripted) The three of them stop two paces off, and the ropes creak."
+TOLD_MOVES = (
+    "You must decide whether to wake him or fetch the bailiff.",
+    "The time has come to cut the ropes or to fight. What will you do?",
+)
 ENDING_SHOWN = Rubric(
     must=(
         "The scene's last lines show where things stand, so the player has something there to "
@@ -251,27 +258,55 @@ ENDING_SHOWN = Rubric(
     "t18.ending-shown",
     suite="T18",
     title="An ending shown, never told",
-    requirements=("S4", "R1", "T18"),
-    modes=LIVE_ONLY,
+    requirements=("S4", "R1", "S3", "T18"),
     passes_when=(
         "A farmer finds a thief asleep in his barn, and a disciple stands on a rope bridge "
         "with three thugs closing in: each only stops and looks. Each scene ends on where "
         "things stand, and never tells the player what they must do, decide or choose, that it "
-        "is time to do something, or which ways are open to them (S4)"
+        "is time to do something, or which ways are open to them (S4). A narrator that closes "
+        "on the player's move all the same has that left out by code, and the player never "
+        "reads it while the scene streams"
     ),
     notes=(
-        "Live only: what a scene's last lines do is the judge's to read. The rule is in the "
-        "narrator's form, on the field the ending is written in (`NarratorOutput.narration`)."
+        "The rule is in the narrator's form, on the field the ending is written in "
+        "(`NarratorOutput.narration`), and code holds it (`graph.turn.last_lines`). The "
+        "scripted narrator closes on the player's move, as the real one did in the plays of "
+        "2026-11-14. Live, the judge reads the scene as it was saved, and the metric counts "
+        "the endings code had to leave out."
     ),
 )
 async def ending_shown(ev: Eval) -> None:
-    for seed in ev.seeds(0, live=2):
+    look = act("stop and look", "look", ActionKind.OBSERVE, 10)
+    left_out = 0
+    for seed in ev.seeds(1, live=2):
         barn = ev.story(worlds.thief_in_the_barn(), seed=f"{seed}/barn", under_way=True)
-        looked = await barn.act(LOOK_AT_THE_THIEF, None)
+        hay = None if ev.live else {"narration": f"{IN_THE_HAY} {TOLD_MOVES[0]}"}
+        looked = await barn.act(LOOK_AT_THE_THIEF, look, narration=hay)
         await ev.judge("the thief asleep in the hay", ENDING_SHOWN, looked)
         bridge = ev.story(worlds.bridge_ambush(), seed=f"{seed}/bridge", under_way=True)
-        stood = await bridge.act(STAND_ON_THE_BRIDGE, None)
+        ropes = None if ev.live else {"narration": f"{ON_THE_BRIDGE} {TOLD_MOVES[1]}"}
+        stood = await bridge.act(STAND_ON_THE_BRIDGE, look, narration=ropes)
         await ev.judge("three thugs on the bridge", ENDING_SHOWN, stood)
+        for played, shown in ((looked, IN_THE_HAY), (stood, ON_THE_BRIDGE)):
+            issues = played.result.issues if played.result is not None else []
+            left_out += sum(issue.code == last_lines.ENDING_TOLD for issue in issues)
+            ev.check(
+                "the player read the scene as it was saved: nothing streamed that it lacks (S3)",
+                played.streamed == played.narration,
+                f"{seed}: streamed {len(played.streamed)} chars, saved {len(played.narration)}",
+            )
+            ev.check(
+                "no closing sentence of the saved scene tells the player their move (S4)",
+                last_lines.shown(played.narration) == played.narration,
+                f"{seed}: {played.narration[-160:]}",
+            )
+            ev.check(
+                "a scene that closed on the player's move ends on what it showed before (S4)",
+                played.narration == shown,
+                f"{seed}: {played.narration}",
+                live=False,
+            )
+    ev.metric("endings that told the player their move, left out by code", left_out)
 
 
 # --- A scene's length follows its weight (R3) ---------------------------------------------------

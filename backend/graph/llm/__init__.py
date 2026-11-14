@@ -17,6 +17,7 @@ from graph.llm.client import (
     StreamEvent,
     StreamRestart,
     TextDelta,
+    TextEnded,
 )
 from graph.llm.config import DEFAULT_NODES, ModelConfig, NodeSettings, get_model_config
 from graph.llm.errors import BadKey, LLMBlocked, LLMError, LLMUnavailable, UnsupportedProvider
@@ -72,6 +73,7 @@ __all__ = [
     "StreamEvent",
     "StreamRestart",
     "TextDelta",
+    "TextEnded",
     "Thinking",
     "Transcription",
     "TurnTelemetry",
