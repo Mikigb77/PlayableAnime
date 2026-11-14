@@ -2238,11 +2238,16 @@ async def countdown_comes_home(ev: Eval) -> None:
             await ev.judge(
                 "the debt comes to the door",
                 Rubric(
-                    must=(
-                        "Tells the days of ploughing as passing time, then has Bram come to "
-                        "Tomas at the farm",
+                    # The month is cut wherever the farm's own events fall, so the turn the
+                    # countdown ends on may hold days at the plough or a single night: the
+                    # first live run (2026-11-14) began it at midnight, and the judge failed
+                    # a good scene for telling no days of ploughing.
+                    must=("Bram comes to Tomas at the farm, in person",),
+                    must_not=(
+                        "Settles what Tomas owes Bram without the player",
+                        "Tells more time going by than the clock in the scene's decided "
+                        "facts allows",
                     ),
-                    must_not=("Settles what Tomas owes Bram without the player",),
                 ),
                 [played],
             )

@@ -744,12 +744,17 @@ class _Applier:
             value = getattr(change, attr)
             if value is None:
                 continue
-            if attr == "age" and not created and character.age not in (None, value):
+            if (
+                attr == "age"
+                and not self.engine
+                and (value == 0 or (not created and character.age is not None))
+            ):
                 # W10: an age on record moves with the world's years (`engine.world.lives`),
                 # never by a scene's word: a scene that tells ten years gone by would count
-                # them twice.
-                if not self.engine_only(subject, "age"):
-                    continue
+                # them twice. The form asks every character's age (F3, `CharacterChange`),
+                # so one that differs is passed over, not refused. Nor is 0 an age a scene
+                # gives: it is what a model writes in a number it was made to fill.
+                continue
             setattr(character, attr, value)
         if change.lifespan_years:
             self.longer_life(character, change.lifespan_years)

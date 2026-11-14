@@ -219,25 +219,46 @@ def test_a_year_counts_once_however_the_time_is_split(monkeypatch):
 def test_a_scene_cannot_move_an_age_the_record_has(monkeypatch):
     """W10: the years are the world's to count. A scene that tells ten years gone by and sets
     the age it works out would count them twice (the first live story of a homecoming,
-    2026-11-13). An age the record doesn't have is still the story's to give."""
+    2026-11-13). An age the record doesn't have is still the story's to give. The form asks
+    every character's age (F3), so one that differs is passed over and nothing is refused."""
     quiet(monkeypatch)
     state = valley(villager("nobody", "Wren", None))
     state, _ = idle(state, 10 * YEAR + 40 * DAY)
     told = [
         CharacterChange(id=YOU, age=54),
-        CharacterChange(id="ilse", age=42),  # as the record has it: nothing to refuse
+        CharacterChange(id="ilse", age=42),  # as the record has it
         CharacterChange(id="nobody", age=27),
         CharacterChange(id="hob", name="Hob", age=9, location_id="farm"),
     ]
 
     applied = apply_delta(state, StateDelta(characters=told), ctx(), source=NARRATOR)
 
-    assert [(r.subject, r.change) for r in applied.rejected] == [(f"character {YOU}", "age")]
+    assert not applied.rejected
     ages = {i: c.age for i, c in applied.state.characters.items()}
     assert ages == {YOU: 44, "ilse": 42, "bram": 81, "nobody": 27, "hob": 9}
     # The engine's own delta may still set one, as a time jump to an heir does.
     engine = apply_delta(state, StateDelta(characters=told[:1]), ctx(), source=DeltaSource.ENGINE)
     assert not engine.rejected and engine.state.characters[YOU].age == 54
+
+
+def test_a_scenes_zero_is_no_age(monkeypatch):
+    """F3: the form makes the model fill a number for everyone, and 0 is what it writes when
+    it has nothing to say. Someone on record aged 0 could never be given their age again."""
+    quiet(monkeypatch)
+    state = valley(villager("nobody", "Wren", None))
+    told = [
+        CharacterChange(id="nobody", age=0),
+        CharacterChange(id="hob", name="Hob", age=0, location_id="farm"),
+    ]
+
+    applied = apply_delta(state, StateDelta(characters=told), ctx(), source=NARRATOR)
+
+    assert not applied.rejected
+    assert applied.state.characters["nobody"].age is None
+    assert applied.state.characters["hob"].age is None
+    # The engine's own newborn is 0.
+    engine = apply_delta(state, StateDelta(characters=told), ctx(), source=DeltaSource.ENGINE)
+    assert engine.state.characters["hob"].age == 0
 
 
 def test_the_dead_stay_the_age_they_died_at_and_a_death_only_presumed_counts_on(monkeypatch):

@@ -142,6 +142,67 @@ def test_a_kiss_with_a_named_adult_plays(fake, make_client):
     assert result.narration_mode == "full"
 
 
+def brought_in(fake, make_client, **clara):
+    """The story as a scene left it after bringing in the widow who keeps the bar."""
+    widow = {"id": "clara", "name": "Clara", "location_id": "bar", "meets_player": True}
+    fake.script(Node.INTERPRET, Reply(json=intent("buy the widow a drink")))
+    scene = {
+        "narration": "The widow who keeps the bar, a weary woman named Clara, takes the coin.",
+        "update": {"characters": [widow | clara]},
+    }
+    fake.script(Node.NARRATOR, Reply(json=scene))
+    _, result = play(make_client(), turn_input(grounded_world(), "I buy the widow a drink"))
+    return result.state
+
+
+def test_someone_a_scene_brought_in_with_their_age_can_be_kissed(fake, make_client):
+    """F3. The first live play to bring someone in (2026-11-14) left the widow's age out, as
+    Gemini leaves out what a form doesn't require, and her kiss the next turn was refused as
+    one with a minor. The form now asks everyone's age (`CharacterChange`)."""
+    state = brought_in(fake, make_client, age=41)
+    assert state.characters["clara"].age == 41
+
+    fake.script(Node.INTERPRET, Reply(json=intent("kiss Clara", target_ids=["clara"])))
+    fake.script(Node.NARRATOR, Reply(json={"narration": "You lean in and kiss her."}))
+    _, result = play(make_client(), turn_input(state, "I kiss Clara"))
+
+    assert result.narration_mode == "full"
+
+
+@pytest.mark.parametrize("said", [{}, {"age": 0}, {"age": 16}])
+def test_someone_a_scene_brought_in_without_an_adults_age_cannot(fake, make_client, said):
+    # No age, the 0 a model fills a number with, and a girl's own age all hold the romance.
+    state = brought_in(fake, make_client, **said)
+    assert state.characters["clara"].age == (said.get("age") or None)
+
+    fake.script(Node.INTERPRET, Reply(json=intent("kiss Clara", target_ids=["clara"])))
+    with pytest.raises(LimitReached) as raised:
+        play(make_client(), turn_input(state, "I kiss Clara"))
+
+    assert raised.value.details == {"category": "minor"}
+    assert fake.calls(Node.NARRATOR)[1:] == []  # only the scene that brought her in
+
+
+def test_a_scene_with_someone_whose_age_is_not_on_record_is_asked_for_it(fake, make_client):
+    """F3. Stories begun before the form asked have people with no age, whom no romance can
+    be with: the first scene they are in reads that their age is wanted, and gives it."""
+    state = brought_in(fake, make_client)
+    state.scene.present_ids = [state.player_id, "clara"]
+
+    fake.script(Node.INTERPRET, Reply(json=intent("ask Clara about the town")))
+    clara = {"id": "clara", "age": 41}
+    fake.script(
+        Node.NARRATOR,
+        Reply(json={"narration": "She shrugs.", "update": {"characters": [clara]}}),
+    )
+    _, result = play(make_client(), turn_input(state, "I ask Clara about the town"))
+
+    asked = fake.calls(Node.NARRATOR)[-1].prompt.messages[-1].text
+    assert '"age":"not on record: say it in update.characters"' in asked
+    assert result.state.characters["clara"].age == 41
+    assert "rejected" not in [i.code for i in result.issues]
+
+
 @pytest.mark.parametrize(
     ("language", "action"),
     [

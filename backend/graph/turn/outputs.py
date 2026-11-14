@@ -66,8 +66,10 @@ class NarratorOutput(BaseModel):
     narration: str = Field(
         description=(
             "The rest of the scene, as the player reads it, picking up where action stops: the"
-            " outcome, how the world reacts, and an ending the player can act on. With no"
-            " action, the whole scene."
+            " outcome, how the world reacts, and an ending the player can act on. The ending"
+            " shows where things stand and stops: it never tells the player what they must"
+            " do, decide or choose, what it is time to do, or which ways are open to them"
+            " (S4). With no action, the whole scene."
         )
     )
     told_talk: bool = Field(
