@@ -15,9 +15,9 @@
  "seed": "play/o-teacher",
  "state": {
   "schema_version": 1,
-  "turn": 4,
+  "turn": 5,
   "timeline_id": "main",
-  "world_s": 51460248,
+  "world_s": 128856193,
   "bible": {
    "title": "Oakhaven's Autumn",
    "genre": "Grounded drama",
@@ -124,7 +124,7 @@
     "description": "A respected retired educator with a gentle, patient soul and a wealth of local memories.",
     "appearance": "Frail build, clean-shaved but deeply lined face, thin wispy white hair, kind blue eyes behind wire-rimmed spectacles. Dressed in a thick woolen sweater.",
     "look_version": 1,
-    "age": 98,
+    "age": 101,
     "people_id": null,
     "status": "alive",
     "death_certainty": null,
@@ -247,7 +247,13 @@
       "fatigue": 0,
       "hunger": 0,
       "stress": 0,
-      "states": [],
+      "states": [
+       {
+        "name": "weakened",
+        "effect": "",
+        "until_personal_s": null
+       }
+      ],
       "reserves": [],
       "weakened_tiers": 0
      },
@@ -286,7 +292,7 @@
     "solitary": false,
     "born_s": null,
     "lifespan_years": 100,
-    "old_age_span": null,
+    "old_age_span": 100,
     "seen_s": null,
     "near_s": null,
     "met_s": null
@@ -299,7 +305,7 @@
     "description": "An old, somewhat chubby calico cat who prefers sleeping in warm patches of sunlight and demands chin scratches.",
     "appearance": "Thick orange, black, and white fur, stiff-legged and very slow-moving, with cloudy but calm green eyes.",
     "look_version": 1,
-    "age": 15,
+    "age": 18,
     "people_id": null,
     "status": "alive",
     "death_certainty": null,
@@ -353,7 +359,7 @@
         "heart_moved_s": null
        },
        "clara-milton": {
-        "affinity": 14,
+        "affinity": 4,
         "fear": 0,
         "trust": 0,
         "apparent_affinity": null,
@@ -418,8 +424,8 @@
     "born_s": null,
     "lifespan_years": 0,
     "old_age_span": null,
-    "seen_s": 51460248,
-    "near_s": 40550047,
+    "seen_s": 128856193,
+    "near_s": 117160248,
     "met_s": null
    },
    "clara-milton": {
@@ -430,13 +436,13 @@
     "description": "The town librarian and a former student of yours from forty years ago, always eager to help you run errands.",
     "appearance": "Grey-brown hair showing more silver, a gentle but tired face, wearing a light knitted cardigan and small reading glasses.",
     "look_version": 1,
-    "age": 55,
+    "age": 58,
     "people_id": null,
     "status": "alive",
     "death_certainty": null,
     "status_history": [],
     "activity": "active",
-    "location_id": "player-cottage",
+    "location_id": "oakhaven",
     "personal_offset_s": 0,
     "memberships": [],
     "sheet": {
@@ -548,7 +554,7 @@
     "lifespan_years": 0,
     "old_age_span": null,
     "seen_s": 51460248,
-    "near_s": 40550047,
+    "near_s": 117160248,
     "met_s": null
    }
   },
@@ -772,7 +778,7 @@
   },
   "bonds": {},
   "lives": {},
-  "aged_s": 31536000,
+  "aged_s": 126144000,
   "changes": {},
   "strife_s": {},
   "facts": {
@@ -890,8 +896,8 @@
      "text": ""
     }
    },
-   "fact-12": {
-    "id": "fact-12",
+   "fact-30": {
+    "id": "fact-30",
     "text": "Oakhaven Town Council works toward its own ends",
     "kind": "observation",
     "importance": 1,
@@ -900,8 +906,8 @@
      "town-council"
     ],
     "known_by": [],
-    "turn": 4,
-    "world_s": 14270043,
+    "turn": 5,
+    "world_s": 90880248,
     "timeline_id": "main",
     "origin": {
      "kind": "agenda",
@@ -909,20 +915,21 @@
      "text": ""
     }
    },
-   "fact-13": {
-    "id": "fact-13",
-    "text": "Barnaby works toward their own affairs",
+   "fact-31": {
+    "id": "fact-31",
+    "text": "Barnaby cools toward Clara Milton.",
     "kind": "observation",
     "importance": 1,
     "is_true": true,
     "subject_ids": [
-     "barnaby-cat"
+     "barnaby-cat",
+     "clara-milton"
     ],
     "known_by": [
      "barnaby-cat"
     ],
-    "turn": 4,
-    "world_s": 14270043,
+    "turn": 5,
+    "world_s": 90880248,
     "timeline_id": "main",
     "origin": {
      "kind": "agenda",
@@ -930,8 +937,8 @@
      "text": ""
     }
    },
-   "fact-14": {
-    "id": "fact-14",
+   "fact-32": {
+    "id": "fact-32",
     "text": "Clara Milton warms to Barnaby.",
     "kind": "observation",
     "importance": 1,
@@ -943,8 +950,8 @@
     "known_by": [
      "clara-milton"
     ],
-    "turn": 4,
-    "world_s": 14270043,
+    "turn": 5,
+    "world_s": 90880248,
     "timeline_id": "main",
     "origin": {
      "kind": "agenda",
@@ -952,8 +959,8 @@
      "text": ""
     }
    },
-   "fact-15": {
-    "id": "fact-15",
+   "fact-33": {
+    "id": "fact-33",
     "text": "Oakhaven Town Council works toward its own ends",
     "kind": "observation",
     "importance": 1,
@@ -962,8 +969,8 @@
      "town-council"
     ],
     "known_by": [],
-    "turn": 4,
-    "world_s": 27410045,
+    "turn": 5,
+    "world_s": 104020248,
     "timeline_id": "main",
     "origin": {
      "kind": "agenda",
@@ -971,8 +978,8 @@
      "text": ""
     }
    },
-   "fact-16": {
-    "id": "fact-16",
+   "fact-34": {
+    "id": "fact-34",
     "text": "Barnaby warms to Clara Milton.",
     "kind": "observation",
     "importance": 1,
@@ -984,8 +991,8 @@
     "known_by": [
      "barnaby-cat"
     ],
-    "turn": 4,
-    "world_s": 27410045,
+    "turn": 5,
+    "world_s": 104020248,
     "timeline_id": "main",
     "origin": {
      "kind": "agenda",
@@ -993,70 +1000,8 @@
      "text": ""
     }
    },
-   "fact-17": {
-    "id": "fact-17",
-    "text": "Clara Milton cools toward Barnaby.",
-    "kind": "observation",
-    "importance": 1,
-    "is_true": true,
-    "subject_ids": [
-     "clara-milton",
-     "barnaby-cat"
-    ],
-    "known_by": [
-     "clara-milton"
-    ],
-    "turn": 4,
-    "world_s": 27410045,
-    "timeline_id": "main",
-    "origin": {
-     "kind": "agenda",
-     "ref_id": "clara-milton",
-     "text": ""
-    }
-   },
-   "fact-18": {
-    "id": "fact-18",
-    "text": "Oakhaven Town Council works toward its own ends",
-    "kind": "observation",
-    "importance": 1,
-    "is_true": true,
-    "subject_ids": [
-     "town-council"
-    ],
-    "known_by": [],
-    "turn": 4,
-    "world_s": 40550047,
-    "timeline_id": "main",
-    "origin": {
-     "kind": "agenda",
-     "ref_id": "town-council",
-     "text": ""
-    }
-   },
-   "fact-19": {
-    "id": "fact-19",
-    "text": "Barnaby works toward their own affairs",
-    "kind": "observation",
-    "importance": 1,
-    "is_true": true,
-    "subject_ids": [
-     "barnaby-cat"
-    ],
-    "known_by": [
-     "barnaby-cat"
-    ],
-    "turn": 4,
-    "world_s": 40550047,
-    "timeline_id": "main",
-    "origin": {
-     "kind": "agenda",
-     "ref_id": "barnaby-cat",
-     "text": ""
-    }
-   },
-   "fact-20": {
-    "id": "fact-20",
+   "fact-35": {
+    "id": "fact-35",
     "text": "Clara Milton works toward their own affairs",
     "kind": "observation",
     "importance": 1,
@@ -1067,8 +1012,69 @@
     "known_by": [
      "clara-milton"
     ],
-    "turn": 4,
-    "world_s": 40550047,
+    "turn": 5,
+    "world_s": 104020248,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "agenda",
+     "ref_id": "clara-milton",
+     "text": ""
+    }
+   },
+   "fact-36": {
+    "id": "fact-36",
+    "text": "Oakhaven Town Council works toward its own ends",
+    "kind": "observation",
+    "importance": 1,
+    "is_true": true,
+    "subject_ids": [
+     "town-council"
+    ],
+    "known_by": [],
+    "turn": 5,
+    "world_s": 117160248,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "agenda",
+     "ref_id": "town-council",
+     "text": ""
+    }
+   },
+   "fact-37": {
+    "id": "fact-37",
+    "text": "Barnaby works toward their own affairs",
+    "kind": "observation",
+    "importance": 1,
+    "is_true": true,
+    "subject_ids": [
+     "barnaby-cat"
+    ],
+    "known_by": [
+     "barnaby-cat"
+    ],
+    "turn": 5,
+    "world_s": 117160248,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "agenda",
+     "ref_id": "barnaby-cat",
+     "text": ""
+    }
+   },
+   "fact-38": {
+    "id": "fact-38",
+    "text": "Clara Milton works toward their own affairs",
+    "kind": "observation",
+    "importance": 1,
+    "is_true": true,
+    "subject_ids": [
+     "clara-milton"
+    ],
+    "known_by": [
+     "clara-milton"
+    ],
+    "turn": 5,
+    "world_s": 117160248,
     "timeline_id": "main",
     "origin": {
      "kind": "agenda",
@@ -1124,8 +1130,8 @@
     },
     "status": "open",
     "opened_turn": 0,
-    "last_active_turn": 3,
-    "taken_up_turn": null,
+    "last_active_turn": 5,
+    "taken_up_turn": 5,
     "closed_turn": null,
     "arc": null,
     "known_by": [
@@ -1174,8 +1180,8 @@
     },
     "status": "open",
     "opened_turn": 4,
-    "last_active_turn": 4,
-    "taken_up_turn": null,
+    "last_active_turn": 5,
+    "taken_up_turn": 5,
     "closed_turn": null,
     "arc": null,
     "known_by": [
@@ -1238,7 +1244,7 @@
     "due_s": 128856193,
     "timeline_id": "main",
     "needs_player": true,
-    "status": "pending",
+    "status": "applied",
     "subject_ids": [
      "player"
     ],
@@ -1248,13 +1254,18 @@
      "phase": "near",
      "who": "player",
      "span": 100,
-     "day_s": 166643268
+     "day_s": 166643268,
+     "event": {
+      "size": "personal",
+      "kind": "loss",
+      "brief": "Arthur Vance is 101, of the about 100 years someone like them lives, and the end of their life is close. The years stop here. Tell it from inside, as they sense it in their own body, such as a heart that slows or strength that doesn't come back, and let them foresee that going on as they are, old age takes them soon. Nobody knows the day: give no number of years or days left. What they do with the time is theirs: look for a way to lengthen their life, where the world has one, or meet the end in peace."
+     }
     },
     "seed": "story=play%2Fo-teacher/timeline=main/turn=1/world/schedule/event-2",
     "created_turn": 1,
     "created_s": 0,
-    "applied_turn": null,
-    "applied_s": null
+    "applied_turn": 5,
+    "applied_s": 128856193
    },
    "event-3": {
     "id": "event-3",
@@ -1681,22 +1692,22 @@
     "id": "event-15",
     "kind": "world.tick",
     "title": "The world moves on",
-    "due_s": 53690049,
+    "due_s": 41004639,
     "timeline_id": "main",
     "needs_player": false,
-    "status": "pending",
+    "status": "applied",
     "subject_ids": [],
     "place_id": null,
     "origin": null,
     "payload": {
      "last_s": 40550047,
-     "stride_s": 13140002
+     "stride_s": 454592
     },
     "seed": "story=play%2Fo-teacher/timeline=main/turn=1/world/schedule/event-3/schedule/event-5/schedule/event-7/schedule/event-9/schedule/event-11/schedule/event-13/schedule/event-14/schedule/event-15",
     "created_turn": 4,
     "created_s": 40550047,
-    "applied_turn": null,
-    "applied_s": null
+    "applied_turn": 5,
+    "applied_s": 51460248
    },
    "director-event-4": {
     "id": "director-event-4",
@@ -1705,7 +1716,7 @@
     "due_s": 51546648,
     "timeline_id": "main",
     "needs_player": false,
-    "status": "pending",
+    "status": "cancelled",
     "subject_ids": [
      "clara-milton"
     ],
@@ -1742,6 +1753,206 @@
     "created_s": 51460248,
     "applied_turn": null,
     "applied_s": null
+   },
+   "event-16": {
+    "id": "event-16",
+    "kind": "world.tick",
+    "title": "The world moves on",
+    "due_s": 64600248,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "applied",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "last_s": 51460248,
+     "stride_s": 13140000
+    },
+    "seed": "story=play%2Fo-teacher/timeline=main/turn=1/world/schedule/event-3/schedule/event-5/schedule/event-7/schedule/event-9/schedule/event-11/schedule/event-13/schedule/event-14/schedule/event-15/schedule/event-16",
+    "created_turn": 5,
+    "created_s": 51460248,
+    "applied_turn": 5,
+    "applied_s": 64600248
+   },
+   "director-event-5": {
+    "id": "director-event-5",
+    "kind": "director.event",
+    "title": "A bad season",
+    "due_s": 191389342,
+    "timeline_id": "main",
+    "needs_player": true,
+    "status": "cancelled",
+    "subject_ids": [],
+    "place_id": "player-cottage",
+    "origin": {
+     "kind": "engine",
+     "ref_id": null,
+     "text": "W16 roll inside a time skip (E7)"
+    },
+    "payload": {
+     "pick": {
+      "event": {
+       "size": "local",
+       "kind": "loss",
+       "source": "deck",
+       "source_id": null,
+       "card_id": "bad-season",
+       "title": "A bad season",
+       "brief": "The place's livelihood fails: a bad harvest, a trade gone dry, a road closed.",
+       "themes": [],
+       "thread_id": null,
+       "cast_ids": [],
+       "place_id": "player-cottage",
+       "needs_decision": true,
+       "consequence": "Left alone, hardship spreads, and people start to leave or turn on each other.",
+       "plays_out_s": null
+      },
+      "key": "deck:bad-season",
+      "window_s": 432000,
+      "lingers": true,
+      "lead": false,
+      "thread_kind": "threat",
+      "thread_title": "A bad season",
+      "involved_ids": [
+       "player"
+      ]
+     }
+    },
+    "seed": "story=play%2Fo-teacher/timeline=main/turn=5/director/stretch/0/step/5",
+    "created_turn": 5,
+    "created_s": 51460248,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-17": {
+    "id": "event-17",
+    "kind": "world.tick",
+    "title": "The world moves on",
+    "due_s": 77740248,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "applied",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "last_s": 64600248,
+     "stride_s": 13140000
+    },
+    "seed": "story=play%2Fo-teacher/timeline=main/turn=1/world/schedule/event-3/schedule/event-5/schedule/event-7/schedule/event-9/schedule/event-11/schedule/event-13/schedule/event-14/schedule/event-15/schedule/event-16/schedule/event-17",
+    "created_turn": 5,
+    "created_s": 64600248,
+    "applied_turn": 5,
+    "applied_s": 77740248
+   },
+   "event-18": {
+    "id": "event-18",
+    "kind": "world.tick",
+    "title": "The world moves on",
+    "due_s": 90880248,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "applied",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "last_s": 77740248,
+     "stride_s": 13140000
+    },
+    "seed": "story=play%2Fo-teacher/timeline=main/turn=1/world/schedule/event-3/schedule/event-5/schedule/event-7/schedule/event-9/schedule/event-11/schedule/event-13/schedule/event-14/schedule/event-15/schedule/event-16/schedule/event-17/schedule/event-18",
+    "created_turn": 5,
+    "created_s": 77740248,
+    "applied_turn": 5,
+    "applied_s": 90880248
+   },
+   "event-19": {
+    "id": "event-19",
+    "kind": "world.tick",
+    "title": "The world moves on",
+    "due_s": 104020248,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "applied",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "last_s": 90880248,
+     "stride_s": 13140000
+    },
+    "seed": "story=play%2Fo-teacher/timeline=main/turn=1/world/schedule/event-3/schedule/event-5/schedule/event-7/schedule/event-9/schedule/event-11/schedule/event-13/schedule/event-14/schedule/event-15/schedule/event-16/schedule/event-17/schedule/event-18/schedule/event-19",
+    "created_turn": 5,
+    "created_s": 90880248,
+    "applied_turn": 5,
+    "applied_s": 104020248
+   },
+   "event-20": {
+    "id": "event-20",
+    "kind": "world.tick",
+    "title": "The world moves on",
+    "due_s": 117160248,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "applied",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "last_s": 104020248,
+     "stride_s": 13140000
+    },
+    "seed": "story=play%2Fo-teacher/timeline=main/turn=1/world/schedule/event-3/schedule/event-5/schedule/event-7/schedule/event-9/schedule/event-11/schedule/event-13/schedule/event-14/schedule/event-15/schedule/event-16/schedule/event-17/schedule/event-18/schedule/event-19/schedule/event-20",
+    "created_turn": 5,
+    "created_s": 104020248,
+    "applied_turn": 5,
+    "applied_s": 117160248
+   },
+   "event-21": {
+    "id": "event-21",
+    "kind": "world.tick",
+    "title": "The world moves on",
+    "due_s": 130300248,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "last_s": 117160248,
+     "stride_s": 13140000
+    },
+    "seed": "story=play%2Fo-teacher/timeline=main/turn=1/world/schedule/event-3/schedule/event-5/schedule/event-7/schedule/event-9/schedule/event-11/schedule/event-13/schedule/event-14/schedule/event-15/schedule/event-16/schedule/event-17/schedule/event-18/schedule/event-19/schedule/event-20/schedule/event-21",
+    "created_turn": 5,
+    "created_s": 117160248,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-22": {
+    "id": "event-22",
+    "kind": "world.old_age",
+    "title": "Your years run out",
+    "due_s": 166643268,
+    "timeline_id": "main",
+    "needs_player": true,
+    "status": "pending",
+    "subject_ids": [
+     "player"
+    ],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "phase": "takes",
+     "who": "player",
+     "span": 100
+    },
+    "seed": "story=play%2Fo-teacher/timeline=main/turn=1/world/schedule/event-2/schedule/event-22",
+    "created_turn": 5,
+    "created_s": 128856193,
+    "applied_turn": null,
+    "applied_s": null
    }
   },
   "transfers": [],
@@ -1749,29 +1960,26 @@
   "scene": {
    "place_id": "player-cottage",
    "present_ids": [
-    "clara-milton",
     "barnaby-cat"
    ],
    "positions": [
-    "Arthur sits in his rocking chair near his desk",
-    "Clara stands on the porch outside the front door",
-    "Barnaby lies asleep at Arthur's feet"
+    "Arthur sits at his desk",
+    "Barnaby lies near the woodstove"
    ],
    "props": [
-    "leather-bound journal",
-    "clara's notebook"
+    "leather-bound journal"
    ],
-   "ended_on": "Clara stands on your porch, clutching her notebook and waiting for you to open the door.",
+   "ended_on": "You rest your hand on your desk, feeling the slow pulse in your chest as the dusk deepens.",
    "encounter": null
   },
   "director": {
    "turns_without_stakes": 0,
    "low_stakes_streak": 0,
    "last_action_key": null,
-   "last_event_turn": 4,
+   "last_event_turn": 5,
    "last_event_size": "personal",
    "last_event_s": {
-    "personal": 51460248
+    "personal": 128856193
    },
    "last_small_s": null,
    "recent_moments": [],
@@ -1779,15 +1987,16 @@
     0,
     1130041,
     1130071,
-    51460248
+    51460248,
+    128856193
    ],
-   "frequency_drift": 0.05,
+   "frequency_drift": 0.0,
    "recent_sources": [
     "deck:secret",
     "deck:visitor"
    ],
-   "auto_pictures": 4,
-   "picture_credit": 1.4,
+   "auto_pictures": 5,
+   "picture_credit": 1.5,
    "pictured": [
     "portrait:player",
     "portrait:player:v1",
@@ -1795,20 +2004,22 @@
     "portrait:barnaby-cat",
     "portrait:barnaby-cat:v1",
     "portrait:clara-milton",
-    "portrait:clara-milton:v1"
+    "portrait:clara-milton:v1",
+    "place:player-cottage",
+    "place:player-cottage:v1"
    ],
    "fight": null,
    "deck_draws": 0,
    "road_stops": 0
   },
-  "summary": "You are Arthur, a 98-year-old retired schoolteacher in Oakhaven. After learning that the town council planned to sell the historic schoolhouse, you spent nearly two years in quiet isolation, writing your memoirs. On a warm June night, Clara Milton knocks on your door with urgent news.",
+  "summary": "You are Arthur Vance, a 103-year-old retired schoolteacher in Oakhaven. After learning that the town council planned to demolish the historic schoolhouse, you retreated into quiet isolation in your cottage. Over the last four years, you have quietly written your memoirs while your body has grown exceedingly frail, bringing you to the twilight of your long life.",
   "chapters": [],
   "id_counters": {
-   "fact": 20,
+   "fact": 38,
    "goal": 2,
    "bond": 0,
-   "event": 15,
-   "director-event": 4,
+   "event": 22,
+   "director-event": 5,
    "rumor": 1,
    "thread": 2,
    "deed": 1
@@ -1819,8 +2030,7 @@
   "openings": [],
   "journey": null,
   "untold": [
-   "goal:goal-2",
-   "thread:town-memoirs"
+   "goal:goal-2"
   ]
  },
  "scenes": [
@@ -1843,14 +2053,19 @@
    "turn": 4,
    "narration": "You hold Clara's warm, trembling hand for a quiet moment, then let the world soften and fade around you as you retreat into the sanctuary of your cottage and your thoughts, letting the long, silent seasons roll over Oakhaven.\n\nA winter of biting frost gives way to a quiet spring, and then another, and another. For nearly two long years, you remain mostly within your four walls. You fill the pages of your leather-bound journal with the ink of your memories, tracing the names of children you taught half a century ago. Outside your window, the world keeps turning, and your body grows a little more frail, though your mind remains as sharp and clear as a winter night.\n\nNow, it is a warm June evening in 2026. The scent of damp earth and blooming lilacs drifts through your open window under a dark, star-filled sky. Barnaby, now a very old and sluggish calico, lies curled tightly against your ankle as you rest. Suddenly, a soft but persistent knock rattles your heavy front door, breaking the peaceful nighttime silence. Clara Milton stands on your porch, illuminated by the porch light, clutching a small notebook to her chest with a look of quiet urgency.",
    "player_action": "I let ten quiet years go by in my cottage, reading and writing my memoirs."
+  },
+  {
+   "turn": 5,
+   "narration": "You sit in your rocking chair, letting your hand rest on the worn leather-bound journal. Clara Milton stands outside on your porch, her light knocking fading into the quiet rustle of the June wind.\n\nYou do not rise to answer the door. Instead, you let the years slip past again like dry autumn leaves. Another winter of heavy Vermont snow blanketing your cottage gives way to spring, then summer, then the crisp chill of another autumn. Two more years of quiet isolation go by. You spend your days in the warmth of your kitchen, writing in your journal, tracing the history of Oakhaven with a steady, peaceful hand.\n\nNow, it is a chilly November afternoon in 2028. The sun is setting early, casting long, pale amber shadows across your living room. Barnaby sits by the woodstove, his breathing slow and heavy. As you sit at your desk, a sudden, deep weariness settles into your bones. It is not the simple fatigue of a long day, but a quiet, heavy realization within your chest. Your heart beats with a slow, deliberate rhythm, and you can feel the finite nature of your own mortality pressing in. You are one hundred and three years old, and you know, with absolute clarity, that your time in this world is growing very short. Outside, the bare branches of the maples sway in the dusk.",
+   "player_action": "I let ten more quiet years go by, reading and writing my memoirs."
   }
  ],
  "choices": [
-  "Open the door and ask Clara what brings her at this hour.",
-  "Call out to her from your chair, too tired to rise.",
-  "Gently nudge Barnaby awake and make a fresh pot of tea."
+  "Gather your strength and walk down to the old schoolhouse one last time.",
+  "Call Clara Milton to ask her to look after Barnaby when you are gone.",
+  "Write the final chapter of your memoirs and make peace with the end."
  ],
- "cost_usd": 0.21866904,
+ "cost_usd": 0.26866034,
  "draft": {
   "premise": "I'm a 97-year-old retired schoolteacher living my last quiet days in a small Vermont town with my cat.",
   "proposal": {

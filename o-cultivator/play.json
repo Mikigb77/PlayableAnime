@@ -15,9 +15,9 @@
  "seed": "play/o-cultivator",
  "state": {
   "schema_version": 1,
-  "turn": 2,
+  "turn": 3,
   "timeline_id": "main",
-  "world_s": 3600,
+  "world_s": 7200,
   "bible": {
    "title": "The Flickering Jade: A Cultivator's Last Stand",
    "genre": "Cultivation / Xianxia",
@@ -216,7 +216,7 @@
     "death_certainty": null,
     "status_history": [],
     "activity": "active",
-    "location_id": "spirit-peak",
+    "location_id": "market-town",
     "personal_offset_s": 0,
     "memberships": [
      {
@@ -350,7 +350,7 @@
         "history": ""
        }
       ],
-      "money": 120,
+      "money": 0,
       "currency": "spirit stones",
       "title": "Elder of the Misty Cloud Sect",
       "rank": "Foundation Establishment (Peak)",
@@ -620,7 +620,7 @@
     "death_certainty": null,
     "status_history": [],
     "activity": "active",
-    "location_id": "spirit-peak",
+    "location_id": "market-town",
     "personal_offset_s": 0,
     "memberships": [
      {
@@ -752,7 +752,7 @@
     "born_s": null,
     "lifespan_years": null,
     "old_age_span": null,
-    "seen_s": 3600,
+    "seen_s": 7200,
     "near_s": null,
     "met_s": null
    },
@@ -998,7 +998,13 @@
     "visited_by": [
      "player"
     ],
-    "judged": []
+    "judged": [
+     {
+      "key": "assist cor market misty pill river spirit ston trad travel",
+      "what": "Travel to Misty River Market and trade spirit stones for a Core-Assisting Pill.",
+      "level": 1
+     }
+    ]
    },
    "pill-hall": {
     "id": "pill-hall",
@@ -1054,7 +1060,9 @@
     "known_by": [
      "player"
     ],
-    "visited_by": [],
+    "visited_by": [
+     "player"
+    ],
     "judged": []
    },
    "abyss-forest": {
@@ -1212,8 +1220,8 @@
     },
     "status": "open",
     "opened_turn": 0,
-    "last_active_turn": 0,
-    "taken_up_turn": null,
+    "last_active_turn": 3,
+    "taken_up_turn": 3,
     "closed_turn": null,
     "arc": null,
     "known_by": [
@@ -1318,22 +1326,41 @@
     "applied_s": null
    }
   },
-  "transfers": [],
+  "transfers": [
+   {
+    "name": "spirit stones",
+    "quantity": 120,
+    "money": true,
+    "currency": "spirit stones",
+    "item_id": null,
+    "from_id": "player",
+    "to_id": null,
+    "how": "travel",
+    "known_by": [
+     "player",
+     "disciple-chen"
+    ],
+    "turn": 3,
+    "world_s": 7200,
+    "timeline_id": "main",
+    "origin": "engine"
+   }
+  ],
   "time_effects": [],
   "scene": {
-   "place_id": "spirit-peak",
+   "place_id": "market-town",
    "present_ids": [
+    "player",
     "disciple-chen"
    ],
    "positions": [
-    "Sitting weak and breathless on the stone platform",
-    "Kneeling beside you, holding your arm in desperate worry"
+    "Standing in a damp market alley, clutching the jade vial",
+    "Standing beside you, staring anxiously at the vial in your hand"
    ],
    "props": [
-    "A cracked stone incense burner",
-    "A fresh dark bloodstain on the frost-rimed stone"
+    "A cold jade vial containing a low-grade Core-Assisting Pill"
    ],
-   "ended_on": "Chen Yi holds your arm, his eyes pleading as you wipe the blood from your chin on the cold, windswept peak.",
+   "ended_on": "You hold the cracked jade vial containing the Core-Assisting Pill while Chen Yi watches you anxiously in the crowded market alley.",
    "encounter": null
   },
   "director": {
@@ -1347,22 +1374,25 @@
    "recent_moments": [],
    "recent_clock": [
     0,
-    3600
+    3600,
+    7200
    ],
-   "frequency_drift": 0.0,
+   "frequency_drift": 0.1,
    "recent_sources": [],
-   "auto_pictures": 2,
-   "picture_credit": 1.2,
+   "auto_pictures": 3,
+   "picture_credit": 1.3,
    "pictured": [
     "portrait:player",
     "portrait:player:v1",
-    "cover"
+    "cover",
+    "portrait:disciple-chen",
+    "portrait:disciple-chen:v1"
    ],
    "fight": null,
    "deck_draws": 0,
    "road_stops": 0
   },
-  "summary": "At 148 years old, Elder Han's 150-year lifespan is nearly spent. Trapped at the peak of Foundation Establishment, he must find a way to achieve Core Formation before his physical form dissolves into dust.",
+  "summary": "At 148 years old, Outer Elder Han Feng of the Misty Cloud Sect has only two years left to live. Trapped at the peak of Foundation Establishment, he descended Spirit-Severing Peak to Misty River Market and traded his remaining spirit stones for a low-grade Core-Assisting Pill to attempt his final breakthrough.",
   "chapters": [],
   "id_counters": {
    "fact": 3,
@@ -1387,14 +1417,19 @@
    "turn": 2,
    "narration": "You close your eyes, ignoring Chen Yi's desperate plea, and begin to circulate your liquid spiritual energy. You draw the chill of Spirit-Severing Peak into your lungs, forcing your Foundation Qi through pathways that feel like dry, splintering reeds. You attempt to compress the swirling liquid in your dantian, trying to crystallize it into a solid Golden Core by sheer willpower alone.\n\nThe moment you press the energy inward, a blinding spasm of agony tears through your chest. Your brittle meridians groaning under the sheer, unyielding pressure, warning you that one more ounce of force will shatter them instantly, turning your body into an empty husk of ash. The ancient laws of cultivation cannot be bypassed by resolve alone; without a Core-Assisting Pill, the bottleneck is an iron wall that will claim your life before you can even touch the threshold. Coughing up a dark, bitter drop of blood onto the frost-rimed stone, you are forced to disperse the gathered Qi before it tears you apart. Chen Yi drops to his knees beside you, his hands trembling as he reaches out to support your shaking frame. \"Master! Please, do not throw your life away,\" he begs, his voice cracking with raw emotion. \"The Pill Refinement Hall is our only hope. Or... or we search the Black Abyss Forest ourselves.\"",
    "player_action": "I sit down, circulate my qi and attempt the breakthrough to Core Formation right now, without the pill."
+  },
+  {
+   "turn": 3,
+   "narration": "You pull away from Chen Yi's desperate grip, rising with a cold stiffness in your joints, and summon your worn flying sword. Stepping onto the scratched iron blade, you channel your thin, liquid Foundation Qi, ignoring the sharp protest in your meridians. With Chen Yi flying close behind, you glide down from the desolation of Spirit-Severing Peak, cutting through the biting mountain mists.\n\nBelow, the bustling streets of Misty River Market emerge along the muddy banks, alive with shouting vendors and the glow of spiritual lanterns. Your feet touch the damp cobblestones. In the crowded alleys, you seek out the rogue alchemical merchants who deal in hoarded treasures. Handing over your last savings of one hundred and twenty spirit stones, you secure a small, cold jade vial. Inside lies a single, dull-red Core-Assisting Pill. It is low in grade, its surface slightly cracked, yet it is a beacon of hope against your impending dissolution. Chen Yi watches you, his face pale, staring at the vial in your hand with a mixture of awe and fear.",
+   "player_action": "I go down to Misty River Market and trade my spirit stones for a Core-Assisting Pill."
   }
  ],
  "choices": [
-  "Ask Chen Yi how we can infiltrate the Pill Refinement Hall.",
-  "Resolve to travel to the Black Abyss Forest for rare herbs.",
-  "Descend to Misty River Market to trade my remaining stones."
+  "Return to Spirit-Severing Peak to begin the breakthrough immediately.",
+  "Inspect the low-grade pill closely to check its purity.",
+  "Ask the shady merchant if he has any better medicine."
  ],
- "cost_usd": 0.2049472,
+ "cost_usd": 0.2628416,
  "draft": {
   "premise": "An old cultivator, 148 years old, stuck at the peak of Foundation Establishment. My lifespan of 150 years is almost spent: I break through to Core Formation or I die.",
   "proposal": {

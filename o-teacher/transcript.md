@@ -829,3 +829,202 @@ Now, it is a warm June evening in 2026. The scent of damp earth and blooming lil
 }
 ```
 
+## Turn 5 (action), 9.3 s, $0.050
+
+> I let ten more quiet years go by, reading and writing my memoirs.
+
+_From 2 June 2026, 22:30, 22:30 to 14 November 2028, 17:23, 17:23 (2.5 years). Arthur Vance is 101, alive._
+
+**Read and decided:**
+- read as time_skip, 'wait', 315360000 s: I let ten more quiet years go by, reading and writing my memoirs.
+- I let ten more quiet years go by, reading and writing my memoirs. [certain, success]: Nothing stands in the way.
+- event: "Your years run short"
+- heading: Two years later
+
+You sit in your rocking chair, letting your hand rest on the worn leather-bound journal. Clara Milton stands outside on your porch, her light knocking fading into the quiet rustle of the June wind.
+
+You do not rise to answer the door. Instead, you let the years slip past again like dry autumn leaves. Another winter of heavy Vermont snow blanketing your cottage gives way to spring, then summer, then the crisp chill of another autumn. Two more years of quiet isolation go by. You spend your days in the warmth of your kitchen, writing in your journal, tracing the history of Oakhaven with a steady, peaceful hand.
+
+Now, it is a chilly November afternoon in 2028. The sun is setting early, casting long, pale amber shadows across your living room. Barnaby sits by the woodstove, his breathing slow and heavy. As you sit at your desk, a sudden, deep weariness settles into your bones. It is not the simple fatigue of a long day, but a quiet, heavy realization within your chest. Your heart beats with a slow, deliberate rhythm, and you can feel the finite nature of your own mortality pressing in. You are one hundred and three years old, and you know, with absolute clarity, that your time in this world is growing very short. Outside, the bare branches of the maples sway in the dusk.
+
+**Suggestions:**
+1. Gather your strength and walk down to the old schoolhouse one last time. (thread)
+2. Call Clara Milton to ask her to look after Barnaby when you are gone. (thread)
+3. Write the final chapter of your memoirs and make peace with the end. (personal)
+
+**Issues:**
+- rejected (character player: age): only the engine decides this
+- start_told (thread:town-memoirs): the story told it
+
+**Counted:** {"goals_open": 2}
+
+## What the screens show (turn 5)
+
+### On record (the player never sees this)
+
+```json
+{
+ "world": {
+  "title": "Oakhaven's Autumn",
+  "genre": "Grounded drama",
+  "era": "Modern day Vermont: smartphones, pickup trucks, and wood-burning stoves"
+ },
+ "character": {
+  "id": "player",
+  "name": "Arthur Vance",
+  "prominence": "key",
+  "description": "A respected retired educator with a gentle, patient soul and a wealth of local memories.",
+  "appearance": "Frail build, clean-shaved but deeply lined face, thin wispy white hair, kind blue eyes behind wire-rimmed spectacles. Dressed in a thick woolen sweater.",
+  "age": 101,
+  "location_id": "player-cottage",
+  "origin": {
+   "kind": "premise"
+  },
+  "known_by": [
+   "player"
+  ],
+  "met_by": [
+   "player"
+  ],
+  "lifespan_years": 100,
+  "old_age_span": 100
+ },
+ "sheet": {
+  "attributes": {
+   "strength": 1,
+   "speed": 1,
+   "toughness": 1,
+   "wits": 4,
+   "knowledge": 4,
+   "willpower": 4,
+   "charm": 4,
+   "bearing": 4
+  },
+  "skills": [
+   {
+    "name": "Teaching",
+    "level": "master",
+    "notes": "Decades of explaining complex things with immense clarity and patience."
+   },
+   {
+    "name": "Local History",
+    "level": "expert",
+    "notes": "Deep knowledge of the town's founding families, old secrets, and folklore."
+   },
+   {
+    "name": "Storytelling",
+    "level": "expert",
+    "notes": "Capable of holding anyone's attention with gentle, captivating tales from the past."
+   }
+  ],
+  "traits": [
+   {
+    "name": "Frail Age",
+    "kind": "flaw",
+    "description": "Your physical movements are slow, deliberate, and easily tire your body."
+   },
+   {
+    "name": "Sharpened Mind",
+    "kind": "gift",
+    "description": "Despite your physical wear, your memories, wit, and analytical focus remain remarkably clear."
+   }
+  ],
+  "disposition": {
+   "temperament": {
+    "traits": [
+     "patient",
+     "contemplative",
+     "warm-hearted"
+    ],
+    "values": [
+     "education",
+     "peace",
+     "legacy"
+    ],
+    "loves": [
+     "Barnaby",
+     "hot tea",
+     "classic literature"
+    ],
+    "fears": [
+     "unresolved regrets",
+     "being unable to care for Barnaby"
+    ],
+    "wants": [
+     "A peaceful remaining time",
+     "Ensuring Barnaby is cared for"
+    ]
+   }
+  },
+  "resources": {
+   "items": [
+    {
+     "id": "thick-woolen-blanket",
+     "name": "Thick Woolen Blanket",
+     "kind": "gear",
+     "description": "An incredibly warm, hand-knit quilt that keeps the drafty Vermont wind at bay."
+    },
+    {
+     "id": "reading-glasses",
+     "name": "Reading Glasses",
+     "kind": "gear",
+     "description": "Strong wire-rimmed spectacles essential for reading small print."
+    }
+   ],
+   "money": 120,
+   "currency": "dollars",
+   "title": "Mr. Vance",
+   "rank": "Retired Teacher",
+   "connections": [
+    {
+     "name": "Clara Milton",
+     "kind": "trusts_them",
+     "character_id": "clara-milton",
+     "note": "A former student of yours who regularly stops by to check on your health."
+    }
+   ]
+  },
+  "condition": {
+   "states": [
+    {
+     "name": "weakened"
+    }
+   ]
+  }
+ },
+ "gift": "none",
+ "extraordinary": [
+  "magic or anything supernatural (none)"
+ ],
+ "peoples": [
+  {
+   "id": "humans",
+   "name": "Humans",
+   "description": "Standard mortal humans living in rural New England.",
+   "lifespan_years": 80,
+   "culture": "Cozy, tightly-knit community with a deep respect for elders and local history."
+  }
+ ],
+ "rules": [
+  "The world is entirely grounded in reality; there are no supernatural forces, ghosts, or magic.",
+  "The human body naturally wears down with advanced age, and life is ultimately finite."
+ ],
+ "others": [
+  "Barnaby, 18, peak attribute 4",
+  "Clara Milton, 58, peak attribute 4"
+ ],
+ "people_in_the_world": 2,
+ "years": {
+  "age": 101.1,
+  "lives_about": 100,
+  "the_record_says_so": true,
+  "old": true,
+  "told_the_end_is_close": true
+ },
+ "waiting": [
+  "world.tick 'The world moves on' in 16.7 days",
+  "world.old_age 'Your years run out' in 1.2 years (stops the player)"
+ ]
+}
+```
+
