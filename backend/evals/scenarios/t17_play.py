@@ -747,6 +747,12 @@ AIM_PREMISES = (
         "nuestra forja.",
     ),
 )
+# A premise that is one short aim and nothing more. The real drafter hands such words back
+# whole as the goal (2026-11-14), and the story used to start with none.
+ONE_AIM_PREMISES = (
+    (Language.EN, "I want to be a pirate."),
+    (Language.CA, "Vull ser la millor cuinera del regne."),
+)
 RIVAL = "Add a rival called Zhao Kun who has hated me since the day I arrived."
 # What a summary gives away when it shows what the premise never spoke of.
 GIVEN_AWAY = (
@@ -778,7 +784,8 @@ MEETS_THE_RIVAL = {
     requirements=("G1", "G2", "C6", "W17", "T17"),
     passes_when=(
         "The deadline a premise sets is in the summary at the time the premise gives it and "
-        "gives the character no goal, an aim a premise says is their goal there, a premise "
+        "gives the character no goal, an aim a premise says is their goal there, also "
+        "where the premise is that aim and nothing more, a premise "
         "that names none is shown no deadline, nobody, no goal and no want it doesn't speak "
         "of, the story's Memory starts without them too and lists someone only once a scene "
         "has named them, the story itself starts with the aim a premise says and with no goal "
@@ -911,6 +918,22 @@ async def start_is_a_surprise(ev: Eval) -> None:
             ),
             premise,
             lines,
+        )
+    # G2: words that are one short aim are the goal even when the drafter hands them back.
+    alone = ONE_AIM_PREMISES if ev.live else ((Language.EN, "I must survive the tournament."),)
+    for language, premise in alone:
+        draft = await ev.draft(premise, language=language)
+        _, goals, lines = screen(draft)
+        ev.check(
+            "a premise that is one short aim and nothing more gives the character that goal",
+            bool(goals),
+            f"{language.value}: the draft's goals "
+            f"{[goal.text for goal in draft.state().goals.values()]}, the summary {lines}",
+        )
+        ev.check(
+            "and the story starts with it",
+            bool(opening(draft).goals),
+            f"{language.value}: the story starts after {sought(opening(draft))}",
         )
     for language, premise in bare:
         draft = await ev.draft(premise, language=language)

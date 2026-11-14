@@ -110,6 +110,7 @@ from engine.state import (
 )
 from engine.world.tuning import AGELESS_YEARS
 from graph.drafting.catalog import PremiseTemplate
+from graph.drafting.named import one_aim
 from graph.drafting.schema import (
     PLAYER_ID,
     AttributesP,
@@ -128,6 +129,7 @@ from graph.drafting.schema import (
     WorldProposal,
 )
 from graph.drafting.view import SUMMARY_RUNGS
+from graph.words import alike, content
 
 ACTIVE_NPCS = 8  # W15, K8: the active cast to start
 ACTIVE_FACTIONS = 4
@@ -996,8 +998,12 @@ class _Assembler:
         if player:
             # G2: an aim is said once. A drafter writes the goal again as what the character
             # wants, and "Goal: Find my sister" over "Wants Find my sister" tells it twice.
-            goals = [_wording(goal) for goal in self._goals()]
-            temperament.wants = [w for w in temperament.wants if _wording(w) not in goals]
+            goals = self._goals()
+            temperament.wants = [
+                want
+                for want in temperament.wants
+                if not any(self._said_again(want, goal) for goal in goals)
+            ]
         return CharacterSheet(
             attributes=self._attributes(proposed.attributes),
             skills=_skills(proposed.skills),
@@ -1114,8 +1120,21 @@ class _Assembler:
         handed back: a drafter asked for the player's own words can copy all of them, and "Goal:
         I'm a squire about to take the knight exam in 3 days, and..." tells the player nothing."""
         premise = _wording(self.options.premise)
-        aims = (goal for goal in self.character.goals if _wording(goal) != premise)
+        # A premise that is itself one short aim ("I want to be a pirate.") is the exception:
+        # handed back whole it is still what they are after, in their own words.
+        its_aim = one_aim(self.options.premise, self.options.language)
+        aims = (goal for goal in self.character.goals if its_aim or _wording(goal) != premise)
         return _texts(aims, 6, 300)
+
+    def _said_again(self, want: str, goal: str) -> bool:
+        """G2: whether a want says a goal again: word for word, or in the same words that say
+        something, as "to steal secrets for the rebellion" says "Steal secrets for the
+        rebellion"."""
+        if _wording(want) == _wording(goal):
+            return True
+        its = content(want, self.options.language)
+        said = content(goal, self.options.language)
+        return bool(its) and len(its) == len(said) and all(map(alike, its, said))
 
     def _clocks(self) -> list[Clock]:
         clocks: dict[str, Clock] = {}

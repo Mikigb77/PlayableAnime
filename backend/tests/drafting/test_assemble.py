@@ -899,6 +899,31 @@ def test_a_goal_is_an_aim_never_the_premise_handed_back():
     assert [goal.text for goal in state.goals.values()] == ["Become the pirate king."]
 
 
+def test_a_premise_that_is_one_short_aim_is_the_goal_when_handed_back():
+    # G2 (the drafts of 2026-11-14 on the real models): the drafter gave "I want to be a
+    # pirate." back whole as the goal and as a want, and the story started with no goal.
+    premise = "I want to be a pirate."
+    character = samples.cultivation_character()
+    character.goals = [premise]
+    character.temperament.wants = [premise, "to see the sea"]
+
+    state = assemble(samples.cultivation_world(), character, DraftOptions(premise=premise))
+
+    assert [goal.text for goal in state.goals.values()] == [premise]
+    assert state.player.sheet.disposition.temperament.wants == ["to see the sea"]
+    # In the story's language, whichever it is.
+    quiero = "Quiero ser pirata."
+    character.goals = [quiero]
+    options = DraftOptions(premise=quiero, language=Language.ES)
+    state = assemble(samples.cultivation_world(), character, options)
+    assert [goal.text for goal in state.goals.values()] == [quiero]
+    # Words that say no aim, however short, are still only the premise handed back.
+    character.goals = ["A pirate with a cursed map."]
+    options = DraftOptions(premise="A pirate with a cursed map.")
+    state = assemble(samples.cultivation_world(), character, options)
+    assert not state.goals
+
+
 def test_an_aim_is_said_once_as_the_goal_it_is():
     # G2 (the first plays on the real models, 2026-11-14): the drafter wrote each goal again,
     # word for word, as what the character wants, and a summary would give it twice.
@@ -914,6 +939,19 @@ def test_an_aim_is_said_once_as_the_goal_it_is():
     # Only the player's own are read against their goals: what someone else wants stays theirs.
     rival = state.characters[world.npcs[0].id]
     assert rival.sheet.disposition.temperament.wants == character.goals
+    # Said again with a small word more is said again: the spy of 2026-11-14 started with the
+    # goal "Steal secrets for the rebellion" over the want "to steal secrets for the rebellion".
+    character.goals = ["Steal secrets for the rebellion"]
+    character.temperament.wants = [
+        "to steal secrets for the rebellion",
+        "to be free of the rebellion",
+        "secrets",
+    ]
+    state = assemble(samples.cultivation_world(), character, DraftOptions(premise="A premise."))
+    assert state.player.sheet.disposition.temperament.wants == [
+        "to be free of the rebellion",
+        "secrets",
+    ]
 
 
 def test_the_clocks_a_proposal_gives_are_the_states_in_its_order():
