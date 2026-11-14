@@ -317,14 +317,27 @@ async def _revise(play_: Play, given: Any, models: Models) -> None:
     draft = play_.draft()
     telemetry = TurnTelemetry()
     instruction = str(given.get("instruction", ""))
+    # The row of the draft's screen the change is asked at, as the app sends it.
+    try:
+        row = view.PartKind(given["about"]) if given.get("about") else None
+    except ValueError:
+        rows = ", ".join(kind.value for kind in view.PartKind)
+        raise PlayError(f"about is a row of the draft: {rows}.") from None
     revised = await chain.revise(
-        _drafter(models, draft.rating, telemetry), draft, given["target"], instruction
+        _drafter(models, draft.rating, telemetry),
+        draft,
+        given["target"],
+        instruction,
+        chain.asked_at(draft, given["target"], row),
+        aim=chain.asks_an_aim(row),
     )
     spent = Decimal(str(play_.data.get("cost_usd", 0))) + telemetry.cost_usd
     play_.data["cost_usd"] = float(spent)
     play_.keep_draft(revised)
-    heading = f"The draft, after asking of the {given['target']}: “{instruction}”"
-    play_.tell(_draft_told(revised, heading, telemetry))
+    where = (
+        f"at the {row.value} row of the {given['target']}" if row else f"of the {given['target']}"
+    )
+    play_.tell(_draft_told(revised, f"The draft, after asking {where}: “{instruction}”", telemetry))
 
 
 async def _start(play_: Play, _given: Any, models: Models) -> None:
@@ -421,11 +434,15 @@ _STEPS = {
 def _draft_told(draft: chain.Draft, heading: str, telemetry: TurnTelemetry) -> str:
     state = draft.state()
     seconds = sum(call.latency_ms for call in telemetry.calls) / 1000
+    thought = sum(call.thinking_tokens for call in telemetry.calls)
+    written = sum(call.output_tokens for call in telemetry.calls) - thought
+    tries = sum(call.attempts for call in telemetry.calls)
+    spent = f"{seconds:.1f} s, ${float(telemetry.cost_usd):.3f}"
     return "\n\n".join(
         [
             f"## {heading}",
             f"> {draft.premise}",
-            f"_{seconds:.1f} s, ${float(telemetry.cost_usd):.3f}_",
+            f"_{spent}: {thought} tokens of thinking, {written} of answer, {tries} tries_",
             "### What the draft's screen shows",
             view.shown(state, draft.language, draft.said),
             "### On record (the player never sees this)",

@@ -195,9 +195,14 @@ change in plain words, asked at the part of the summary it is about, so "make th
 says what "this" is. **The screen says how each thing changes**: the character comes first,
 then the world with its rules, and every row carries a mark, a pencil for what the player types
 (saved at once, free) and a wand for what they tell the storyteller (the cost is said before
-they ask). A rule is locked for the whole story or true for now with one switch, which is free;
-its words redraft the world. Where the player writes the premise, the screen says what a
-premise can decide (who they are, what makes them special, what is coming, who is in their
+they ask). **A change is never refused for the draft's own words, and never lost to a slow
+answer** (Miki, 2026-11-14: "when you try to edit one field on itself, it always gives an
+error"): a field takes back any text the draft holds, as long as the drafter may write it; a
+change to one row thinks far less than the first draft did, so the player waits seconds on it;
+and when the connection drops under a change, the app looks for it having landed before it
+says anything failed. A rule is locked for the whole story or true for now with one switch,
+which is free; its words redraft the world. Where the player writes the premise, the screen
+says what a premise can decide (who they are, what makes them special, what is coming, who is in their
 life, what they are after), with an example of each, and that everything they leave out stays a
 surprise. How the
 story plays is on the same screen as the draft: the rating, difficulty, world events, the gift

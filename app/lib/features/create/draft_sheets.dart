@@ -243,8 +243,8 @@ class _ReviewField extends StatelessWidget {
 /// A plain field of the draft, which the player changes themselves (G1, G2): the server writes it
 /// in at once, with no model call and at no cost.
 enum PlainField {
-  title('title', DraftLimits.short),
-  tone('tone', DraftLimits.short),
+  title('title', DraftLimits.title),
+  tone('tone', DraftLimits.tone),
   looks('character.looks', DraftLimits.long),
   manner('character.manner', DraftLimits.long);
 
@@ -437,7 +437,7 @@ class _NameSheetState extends State<_NameSheet> {
             _ReviewField(
               tracker: _tracker,
               draft: _draft,
-              maxLength: DraftLimits.short,
+              maxLength: DraftLimits.name,
               label: l10n.nameLabel,
               minLines: 1,
               maxLines: 1,

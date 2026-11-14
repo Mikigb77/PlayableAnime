@@ -11,9 +11,19 @@ enum CreateStage { premise, drafting, review }
 /// then starts the story. Every change sends the version last seen, and a stale draft is reloaded
 /// before the player tries again (T10).
 class CreateFlow extends ChangeNotifier {
-  CreateFlow(this._drafts, {this.onCharged});
+  CreateFlow(
+    this._drafts, {
+    this.onCharged,
+    this.landingPoll = const Duration(seconds: 4),
+    this.landingWait = const Duration(minutes: 3),
+  });
 
   final DraftRepository _drafts;
+
+  /// How often the draft is read again after a change's reply was lost, and for how long from
+  /// the start of the change: as long as the server may still be working on it ([_landed]).
+  final Duration landingPoll;
+  final Duration landingWait;
 
   /// Called after each request that may have spent credits (K2), whatever its outcome, so the
   /// balance shown elsewhere can be read again.
@@ -115,6 +125,8 @@ class CreateFlow extends ChangeNotifier {
 
   Future<Object?> _change(Redraft cost, Future<Draft> Function() save) async {
     if (busy) return StateError('Another change is being saved');
+    final sent = _draft!;
+    final waited = Stopwatch()..start();
     _redrafting = cost;
     _saving = true;
     _notify();
@@ -124,6 +136,12 @@ class CreateFlow extends ChangeNotifier {
     } on ApiException catch (e) {
       if (e.code == ApiErrorCode.versionConflict) await reload();
       if (e.startedStoryId case final storyId?) _draft = _draft?.started(storyId);
+      if (e.lostTheReply) {
+        // A connection that dropped leaves the server working on a change that calls the model.
+        // A page from a proxy in place of an answer says nothing either way: one look.
+        final working = !cost.isFree && e.code != ApiErrorCode.server;
+        if (await _landed(sent, waited, working: working)) return null;
+      }
       return e;
     } on Object catch (e) {
       return e;
@@ -133,6 +151,30 @@ class CreateFlow extends ChangeNotifier {
       _notify();
       if (!cost.isFree && !_disposed) onCharged?.call();
     }
+  }
+
+  /// Whether a change whose reply never came was saved all the same. The server finishes a
+  /// change whatever becomes of the connection, and a phone drops a request that stays silent
+  /// for a minute or two: on 2026-11-11 a change that took the model 111 s was shown as failed,
+  /// and asking again failed too, against the draft the first one had changed. So the draft is
+  /// read again until its version has moved on, for as long as the server may still be
+  /// [working]: [landingWait] from the start of the change, or one look when it can't be. The
+  /// change stays in flight meanwhile, so nothing else is sent under it.
+  Future<bool> _landed(Draft sent, Stopwatch waited, {required bool working}) async {
+    while (!_disposed) {
+      try {
+        final latest = await _drafts.get(sent.id);
+        if (latest.version > sent.version) {
+          _draft = latest;
+          return true;
+        }
+      } on Object {
+        // Still no connection: look again.
+      }
+      if (!working || waited.elapsed + landingPoll > landingWait) return false;
+      await Future<void>.delayed(landingPoll);
+    }
+    return false;
   }
 
   /// Fetches the draft as the server has it now.
@@ -186,6 +228,10 @@ class CreateFlow extends ChangeNotifier {
 }
 
 extension on ApiException {
+  /// The request may have reached the server, and only its reply was lost on the way back.
+  bool get lostTheReply =>
+      code == ApiErrorCode.network || code == ApiErrorCode.timeout || code == ApiErrorCode.server;
+
   /// `403 forbidden` on a draft that has started carries its story (docs/API.md).
   String? get startedStoryId => code == ApiErrorCode.forbidden && details['story_id'] is String
       ? details['story_id'] as String
