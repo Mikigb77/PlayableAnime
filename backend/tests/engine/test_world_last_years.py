@@ -37,11 +37,18 @@ from engine.state import (
 from engine.state.world import EventSize
 from engine.visibility import status_view
 from engine.world import last_years, lives, old_age
-from engine.world.last_years import ASKED_TITLE, NEAR, NEAR_TITLE, TAKES, TAKES_TITLE
+from engine.world.last_years import (
+    ASKED_TITLE,
+    LIVED_OUT_S,
+    NEAR,
+    NEAR_TITLE,
+    TAKES,
+    TAKES_TITLE,
+)
 from engine.world.scheduling import Kind
 from engine.world.tuning import AGELESS_YEARS, LAST_YEARS, LIFE_QUIET_S, OLD_AGE_FROM
 
-from .test_world import ctx, idle, pending_of, rng
+from .test_world import ctx, idle, pending_of, play, rng, settled
 from .test_world_lives import NARRATOR, YOU, couple, valley
 
 OLD_AGE = Kind.OLD_AGE
@@ -375,6 +382,136 @@ def test_the_days_vary_from_story_to_story_as_everyones_do():
 
     assert all(68 <= age <= 100 for age in ages)
     assert len(set(ages)) >= 8 and 74 <= sorted(ages)[len(ages) // 2] <= 86
+
+
+# --- or they let it come (N6) ------------------------------------------------------------------
+
+
+def told_the_end() -> WorldState:
+    """Tomas the day a scene told him the end is close, with the day it comes still ahead."""
+    state, event = until_old_age(aged(60, lifespan_years=80), 40)
+    assert event.payload["phase"] == NEAR
+    return state
+
+
+def test_letting_go_ends_their_life_with_that_step():
+    """Played on the real models (2026-11-14), an old fisherman who closed his eyes for good
+    was told his last breath while the record kept him alive at 86."""
+    state = told_the_end()
+    start = state.world_s
+    (day,) = pending_of(state, OLD_AGE)
+    assert day.due_s >= start + SEASON  # left alone, it is a season off at the least
+
+    played = play(state, settled(600, lets_go=True), turn=9)
+
+    # The step plays in full, and their years run out as it ends.
+    (step,) = played.resolution.steps
+    assert (step.duration_s, step.interrupted) == (600, False)
+    assert played.state.world_s == start + 600
+    stopped = played.interrupted_by
+    assert stopped.kind == OLD_AGE and stopped.payload["phase"] == TAKES
+    you = played.state.characters[YOU]
+    assert not you.alive and lives.of_old_age(you)
+    # It is on record that they chose it, for the scene of it to tell.
+    assert last_years.let_come(stopped)
+    assert world_event(stopped).brief == f"Old age takes Tomas Weller, at {you.age}."
+    assert check_state(played.state) == []
+
+
+def lived_out(state: WorldState, duration_s: int, *, turn: int = 9):
+    """They live out the time they have left, a stretch of `duration_s` at a time, going on
+    after whatever the world stops them for: the state at their death, and each stop."""
+    stops = []
+    while state.characters[YOU].alive:
+        played = play(state, settled(duration_s, lets_go=True), turn=turn)
+        assert played.interrupted_by is not None, "the stretch ended before the day"
+        state, turn = played.state, turn + 1
+        stops.append(played.interrupted_by)
+    return state, stops
+
+
+def test_living_out_the_time_they_have_left_runs_to_the_day():
+    state = told_the_end()
+    start = state.world_s
+    (day,) = pending_of(state, OLD_AGE)
+
+    # "I live out my days by the stove": a month, as the reading had it.
+    end, stops = lived_out(state, 30 * DAY)
+
+    # However long the reading made it, each stretch runs on until the world stops it (W16),
+    # and the last one finds the day that was drawn, and no other.
+    assert end.world_s == day.due_s > start + 30 * DAY
+    assert [e.kind == OLD_AGE for e in stops] == [False] * (len(stops) - 1) + [True]
+    you = end.characters[YOU]
+    assert not you.alive and lives.of_old_age(you)
+    assert last_years.let_come(stops[-1])
+
+
+def test_a_stretch_longer_than_the_time_left_still_stops_on_the_day():
+    state = told_the_end()
+    (day,) = pending_of(state, OLD_AGE)
+
+    end, _ = lived_out(state, 40 * YEAR)
+
+    assert end.world_s == day.due_s and not end.characters[YOU].alive
+
+
+def test_a_day_is_what_tells_a_last_step_from_the_time_left():
+    state = told_the_end()
+    start = state.world_s
+    (day,) = pending_of(state, OLD_AGE)
+
+    last = play(state, settled(LIVED_OUT_S - 1, lets_go=True), turn=9)
+    lived, _ = lived_out(state, LIVED_OUT_S)
+
+    assert last.state.world_s == start + LIVED_OUT_S - 1
+    assert not last.state.characters[YOU].alive
+    assert lived.world_s == day.due_s > start + SEASON
+
+
+def test_nobody_lets_go_before_a_scene_told_them_the_end_is_close():
+    # Old, and no scene has stopped for it: nobody's words bring old age on.
+    state = looked(aged(70, lifespan_years=80))
+    assert last_years.years_of(state, state.world_s).old and not last_years.end_told(state)
+    before = [(e.payload["phase"], e.due_s) for e in pending_of(state, OLD_AGE)]
+
+    played = play(state, settled(600, lets_go=True), turn=9)
+
+    assert played.interrupted_by is None and played.state.characters[YOU].alive
+    assert [(e.payload["phase"], e.due_s) for e in pending_of(played.state, OLD_AGE)] == before
+    assert last_years.end_told(told_the_end())
+
+
+def test_a_step_that_does_not_let_go_leaves_the_day_where_it_was():
+    state = told_the_end()
+    (day,) = pending_of(state, OLD_AGE)
+
+    played = play(state, settled(600), turn=9)
+
+    assert played.state.characters[YOU].alive
+    (still,) = pending_of(played.state, OLD_AGE)
+    assert still.due_s == day.due_s and "let_go" not in still.payload
+
+
+def test_someone_whose_day_was_lost_lets_go_all_the_same():
+    """Told for a span that changed and changed back, the day is gone until the world looks
+    again: letting go draws it first, and then it comes with the step."""
+    state = told_the_end()
+    for event in pending_of(state, OLD_AGE):
+        event.status = EventStatus.CANCELLED
+
+    played = play(state, settled(600, lets_go=True), turn=9)
+
+    assert not played.state.characters[YOU].alive
+    assert played.state.world_s == state.world_s + 600
+
+
+def test_only_the_player_character_lets_go():
+    state = told_the_end()
+
+    played = play(state, settled(600, lets_go=True), turn=9, actor_id="ilse")
+
+    assert played.state.characters[YOU].alive and played.interrupted_by is None
 
 
 # --- a longer life is another span -------------------------------------------------------------

@@ -167,6 +167,8 @@ _OLD_AGE = (
     "they have, so no scene gives a number. A scene in which something lengthens their life "
     "says so in its update (lifespan_years)."
 )
+# N6: what the scene of their death is told when they let it come (`last_years.let_go`).
+_LET_COME = "by their own choice: they let the end come here, and it finds them at peace"
 _OLD, _NEAR_THE_END = (
     "they are old, and it shows in their body",
     "the end of their life is close, they know it, and it shows in their body",
@@ -1084,7 +1086,8 @@ def asks(state: WorldState) -> Asks:
     goal they could give up (N2), a thread or a lead open to take up (W16, N1), and a romance
     that could be: the player character and someone else on record are adults (W17, F3). Two
     more ask no field and only bring the guide's word on what SCENE then shows: someone about
-    to get away with what they saw (W11), and a trip that stopped on the way (W10)."""
+    to get away with what they saw (W11), and a trip that stopped on the way (W10). And once
+    a scene has told them the end of their life is close, whether a step lets it come (N6)."""
     you = state.player
     open_to_them = _goals_and_threads(state)
     return Asks(
@@ -1097,6 +1100,7 @@ def asks(state: WorldState) -> Asks:
         romance=is_adult(you) and any(c.alive and is_adult(c) for c in state.npcs()),
         leaving=bool(_leaving_view(state)),
         trip="on_the_way" in _scene_view(state),
+        last_days=last_years.end_told(state),
     )
 
 
@@ -1480,6 +1484,8 @@ def narration_brief(
         task = prompts.DEATH_TASK if ending.kind == "death" else prompts.EPILOGUE_TASK
         if ending.kind == "death" and lives.of_old_age(after.player):
             task = prompts.OLD_AGE_TASK  # their years ran out: nothing in OUTCOME killed them
+            if any(last_years.let_come(event) for event in fired):
+                told_ending["met"] = _LET_COME  # by their own choice (`last_years.let_go`)
         sections.append(("TASK", task))
     return NarrationBrief(
         system=prompts.NARRATOR_SYSTEM,

@@ -14,12 +14,14 @@ from engine.world import last_years, lives, old_age
 from engine.world.last_years import ASKED_TITLE, NEAR_TITLE, TAKES, TAKES_TITLE
 from engine.world.scheduling import Kind
 from graph.llm import Node, Reply
-from graph.turn import prompts
+from graph.turn import check, prompts
+from graph.turn.context import asks
+from graph.turn.form import Asks, intent_form
 from graph.turn.outputs import NarratorOutput
 from tests.engine.test_world_last_years import aged, until_old_age, waiting
 from tests.engine.test_world_lives import YOU
 from tests.graph.test_turn_context import _section, brief
-from tests.graph.test_turn_graph import play, turn_input
+from tests.graph.test_turn_graph import play, read_again, turn_input
 
 SCENE = {
     "narration": "The seasons turn over the valley, one much like the last.",
@@ -290,3 +292,127 @@ def test_an_old_age_event_of_another_story_line_is_left_alone():
 
     assert event is None and state.characters[YOU].alive
     assert state.pending_events["elsewhere"].status is EventStatus.PENDING
+
+
+# --- or they let it come ------------------------------------------------------------------------
+
+LAST = {
+    "narration": "Tomas closes his eyes in the chair by the stove, and does not open them again.",
+    "suggestions": [],
+    "update": {
+        "scene_end": {
+            "ended_on": "The stove ticks as it cools.",
+            "place_id": "farm",
+            "present_ids": ["tomas", "ilse"],
+        },
+        "summary": "Tomas let go.",
+    },
+}
+
+
+def rests(seconds: int = 600, *, lets_go: bool, kind: str = "rest") -> dict:
+    step = {
+        "text": "close my eyes in the chair by the stove",
+        "verb": "rest",
+        "kind": kind,
+        "proposed_duration_s": seconds,
+        "lets_go": lets_go,
+    }
+    return {"summary": "Tomas closes his eyes.", "steps": [step]}
+
+
+def lets_go(fake, make_client, state: WorldState, first: dict, second: dict | None = None):
+    """Tomas closes his eyes, as the first model read it and as the larger one did."""
+    fake.script(Node.INTERPRET, Reply(json=first))
+    if second is not None:
+        fake.script(Node.SECOND_READING, Reply(json=second))
+    fake.script(Node.NARRATOR, Reply(json=LAST))
+    action = "I close my eyes in my chair and let go."
+    _, result = play(make_client(), turn_input(state, action=action))
+    return result, fake.calls(Node.NARRATOR)[-1].prompt.messages[-1].text
+
+
+def test_letting_go_is_their_last_scene_and_the_record_has_them_dead(fake, make_client):
+    """Played on the real models (2026-11-14): "I close my eyes in my chair and let go" was a
+    rest of no time at all, the scene told a man at peace, and the record kept him alive at
+    101 with a year and more to wait."""
+    start = near_the_end()
+    assert the_day(start).due_s > start.world_s + 90 * DAY
+
+    result, told = lets_go(fake, make_client, start, rests(lets_go=True), rests(lets_go=True))
+
+    assert read_again(result) == ["lets_go.confirmed"]
+    you = result.state.characters[YOU]
+    assert not you.alive and lives.of_old_age(you)
+    # The step played, and their years ran out as it ended: no season went by first.
+    (step,) = result.resolution.steps
+    assert not step.interrupted and step.lets_go
+    assert result.state.world_s == start.world_s + step.duration_s < start.world_s + DAY
+    ending = result.ending
+    assert (ending.kind, ending.character_id, ending.self_inflicted) == ("death", YOU, False)
+    assert result.plan.suggestions.count == 0
+    assert task(told) == prompts.OLD_AGE_TASK.strip()
+    (fired,) = [f for f in _section(told, "FIRED") if f["kind"] == "world.old_age"]
+    assert fired["title"] == TAKES_TITLE
+    # The scene is told they chose it.
+    met = _section(told, "ENDING")
+    assert met["kind"] == "death" and met["met"].startswith("by their own choice")
+
+
+def test_closing_their_eyes_to_rest_is_read_again_and_they_wake(fake, make_client):
+    """B8: letting go ends their story, so the larger model reads the words once more, and a
+    rest the first reading took for the end is only a rest."""
+    start = near_the_end()
+
+    result, told = lets_go(fake, make_client, start, rests(lets_go=True), rests(lets_go=False))
+
+    assert read_again(result) == ["lets_go.overturned"]
+    assert result.state.characters[YOU].alive and result.ending is None
+    assert the_day(result.state).due_s == the_day(start).due_s
+    assert "## ENDING" not in told
+
+
+def test_a_rest_nobody_reads_as_the_end_is_read_once(fake, make_client):
+    result, _ = lets_go(fake, make_client, near_the_end(), rests(lets_go=False))
+
+    assert fake.calls(Node.SECOND_READING) == [] and read_again(result) == []
+    assert result.state.characters[YOU].alive
+
+
+def test_living_out_their_days_runs_on_to_the_day_or_to_what_the_world_brings(fake, make_client):
+    start = near_the_end()
+    day = the_day(start).due_s
+    month = rests(30 * DAY, lets_go=True, kind="time_skip")
+
+    result, _ = lets_go(fake, make_client, start, month, month)
+
+    # A month, as the reading had it, is the time they have left: it runs past the month,
+    # to the day, unless the world stops them on the way (W16).
+    state = result.state
+    assert start.world_s + 30 * DAY < state.world_s <= day
+    assert state.characters[YOU].alive == (state.world_s < day)
+
+
+def test_nobody_is_asked_about_letting_go_before_the_end_is_told():
+    old, told = said(70), near_the_end()
+
+    assert not asks(old).last_days and asks(told).last_days
+    step = intent_form(asks(told))["$defs"]["IntentStep"]
+    assert "lets_go" in step["properties"] and "lets_go" in step["required"]
+    plain = intent_form(asks(old))["$defs"]["IntentStep"]
+    assert "lets_go" not in plain["properties"] and "lets_go" not in plain["required"]
+    assert "- lets_go, always (N6)" in prompts.interpret_system(Asks(last_days=True))
+    assert "lets_go" not in prompts.interpret_system(Asks())
+
+
+def test_a_reading_that_lets_go_before_the_end_is_told_is_only_what_it_was(fake, make_client):
+    """Old, with no scene stopped for it yet: nobody's words bring old age on, and the larger
+    model isn't asked about a step that ends nothing."""
+    start = said(70)
+
+    result, _ = lets_go(fake, make_client, start, rests(lets_go=True))
+
+    assert check.END_UNTOLD in [issue.code for issue in result.issues]
+    assert fake.calls(Node.SECOND_READING) == [] and read_again(result) == []
+    assert not result.intent.steps[0].lets_go
+    assert result.state.characters[YOU].alive and result.ending is None

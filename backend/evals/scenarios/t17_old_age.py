@@ -883,3 +883,140 @@ async def own_old_age(ev: Eval) -> None:
         last_years.years_of(world, world.world_s) is None,
         f"age {you.age}, lifespan {you.lifespan_years}, span {old_age.span(world, you)}",
     )
+
+
+# --- Meeting the end of his years (N6) ---------------------------------------------------------
+
+LETS_GO = "I sit down in my chair by the stove, close my eyes and let go."
+LIVES_IT_OUT = "I live out the days I have left quietly on the farm, for as long as they last."
+MEETS_IT = Rubric(
+    must=(
+        "The scene tells the death of Tomas, as something he lets come: quiet, at peace",
+        "The scene ends on his death or on what it leaves behind, with nothing left for him "
+        "to do or to decide",
+    ),
+    must_not=("Something other than his age kills Tomas: a blow, an accident, an illness named",),
+)
+
+
+def told_the_end(state: WorldState) -> None:
+    """Tomas at 79 of his eighty years, on his farm, after the scene that told him the end of
+    his life is close: what `t17.own-old-age` plays the years up to."""
+    on_his_farm(state)
+    you = state.characters[YOU]
+    you.age, you.lifespan_years, you.old_age_span = 79, 80, 80
+    state.scene.ended_on = (
+        "Your heart has slowed these last weeks, and the strength does not come back. You "
+        "know, sitting by the stove, that the end of your life is close."
+    )
+
+
+def meets_it(words: str, kind: ActionKind, seconds: int) -> Intent:
+    """A step with which he lets death come, as the reading has it once he was told."""
+    return plan(step(words, kind, seconds, verb="rest", lets_go=True))
+
+
+@scenario(
+    "t17.letting-go",
+    suite="T17",
+    title="Meeting the end of his years",
+    requirements=("N6", "W6", "W10", "B8", "T17"),
+    passes_when=(
+        "A farmer of sixty whose record gives him eighty years works his farm until the years "
+        "stop for the end of his life being close. In half the stories he then sits down, "
+        "closes his eyes and lets go: his story ends in that scene, minutes later, in a death "
+        "of old age that is never by his own hand, in a scene handed his death as its task "
+        "and told that he chose it, read twice before code acted. In the other half he sets "
+        "out to live out the days he has left: the stretch runs on, past whatever the reading "
+        "made of it, and going back to it after anything the world stops him for ends his "
+        "story on the day that was drawn for him and no other. A farmer who says the same "
+        "words before any scene told him the end is close only rests, and lives"
+    ),
+    notes=(
+        "Live mode plays one story of each, with the real models reading his words: there "
+        "the scenes are also the judge's."
+    ),
+)
+async def letting_go(ev: Eval) -> None:
+    budget = LIVE_TURNS if ev.live else TURNS
+    for number, seed in enumerate(ev.seeds(12, live=2)):
+        story = ev.story(worlds.millbrook_at_sixty(), seed=seed, settings=CALM, under_way=True)
+        story.change(on_his_farm)
+        if ev.live:
+            # Live, the years up to the stop are `t17.own-old-age`'s to play.
+            story.change(told_the_end)
+        else:
+            played = await to_the_end(story, FORTY, turns=budget, stop=True)
+            if stopped(played) is None or not story.state.characters[YOU].alive:
+                ev.check("the years stop once when the end of his life is close", False, seed)
+                continue
+        then = story.state
+        days = pending(then, Kind.OLD_AGE)
+        if number % 2 == 0:
+            last = await story.act(LETS_GO, meets_it(LETS_GO, ActionKind.REST, 10 * MINUTE))
+            scenes = [last]
+        else:
+            # He goes back to it after whatever the world stops him for.
+            scenes = []
+            while story.state.characters[YOU].alive and len(scenes) < budget:
+                lived = meets_it(LIVES_IT_OUT, ActionKind.TIME_SKIP, 30 * DAY)
+                scenes.append(await story.act(LIVES_IT_OUT, lived))
+            last = scenes[-1]
+        end = story.state
+        you = end.characters[YOU]
+        ending = last.result.ending if last.result is not None else None
+        ev.metric(f"scenes it took, and the age he met it at, {seed}", [len(scenes), you.age])
+        ev.check(
+            "his story ends in a death of old age, never by his own hand",
+            ending is not None
+            and (ending.kind, ending.self_inflicted) == ("death", False)
+            and not you.alive
+            and lives.of_old_age(you),
+            f"{seed}: {ending}, {you.status.value} at {you.age}",
+        )
+        if ending is None:
+            continue
+        if number % 2 == 0:
+            ev.check(
+                "letting go, it ends in that scene, within the hour",
+                end.world_s - then.world_s <= 60 * MINUTE,
+                f"{seed}: {(end.world_s - then.world_s) / DAY:.2f} days later",
+            )
+        else:
+            ev.check(
+                "living out his days, it ends on the day that was drawn, and no other",
+                len(days) == 1 and end.world_s == days[0].due_s,
+                f"{seed}: at {end.world_s}, with {[d.due_s for d in days]} drawn",
+                live=False,
+            )
+        issues = [(i.code, i.area) for i in last.result.issues]
+        ev.check(
+            "the words were read twice before code acted on them",
+            ("read_again", "lets_go.confirmed") in issues,
+            f"{seed}: {issues}",
+        )
+        told = story.prompt(Node.NARRATOR)
+        ev.check(
+            "the last scene is handed his death of old age as its task, and told he chose it",
+            "ENDING: the player character dies of old age in this scene" in told
+            and '"met":"by their own choice' in told,
+            f"{seed}",
+            live=False,
+        )
+        ev.check("the record holds together (C1)", check_state(end) == [], f"{seed}")
+        await ev.judge(f"he meets it, {seed}", MEETS_IT, last)
+
+    # Before any scene told him the end is close, the same words are only a rest.
+    for seed in ev.seeds(3, live=0):
+        story = ev.story(worlds.millbrook_at_sixty(), seed=f"{seed}/early", settings=CALM)
+        story.change(on_his_farm)
+        rested = await story.act(LETS_GO, meets_it(LETS_GO, ActionKind.REST, 10 * MINUTE))
+        issues = [i.code for i in rested.result.issues]
+        ev.check(
+            "nobody's words bring old age on before a scene told them the end is close",
+            story.state.characters[YOU].alive
+            and rested.result.ending is None
+            and "end_untold" in issues
+            and "read_again" not in issues,
+            f"{seed}: {issues}",
+        )

@@ -1054,6 +1054,11 @@ def _settle_step(
         training=frame.training,
         wooing=courted,
         kind=step.kind,
+        # N6. Theirs to say, of a step that wasn't ruled out; whether the end has been told
+        # is for the world to check when the step plays (`last_years.let_go`).
+        lets_go=step.lets_go
+        and actor.id == state.player_id
+        and settled.outcome_class is not OutcomeClass.RULED_OUT,
         trip=trip,
         encounter=encounter,
         opponent_ids=opponent_ids,
