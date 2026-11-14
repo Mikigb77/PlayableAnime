@@ -103,7 +103,9 @@ empty: the player sets their goals in play.
 - Talents say how fast the character learns, never how good they already are. What they can \
 already do is their attributes, skills, powers, techniques and rung: "the strongest sorcerer \
 alive", "the best hacker in the city", "a legendary swordsman" and "an overpowered skill" say \
-that and give no talent. Most characters have none. Write a talent only where the player's own \
+that and give no talent. So do words for what they can do to people or get from them: "he can \
+talk anyone into anything" and "nobody can resist her smile" are a master's skill and no \
+talent. Most characters have none. Write a talent only where the player's own \
 words speak of how they learn, of a talent or of a lack of one, and copy those words into said. \
 Take its strength from those words, never from how strong the character is: slow for a \
 weakness ("hopeless at fighting", "no talent for it": half the pace), knack for talented, \
@@ -122,9 +124,13 @@ everything. A talent of the body, such as great coordination, covers the moves t
 - Powers only where the world has them, and only where the premise gives the character one \
 or anyone in their place in this world would have it, as a sorcerer has sorcery where sorcerers \
 are real. Charm, skill, wits and a reputation are attributes, skills and traits, never a \
-power: someone the premise makes ordinary stays ordinary, however good they are at what they \
-do. Each power says what it does in a sentence or two the player reads (description) and \
-names the extraordinary kind it comes from (kind_id), with its limits. Its costs \
+power, in a world with magic as in one without: "he can talk anyone into anything", "nobody \
+can resist her smile" and "she never misses" are what a person does by being good at it, a \
+master's skill with a high attribute behind it. A power is what the premise itself calls \
+magic, a gift or a curse, or what no amount of skill could do. Someone the premise makes \
+ordinary stays ordinary, however good they are at what they do. Each power says what it \
+does in a sentence or two the player reads (description) and names the extraordinary kind it \
+comes from (kind_id), with its limits. Its costs \
 come from the world and the premise, never from nowhere: what the world's rules say that kind of \
 power takes (qi spent, a mage's fatigue, a price in blood or years), or what the premise gives \
 it. A power the world charges nothing for has no cost: keen senses, a sharp mind or a feel for \
