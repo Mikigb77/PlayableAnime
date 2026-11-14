@@ -315,6 +315,14 @@ def alone_at_the_gate(state: WorldState) -> None:
     state.scene = SceneFrame(place_id="farm", present_ids=[TOMAS], ended_on=AT_THE_GATE)
 
 
+def knows_no_woman(state: WorldState) -> None:
+    """Nobody on record for a scene to take the widow's name from. On the real models
+    (2026-11-14) one scene called her Mara Voss, the miller's daughter the record has in the
+    village: the record kept her there (W10), so nobody new came into the story, and a check
+    of ages had nobody to read."""
+    del state.characters[worlds.MARA]
+
+
 @scenario(
     "t17.newcomers-come-with-an-age",
     suite="T17",
@@ -429,6 +437,7 @@ async def newcomers_come_with_an_age(ev: Eval) -> None:
             worlds.millers_daughter(), seed=f"{seed}/widow", settings=CALM, under_way=True
         )
         story.change(alone_at_the_gate)
+        story.change(knows_no_woman)
 
         def comes_by(state: WorldState) -> None:
             state.pending_events["widow"] = PendingEvent(

@@ -992,6 +992,12 @@ class _Assembler:
 
     def _sheet(self, proposed: NpcP | CharacterProposal, *, player: bool) -> CharacterSheet:
         ladders = self._positions(proposed.ladders)
+        temperament = _temperament(proposed.temperament)
+        if player:
+            # G2: an aim is said once. A drafter writes the goal again as what the character
+            # wants, and "Goal: Find my sister" over "Wants Find my sister" tells it twice.
+            goals = [_wording(goal) for goal in self._goals()]
+            temperament.wants = [w for w in temperament.wants if _wording(w) not in goals]
         return CharacterSheet(
             attributes=self._attributes(proposed.attributes),
             skills=_skills(proposed.skills),
@@ -1003,7 +1009,7 @@ class _Assembler:
             talents=_talents(proposed.talents) if isinstance(proposed, CharacterProposal) else [],
             powers=self._powers(proposed.powers, player=player),
             techniques=_techniques(proposed.techniques),
-            disposition=Disposition(temperament=_temperament(proposed.temperament)),
+            disposition=Disposition(temperament=temperament),
             axes=self._axes(proposed.axes, ladders),
             ladders=ladders,
         )
