@@ -1,0 +1,1824 @@
+{
+ "premise": "A high school boy who is good at everything he tries and bored of it all, until his whole class is summoned to another world.",
+ "language": "en",
+ "rating": "teen",
+ "settings": {
+  "narration_length": "medium",
+  "tone": null,
+  "difficulty": "balanced",
+  "event_frequency": "normal",
+  "images": "key_moments",
+  "suggestions": true,
+  "language": "en",
+  "accent": null
+ },
+ "seed": "play/x-allround",
+ "state": {
+  "schema_version": 1,
+  "turn": 1,
+  "timeline_id": "main",
+  "world_s": 0,
+  "bible": {
+   "title": "Saga of the Unamused Prodigy",
+   "genre": "Isekai fantasy with a system",
+   "tone": "wonder",
+   "era": "A medieval fantasy world governed by a game-like Status System.",
+   "extraordinary": [
+    {
+     "id": "magic",
+     "kind": "Elemental and holy magic",
+     "prevalence": "common",
+     "reach": "Mages can summon firestorms or heal mortal wounds, though it requires extensive mana reserves.",
+     "rule_ids": [
+      "mana-recovery",
+      "magic-exists"
+     ]
+    },
+    {
+     "id": "world-system",
+     "kind": "The System",
+     "prevalence": "common",
+     "reach": "All living beings possess a Status visible via magic, granting levels, attributes, and skills.",
+     "rule_ids": [
+      "summoning-blessing",
+      "level-progression"
+     ]
+    }
+   ],
+   "peoples": [
+    {
+     "id": "humans",
+     "name": "Humans",
+     "description": "",
+     "lifespan_years": 80,
+     "gifts": [
+      "Adaptability"
+     ],
+     "culture": "The dominant species of the Solaria Continent, organized into feudal kingdoms.",
+     "relations": [
+      "Currently locked in a desperate, centuries-long war against the Demon Army."
+     ],
+     "path": ""
+    }
+   ],
+   "creatures": [
+    {
+     "id": "shadow-wolf",
+     "name": "Shadow Wolf",
+     "description": "A dark, canine beast that hunts in packs and uses stealth magic.",
+     "tier": 2,
+     "habitat": "Whispering Woods",
+     "worth": "Shadow pelt and beast core.",
+     "can_be_tamed": true
+    }
+   ],
+   "nature": [
+    "The physical laws of gravity and combustion apply, but are heavily influenced and bypassed by magical spells and System skills."
+   ],
+   "physics": "fun_first",
+   "force": {
+    "tier1_joules": 10000.0,
+    "per_tier": 10.0
+   },
+   "ladders": [
+    {
+     "id": "system-levels",
+     "name": "System Levels",
+     "axis": "might",
+     "rungs": [
+      {
+       "name": "Novice (Levels 1-10)",
+       "tier": 2,
+       "description": "An ordinary citizen or fresh recruit with minimal combat capabilities.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 0,
+       "added_s": null
+      },
+      {
+       "name": "Adept (Levels 11-30)",
+       "tier": 4,
+       "description": "A seasoned soldier or local adventurer capable of handling standard monsters.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 0,
+       "added_s": null
+      },
+      {
+       "name": "Expert (Levels 31-60)",
+       "tier": 6,
+       "description": "A high-ranking knight or master mage of national renown.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 0,
+       "added_s": null
+      },
+      {
+       "name": "Master (Levels 61-90)",
+       "tier": 8,
+       "description": "A legendary figure capable of turning the tide of entire battles.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 0,
+       "added_s": null
+      },
+      {
+       "name": "Legend (Levels 91+)",
+       "tier": 10,
+       "description": "Beings of god-like power, such as the Demon King or ancient heroes.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 0,
+       "added_s": null
+      }
+     ],
+     "standing_follows": true,
+     "sensing": true,
+     "rung_levels": 1,
+     "shrugs_off": 3,
+     "known_to_all": 5
+    }
+   ],
+   "calendar": {
+    "style": "day_count",
+    "time_of_day": "parts",
+    "epoch": null,
+    "start_second_of_day": 36000,
+    "months": [],
+    "start_year": 1,
+    "start_month": 1,
+    "start_day": 1,
+    "era": ""
+   },
+   "travel": {
+    "description": "Travel is conducted on foot, by horse-drawn carriage, or via rare and highly expensive royal teleportation circles.",
+    "instant_messages": false
+   },
+   "medicine": {
+    "healing": "Minor cuts and bruises can be closed instantly with basic holy magic. Severe injuries require high-tier healing potions or high mages.",
+    "resurrection": "none",
+    "resurrection_means": ""
+   },
+   "laws": [
+    {
+     "id": "royal-decree",
+     "text": "All summoned heroes are considered state assets of the Holy Kingdom of Solaria.",
+     "enforcer": "The Royal Templars",
+     "enforcer_faction_id": "holy-kingdom",
+     "zeal": "high",
+     "corruptible": false
+    }
+   ],
+   "norms": [
+    "Refusing to fight the Demon Army is viewed as high treason and cowardice by the general public."
+   ],
+   "several_partners": false,
+   "unions": "held",
+   "rules": [
+    {
+     "id": "summoning-blessing",
+     "text": "Summoned souls from other worlds receive unique, high-rank blessings upon arrival.",
+     "fixed": true,
+     "topic": "existence"
+    },
+    {
+     "id": "level-progression",
+     "text": "Defeating monsters grants experience points that automatically increase a person's level and raw power.",
+     "fixed": true,
+     "topic": "limits"
+    },
+    {
+     "id": "mana-recovery",
+     "text": "Spells consume mana, which can only be recovered through sleep, potions, or natural regeneration over time.",
+     "fixed": true,
+     "topic": "nature"
+    },
+    {
+     "id": "magic-exists",
+     "text": "Elemental and holy magic: real, and everywhere.",
+     "fixed": true,
+     "topic": "existence"
+    }
+   ],
+   "mysteries": [
+    {
+     "id": "summoning-conspiracy",
+     "question": "Why did the ritual target our specific class?",
+     "answer": "A rogue summoning spell requires high-potential young souls that have not yet been acclimated to any world's magic, allowing the kingdom to imprint arbitrary 'Hero' templates onto them. It was a calculated sacrifice of an entire class's future for the kingdom's military gain.",
+     "clues": [
+      "The summoning runes match ancient sacrificial patterns rather than pure spatial transit circles.",
+      "Princess Elara seems intensely relieved that the students are teenagers rather than trained soldiers.",
+      "An old library ledger records that previous summonings always targeted young, impressionable minds."
+     ],
+     "thread_id": "hero-duty",
+     "solved": false
+    }
+   ]
+  },
+  "player_id": "player",
+  "characters": {
+   "player": {
+    "id": "player",
+    "name": "Daichi Shindo",
+    "aliases": [
+     "The Unamused Genius"
+    ],
+    "prominence": "key",
+    "description": "Always looking slightly sleepy or disinterested, standing with a casual slouch.",
+    "appearance": "Slightly messy dark hair, sharp obsidian eyes, wearing a dark blue school uniform with the top button undone.",
+    "look_version": 1,
+    "age": 17,
+    "people_id": "humans",
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "summoning-chamber",
+    "personal_offset_s": 0,
+    "memberships": [],
+    "sheet": {
+     "attributes": {
+      "strength": 3,
+      "speed": 3,
+      "toughness": 3,
+      "wits": 5,
+      "knowledge": 4,
+      "willpower": 4,
+      "charm": 3,
+      "nerve": 5,
+      "bearing": 3
+     },
+     "skills": [
+      {
+       "name": "Observation",
+       "level": "expert",
+       "notes": "He notices small details and tells intentions easily because he is always bored and watching."
+      },
+      {
+       "name": "Academics",
+       "level": "skilled",
+       "notes": "Effortless high school level knowledge."
+      }
+     ],
+     "traits": [
+      {
+       "name": "Apathetic",
+       "kind": "quirk",
+       "description": "Very little excites him, making him highly resistant to fear or charm spells, but difficult to motivate."
+      }
+     ],
+     "talents": [
+      {
+       "id": "flawless-adaptability",
+       "name": "Flawless Adaptability",
+       "covers": "Any skill, physical movement, or mental discipline he attempts.",
+       "strength": "genius",
+       "general": true,
+       "reason": ""
+      }
+     ],
+     "powers": [
+      {
+       "id": "status-gaze",
+       "name": "System Appraisal",
+       "description": "Can view the Status, attributes, and basic skills of any living being or item.",
+       "strength": null,
+       "limits": [
+        "Cannot see information of entities more than 40 levels higher than himself."
+       ],
+       "costs": [],
+       "secret": false,
+       "time": null,
+       "settings": {},
+       "ready_at_personal_s": null
+      }
+     ],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "bored",
+        "analytical",
+        "calm"
+       ],
+       "values": [
+        "efficiency",
+        "personal freedom"
+       ],
+       "loves": [
+        "novelty",
+        "quiet places"
+       ],
+       "fears": [
+        "eternal boredom"
+       ],
+       "wants": [],
+       "voice": "Low, quiet, and slightly monotone."
+      },
+      "attitudes": {}
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "copper coins",
+      "title": "Summoned Hero",
+      "rank": "Commoner",
+      "family_name": "Shindo",
+      "connections": [
+       {
+        "name": "The Class of 2-B",
+        "kind": "other",
+        "character_id": null,
+        "note": "His classmates who were summoned along with him."
+       }
+      ]
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [
+       {
+        "name": "mana",
+        "level": 100,
+        "recovery_s": null
+       }
+      ],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 2,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 3,
+      "stealth": 2
+     },
+     "ladders": [
+      {
+       "ladder_id": "system-levels",
+       "rung": 0,
+       "stage": "early",
+       "shown_rung": null,
+       "yearly_s": null
+      }
+     ],
+     "rungs_heard": [
+      {
+       "ladder_id": "system-levels",
+       "rung": 1,
+       "heard_s": 0,
+       "known_s": 0,
+       "known_from": "princess-elara"
+      }
+     ],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": [
+      {
+       "text": "You lived an effortless life in Japan, finding sports, academics, and games incredibly easy and utterly boring.",
+       "turn": 0
+      },
+      {
+       "text": "Just as you were wondering if your entire life would be this dull, a blinding magic circle summoned your entire classroom here.",
+       "turn": 0
+      }
+     ]
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": 80,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   },
+   "princess-elara": {
+    "id": "princess-elara",
+    "name": "Princess Elara Solaria",
+    "aliases": [
+     "The Holy Maiden"
+    ],
+    "prominence": "key",
+    "description": "A poised, beautiful royal princess who orchestrated the summoning ritual to save her kingdom.",
+    "appearance": "Long golden hair, clad in white ceremonial robes with gold trim, and carrying a staff of light.",
+    "look_version": 1,
+    "age": 19,
+    "people_id": "humans",
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "summoning-chamber",
+    "personal_offset_s": 0,
+    "memberships": [
+     {
+      "faction_id": "holy-kingdom",
+      "rank": "Royal Princess",
+      "loyalty": 100
+     }
+    ],
+    "sheet": {
+     "attributes": {
+      "strength": 2,
+      "speed": 2,
+      "toughness": 2,
+      "wits": 4,
+      "knowledge": 4,
+      "willpower": 5,
+      "charm": 5,
+      "nerve": 3,
+      "bearing": 5
+     },
+     "skills": [
+      {
+       "name": "Holy Magic",
+       "level": "expert",
+       "notes": "Specializes in protective barriers and light spells."
+      },
+      {
+       "name": "Diplomacy",
+       "level": "expert",
+       "notes": "Excellent at rallying crowds and convincing skeptics."
+      }
+     ],
+     "traits": [
+      {
+       "name": "Royal Charisma",
+       "kind": "gift",
+       "description": "People naturally want to believe her words and follow her lead."
+      }
+     ],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "dutiful",
+        "manipulative",
+        "desperate"
+       ],
+       "values": [
+        "the survival of her kingdom"
+       ],
+       "loves": [
+        "her people",
+        "the Holy Light"
+       ],
+       "fears": [
+        "the destruction of her lineage"
+       ],
+       "wants": [
+        "To mold the summoned classmates into a unified weapon against the demons."
+       ],
+       "voice": "Polite, melodic, yet carrying an underlying tone of royal authority."
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 10,
+        "fear": 0,
+        "trust": 10,
+        "apparent_affinity": 40,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 4,
+      "influence": 6,
+      "wealth": 7,
+      "knowledge": 5,
+      "stealth": 2
+     },
+     "ladders": [
+      {
+       "ladder_id": "system-levels",
+       "rung": 1,
+       "stage": "late",
+       "shown_rung": null,
+       "yearly_s": null
+      }
+     ],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": {
+     "goal": "Bind the class to her service before they realize their own strength.",
+     "method": "Offering them luxury, praise, and depicting the demons as mindless monsters.",
+     "secret": "She knows the summoning ritual drained the lifespans of several hundred political prisoners.",
+     "clock_id": "hero-evaluation"
+    },
+    "secrets": [
+     "She views the summoned students as sacrificial pawns for the kingdom's survival."
+    ],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": 0,
+    "near_s": null,
+    "met_s": null
+   },
+   "daiki-ryo": {
+    "id": "daiki-ryo",
+    "name": "Daiki Ryo",
+    "aliases": [
+     "Class Rep"
+    ],
+    "prominence": "key",
+    "description": "The enthusiastic, righteous class representative who immediately embraces the role of a fantasy hero.",
+    "appearance": "Athletic build, neat black hair, wearing a slightly disheveled high school uniform.",
+    "look_version": 1,
+    "age": 17,
+    "people_id": "humans",
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "summoning-chamber",
+    "personal_offset_s": 0,
+    "memberships": [],
+    "sheet": {
+     "attributes": {
+      "strength": 3,
+      "speed": 3,
+      "toughness": 3,
+      "wits": 3,
+      "knowledge": 3,
+      "willpower": 4,
+      "charm": 4,
+      "nerve": 3,
+      "bearing": 3
+     },
+     "skills": [
+      {
+       "name": "Athletics",
+       "level": "fair",
+       "notes": "High school track and field experience."
+      }
+     ],
+     "traits": [
+      {
+       "name": "Gullible",
+       "kind": "flaw",
+       "description": "Too quick to trust authority figures and beautiful maidens."
+      }
+     ],
+     "talents": [],
+     "powers": [
+      {
+       "id": "hero-sword",
+       "name": "Sword of Justice Blessing",
+       "description": "Imbues his physical attacks with divine light, dealing massive damage to dark-aligned creatures.",
+       "strength": "rare",
+       "limits": [
+        "Only active when fighting targets he genuinely perceives as evil."
+       ],
+       "costs": [
+        {
+         "kind": "fatigue",
+         "text": "Strains his muscles if used continuously for over ten minutes."
+        }
+       ],
+       "secret": false,
+       "time": null,
+       "settings": {},
+       "ready_at_personal_s": null
+      }
+     ],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "righteous",
+        "gullible",
+        "energetic"
+       ],
+       "values": [
+        "friendship",
+        "protecting others"
+       ],
+       "loves": [
+        "fantasy novels",
+        "being a leader"
+       ],
+       "fears": [
+        "failing his classmates"
+       ],
+       "wants": [
+        "To lead the class as their designated vanguard hero."
+       ],
+       "voice": "Loud, earnest, and full of youthful vigor."
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 30,
+        "fear": 0,
+        "trust": 40,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 2,
+      "influence": 3,
+      "wealth": 1,
+      "knowledge": 2,
+      "stealth": 1
+     },
+     "ladders": [
+      {
+       "ladder_id": "system-levels",
+       "rung": 0,
+       "stage": "early",
+       "shown_rung": null,
+       "yearly_s": null
+      }
+     ],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": 0,
+    "near_s": null,
+    "met_s": null
+   }
+  },
+  "factions": {
+   "holy-kingdom": {
+    "id": "holy-kingdom",
+    "name": "Holy Kingdom of Solaria",
+    "kind": "kingdom",
+    "description": "A devout, militaristic human nation that claims to be the bastion of humanity.",
+    "parent_id": null,
+    "status": "intact",
+    "status_history": [],
+    "activity": "active",
+    "leader_ids": [
+     "princess-elara"
+    ],
+    "goal": "Utilize the summoned heroes to eradicate the Demon Army.",
+    "methods": "Indoctrinating the teenagers with duty, providing resources, and using soft pressure.",
+    "strength": "A powerful military of knights, templars, and royal mages.",
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "threat": 0,
+    "relations": {},
+    "survivors": [],
+    "secrets": [
+     "The summoning ritual irreversibly binds the souls of the heroes to the kingdom's territory, preventing them from leaving easily."
+    ],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "places": {
+   "holy-city-solaria": {
+    "id": "holy-city-solaria",
+    "name": "Holy City of Solaria",
+    "kind": "city",
+    "description": "The white-stone capital of the Holy Kingdom, protected by massive walls and magic barriers.",
+    "parent_id": null,
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": "holy-kingdom",
+    "mood": "tense and desperate",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "whispering-woods",
+      "travel_s": 7200,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "royal-palace": {
+    "id": "royal-palace",
+    "name": "Solaria Royal Palace",
+    "kind": "building",
+    "description": "A towering castle of pristine marble sitting at the highest point of the Holy City.",
+    "parent_id": "holy-city-solaria",
+    "setting": "indoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": "holy-kingdom",
+    "mood": "opulent and grand",
+    "stability": 70,
+    "routes": [],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "summoning-chamber": {
+    "id": "summoning-chamber",
+    "name": "Grand Summoning Chamber",
+    "kind": "room",
+    "description": "A circular underground hall beneath the palace, carved with glowing runic circles used for ancient rituals.",
+    "parent_id": "royal-palace",
+    "setting": "underground",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": "holy-kingdom",
+    "mood": "mystical and heavy",
+    "stability": 70,
+    "routes": [],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [
+     "player"
+    ],
+    "judged": []
+   },
+   "whispering-woods": {
+    "id": "whispering-woods",
+    "name": "Whispering Woods",
+    "kind": "wilds",
+    "description": "A dense forest outside the city walls, home to wild beasts and low-level monsters.",
+    "parent_id": null,
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "foreboding",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "holy-city-solaria",
+      "travel_s": 7200,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [],
+    "visited_by": [],
+    "judged": []
+   }
+  },
+  "deeds": {},
+  "rumors": {},
+  "bonds": {},
+  "lives": {},
+  "aged_s": null,
+  "changes": {},
+  "strife_s": {},
+  "facts": {
+   "fact-1": {
+    "id": "fact-1",
+    "text": "Your entire classroom was suddenly engulfed in white light during homeroom.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-2": {
+    "id": "fact-2",
+    "text": "You have materialized in a medieval-looking fantasy chamber.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-3": {
+    "id": "fact-3",
+    "text": "A young woman claiming to be a princess is pleading for your help.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   }
+  },
+  "goals": {},
+  "leads": {},
+  "threads": {
+   "hero-duty": {
+    "id": "hero-duty",
+    "title": "The Kingdom's Expectations",
+    "kind": "threat",
+    "stakes": "The class will be pressured to sign blood contracts binding them to the war effort.",
+    "involved_ids": [
+     "princess-elara",
+     "daiki-ryo",
+     "player"
+    ],
+    "clock_id": "hero-evaluation",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "status": "open",
+    "opened_turn": 0,
+    "last_active_turn": 0,
+    "taken_up_turn": null,
+    "closed_turn": null,
+    "arc": null,
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "clocks": {
+   "hero-evaluation": {
+    "id": "hero-evaluation",
+    "name": "The Royal Evaluation",
+    "steps": [
+     "The students are given basic instructions and luxury quarters to rest.",
+     "Princess Elara holds a banqueting feast to win their trust.",
+     "The King and his Royal Mages evaluate each student's Status screen in court.",
+     "The kingdom assigns roles to each classmate, separating the useful combatants from the 'useless' ones."
+    ],
+    "filled": 0,
+    "advances_on": [],
+    "reverses_on": [],
+    "interval_s": 21600,
+    "next_step_s": 21600,
+    "owner_id": "princess-elara",
+    "thread_id": "hero-duty",
+    "status": "running",
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "pending_events": {
+   "event-1": {
+    "id": "event-1",
+    "kind": "world.clock_step",
+    "title": "The Royal Evaluation: The students are given basic instructions and luxury quarters to rest.",
+    "due_s": 21600,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [
+     "princess-elara"
+    ],
+    "place_id": null,
+    "origin": {
+     "kind": "clock",
+     "ref_id": "hero-evaluation",
+     "text": ""
+    },
+    "payload": {
+     "clock_id": "hero-evaluation"
+    },
+    "seed": "story=play%2Fx-allround/timeline=main/turn=1/world/schedule/event-1",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-2": {
+    "id": "event-2",
+    "kind": "world.old_age",
+    "title": "Your years run short",
+    "due_s": 1962249861,
+    "timeline_id": "main",
+    "needs_player": true,
+    "status": "pending",
+    "subject_ids": [
+     "player"
+    ],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "phase": "near",
+     "who": "player",
+     "span": 80,
+     "day_s": 2052450812
+    },
+    "seed": "story=play%2Fx-allround/timeline=main/turn=1/world/schedule/event-2",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-3": {
+    "id": "event-3",
+    "kind": "world.tick",
+    "title": "The world moves on",
+    "due_s": 86400,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "last_s": 0,
+     "stride_s": 86400
+    },
+    "seed": "story=play%2Fx-allround/timeline=main/turn=1/world/schedule/event-3",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   }
+  },
+  "transfers": [],
+  "time_effects": [],
+  "scene": {
+   "place_id": "summoning-chamber",
+   "present_ids": [
+    "princess-elara",
+    "daiki-ryo"
+   ],
+   "positions": [
+    "Princess Elara Solaria stands at the front of the altar, bowing.",
+    "Daiki Ryo stands near you, looking eager.",
+    "Daichi Shindo stands in the middle of the summoned crowd."
+   ],
+   "props": [
+    "glowing runic circle"
+   ],
+   "ended_on": "Princess Elara finishes her plea, keeping her head bowed as she awaits a response from the bewildered class.",
+   "encounter": null
+  },
+  "director": {
+   "turns_without_stakes": 0,
+   "low_stakes_streak": 0,
+   "last_action_key": null,
+   "last_event_turn": null,
+   "last_event_size": null,
+   "last_event_s": {},
+   "last_small_s": null,
+   "recent_moments": [],
+   "recent_clock": [
+    0
+   ],
+   "frequency_drift": 0.0,
+   "recent_sources": [],
+   "auto_pictures": 1,
+   "picture_credit": 1.1,
+   "pictured": [
+    "portrait:player",
+    "portrait:player:v1"
+   ],
+   "fight": null,
+   "deck_draws": 0,
+   "road_stops": 0
+  },
+  "summary": "A bored high school boy who is effortlessly good at everything finds himself summoned to another world alongside his entire class. While his peers are excited to become legendary heroes, he sees it as just another set of rules to easily master.",
+  "chapters": [],
+  "id_counters": {
+   "fact": 3,
+   "goal": 0,
+   "bond": 0,
+   "event": 3
+  },
+  "fallen": [],
+  "opening_due": false,
+  "misses_in_a_row": 0,
+  "openings": [],
+  "journey": null,
+  "untold": [
+   "thread:hero-duty"
+  ]
+ },
+ "scenes": [
+  {
+   "turn": 1,
+   "narration": "You stand in the Grand Summoning Chamber as the blinding white light of the runic circle fades. A heavy, ancient draft of dust and cold stone carries the scent of ozone and burnt incense. All around you, your high school classmates gasp and scramble back, bewildered by the colossal stone arches and the strange, glowing sigils beneath their shoes. At the front of a raised altar stands Princess Elara Solaria, her long golden hair catching the dim glow of the runes as she clutches her staff of light. Her white ceremonial robes shimmer in the damp gloom. Near you, Daiki Ryo looks around with wide, sparkling eyes, a grin spreading across his face as if his fantasy novels had finally come to life. Princess Elara steps forward, her melodious voice echoing off the underground walls with desperate urgency. 'Brave souls from another realm,' she pleads, bowing her head. 'I beg of you, lend us your strength. Our kingdom is on the brink of ruin, and you are our final hope against the Demon Army.' You slouch, keeping your top button undone, and quietly sigh as a translucent box blinks into your vision.",
+   "player_action": null
+  }
+ ],
+ "choices": [
+  "Activate System Appraisal on the bowing princess to see her status.",
+  "Look around the dusty room to find a quiet place to sit.",
+  "Quietly ask Daiki Ryo if he has any idea what is happening."
+ ],
+ "cost_usd": 0.1247505,
+ "draft": {
+  "premise": "A high school boy who is good at everything he tries and bored of it all, until his whole class is summoned to another world.",
+  "proposal": {
+   "world": {
+    "title": "Saga of the Unamused Prodigy",
+    "genre": "Isekai fantasy with a system",
+    "tone": "wonder",
+    "era": "A medieval fantasy world governed by a game-like Status System.",
+    "extraordinary": [
+     {
+      "id": "magic",
+      "kind": "Elemental and holy magic",
+      "prevalence": "common",
+      "reach": "Mages can summon firestorms or heal mortal wounds, though it requires extensive mana reserves."
+     },
+     {
+      "id": "world-system",
+      "kind": "The System",
+      "prevalence": "common",
+      "reach": "All living beings possess a Status visible via magic, granting levels, attributes, and skills."
+     }
+    ],
+    "rules": [
+     {
+      "id": "summoning-blessing",
+      "text": "Summoned souls from other worlds receive unique, high-rank blessings upon arrival.",
+      "fixed": true,
+      "topic": "existence",
+      "about": [
+       "world-system"
+      ]
+     },
+     {
+      "id": "level-progression",
+      "text": "Defeating monsters grants experience points that automatically increase a person's level and raw power.",
+      "fixed": true,
+      "topic": "limits",
+      "about": [
+       "world-system"
+      ]
+     },
+     {
+      "id": "mana-recovery",
+      "text": "Spells consume mana, which can only be recovered through sleep, potions, or natural regeneration over time.",
+      "fixed": true,
+      "topic": "nature",
+      "about": [
+       "magic"
+      ]
+     }
+    ],
+    "dropped_rule_ids": [],
+    "peoples": [
+     {
+      "id": "humans",
+      "name": "Humans",
+      "description": "",
+      "lifespan_years": 80,
+      "gifts": [
+       "Adaptability"
+      ],
+      "culture": "The dominant species of the Solaria Continent, organized into feudal kingdoms.",
+      "relations": [
+       "Currently locked in a desperate, centuries-long war against the Demon Army."
+      ],
+      "path": ""
+     }
+    ],
+    "creatures": [
+     {
+      "id": "shadow-wolf",
+      "name": "Shadow Wolf",
+      "description": "A dark, canine beast that hunts in packs and uses stealth magic.",
+      "rung": "Novice (Levels 1-10)",
+      "habitat": "Whispering Woods",
+      "worth": "Shadow pelt and beast core.",
+      "can_be_tamed": true
+     }
+    ],
+    "nature": [
+     "The physical laws of gravity and combustion apply, but are heavily influenced and bypassed by magical spells and System skills."
+    ],
+    "ladders": [
+     {
+      "id": "system-levels",
+      "name": "System Levels",
+      "axis": "might",
+      "rungs": [
+       {
+        "name": "Novice (Levels 1-10)",
+        "description": "An ordinary citizen or fresh recruit with minimal combat capabilities.",
+        "lifespan_years": null
+       },
+       {
+        "name": "Adept (Levels 11-30)",
+        "description": "A seasoned soldier or local adventurer capable of handling standard monsters.",
+        "lifespan_years": null
+       },
+       {
+        "name": "Expert (Levels 31-60)",
+        "description": "A high-ranking knight or master mage of national renown.",
+        "lifespan_years": null
+       },
+       {
+        "name": "Master (Levels 61-90)",
+        "description": "A legendary figure capable of turning the tide of entire battles.",
+        "lifespan_years": null
+       },
+       {
+        "name": "Legend (Levels 91+)",
+        "description": "Beings of god-like power, such as the Demon King or ancient heroes.",
+        "lifespan_years": null
+       }
+      ],
+      "known_to_all": 5,
+      "sensing": true,
+      "standing_follows": true,
+      "lengthens_life": false
+     }
+    ],
+    "calendar": {
+     "style": "day_count",
+     "clock_time": false,
+     "epoch": "",
+     "start_hour": 10,
+     "months": [],
+     "start_year": 1,
+     "start_month": 1,
+     "start_day": 1,
+     "era": "After Summoning"
+    },
+    "travel": {
+     "description": "Travel is conducted on foot, by horse-drawn carriage, or via rare and highly expensive royal teleportation circles.",
+     "instant_messages": false
+    },
+    "medicine": {
+     "healing": "Minor cuts and bruises can be closed instantly with basic holy magic. Severe injuries require high-tier healing potions or high mages.",
+     "resurrection": "none",
+     "resurrection_means": ""
+    },
+    "laws": [
+     {
+      "id": "royal-decree",
+      "text": "All summoned heroes are considered state assets of the Holy Kingdom of Solaria.",
+      "enforcer": "The Royal Templars",
+      "enforcer_faction_id": "holy-kingdom",
+      "zeal": "high",
+      "corruptible": false
+     }
+    ],
+    "norms": [
+     "Refusing to fight the Demon Army is viewed as high treason and cowardice by the general public."
+    ],
+    "several_partners": false,
+    "unions": "held",
+    "places": [
+     {
+      "id": "holy-city-solaria",
+      "name": "Holy City of Solaria",
+      "kind": "city",
+      "description": "The white-stone capital of the Holy Kingdom, protected by massive walls and magic barriers.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "holy-kingdom",
+      "mood": "tense and desperate",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "whispering-woods",
+        "travel_hours": 2.0,
+        "mode": "on foot"
+       }
+      ]
+     },
+     {
+      "id": "royal-palace",
+      "name": "Solaria Royal Palace",
+      "kind": "building",
+      "description": "A towering castle of pristine marble sitting at the highest point of the Holy City.",
+      "parent_id": "holy-city-solaria",
+      "setting": "indoors",
+      "controller_id": "holy-kingdom",
+      "mood": "opulent and grand",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "summoning-chamber",
+      "name": "Grand Summoning Chamber",
+      "kind": "room",
+      "description": "A circular underground hall beneath the palace, carved with glowing runic circles used for ancient rituals.",
+      "parent_id": "royal-palace",
+      "setting": "underground",
+      "controller_id": "holy-kingdom",
+      "mood": "mystical and heavy",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "whispering-woods",
+      "name": "Whispering Woods",
+      "kind": "wilds",
+      "description": "A dense forest outside the city walls, home to wild beasts and low-level monsters.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "foreboding",
+      "known_to_player": false,
+      "routes": []
+     }
+    ],
+    "factions": [
+     {
+      "id": "holy-kingdom",
+      "name": "Holy Kingdom of Solaria",
+      "kind": "kingdom",
+      "description": "A devout, militaristic human nation that claims to be the bastion of humanity.",
+      "parent_id": "",
+      "leader_ids": [
+       "princess-elara"
+      ],
+      "goal": "Utilize the summoned heroes to eradicate the Demon Army.",
+      "methods": "Indoctrinating the teenagers with duty, providing resources, and using soft pressure.",
+      "strength": "A powerful military of knights, templars, and royal mages.",
+      "relations": [],
+      "secrets": [
+       "The summoning ritual irreversibly binds the souls of the heroes to the kingdom's territory, preventing them from leaving easily."
+      ],
+      "known_to_player": true
+     }
+    ],
+    "npcs": [
+     {
+      "id": "princess-elara",
+      "name": "Princess Elara Solaria",
+      "aliases": [
+       "The Holy Maiden"
+      ],
+      "description": "A poised, beautiful royal princess who orchestrated the summoning ritual to save her kingdom.",
+      "appearance": "Long golden hair, clad in white ceremonial robes with gold trim, and carrying a staff of light.",
+      "age": 19,
+      "people_id": "humans",
+      "location_id": "summoning-chamber",
+      "memberships": [
+       {
+        "faction_id": "holy-kingdom",
+        "rank": "Royal Princess",
+        "loyalty": 100
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "dutiful",
+        "manipulative",
+        "desperate"
+       ],
+       "values": [
+        "the survival of her kingdom"
+       ],
+       "loves": [
+        "her people",
+        "the Holy Light"
+       ],
+       "fears": [
+        "the destruction of her lineage"
+       ],
+       "wants": [
+        "To mold the summoned classmates into a unified weapon against the demons."
+       ],
+       "voice": "Polite, melodic, yet carrying an underlying tone of royal authority."
+      },
+      "attributes": {
+       "strength": 2,
+       "speed": 2,
+       "toughness": 2,
+       "wits": 4,
+       "knowledge": 4,
+       "willpower": 5,
+       "charm": 5,
+       "nerve": 3,
+       "bearing": 5
+      },
+      "skills": [
+       {
+        "name": "Holy Magic",
+        "level": "expert",
+        "notes": "Specializes in protective barriers and light spells."
+       },
+       {
+        "name": "Diplomacy",
+        "level": "expert",
+        "notes": "Excellent at rallying crowds and convincing skeptics."
+       }
+      ],
+      "traits": [
+       {
+        "name": "Royal Charisma",
+        "kind": "gift",
+        "description": "People naturally want to believe her words and follow her lead."
+       }
+      ],
+      "powers": [],
+      "techniques": [],
+      "ladders": [
+       {
+        "ladder_id": "system-levels",
+        "rung": "Adept (Levels 11-30)",
+        "stage": "late"
+       }
+      ],
+      "axes": {
+       "might": 3,
+       "influence": 6,
+       "wealth": 7,
+       "knowledge": 5,
+       "stealth": 2
+      },
+      "attitude_to_player": {
+       "affinity": 10,
+       "fear": 0,
+       "trust": 10,
+       "shown_affinity": 40,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": {
+       "goal": "Bind the class to her service before they realize their own strength.",
+       "method": "Offering them luxury, praise, and depicting the demons as mindless monsters.",
+       "secret": "She knows the summoning ritual drained the lifespans of several hundred political prisoners.",
+       "clock_id": "hero-evaluation"
+      },
+      "secrets": [
+       "She views the summoned students as sacrificial pawns for the kingdom's survival."
+      ],
+      "player_knows": "met"
+     },
+     {
+      "id": "daiki-ryo",
+      "name": "Daiki Ryo",
+      "aliases": [
+       "Class Rep"
+      ],
+      "description": "The enthusiastic, righteous class representative who immediately embraces the role of a fantasy hero.",
+      "appearance": "Athletic build, neat black hair, wearing a slightly disheveled high school uniform.",
+      "age": 17,
+      "people_id": "humans",
+      "location_id": "summoning-chamber",
+      "memberships": [],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "righteous",
+        "gullible",
+        "energetic"
+       ],
+       "values": [
+        "friendship",
+        "protecting others"
+       ],
+       "loves": [
+        "fantasy novels",
+        "being a leader"
+       ],
+       "fears": [
+        "failing his classmates"
+       ],
+       "wants": [
+        "To lead the class as their designated vanguard hero."
+       ],
+       "voice": "Loud, earnest, and full of youthful vigor."
+      },
+      "attributes": {
+       "strength": 3,
+       "speed": 3,
+       "toughness": 3,
+       "wits": 3,
+       "knowledge": 3,
+       "willpower": 4,
+       "charm": 4,
+       "nerve": 3,
+       "bearing": 3
+      },
+      "skills": [
+       {
+        "name": "Athletics",
+        "level": "fair",
+        "notes": "High school track and field experience."
+       }
+      ],
+      "traits": [
+       {
+        "name": "Gullible",
+        "kind": "flaw",
+        "description": "Too quick to trust authority figures and beautiful maidens."
+       }
+      ],
+      "powers": [
+       {
+        "id": "hero-sword",
+        "name": "Sword of Justice Blessing",
+        "description": "Imbues his physical attacks with divine light, dealing massive damage to dark-aligned creatures.",
+        "kind_id": "world-system",
+        "gift": true,
+        "strength": "rare",
+        "limits": [
+         "Only active when fighting targets he genuinely perceives as evil."
+        ],
+        "costs": [
+         {
+          "kind": "fatigue",
+          "text": "Strains his muscles if used continuously for over ten minutes."
+         }
+        ],
+        "secret": false,
+        "time": null
+       }
+      ],
+      "techniques": [],
+      "ladders": [
+       {
+        "ladder_id": "system-levels",
+        "rung": "Novice (Levels 1-10)",
+        "stage": "early"
+       }
+      ],
+      "axes": {
+       "might": 2,
+       "influence": 3,
+       "wealth": 1,
+       "knowledge": 2,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 30,
+       "fear": 0,
+       "trust": 40,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "met"
+     }
+    ],
+    "clocks": [
+     {
+      "id": "hero-evaluation",
+      "name": "The Royal Evaluation",
+      "steps": [
+       "The students are given basic instructions and luxury quarters to rest.",
+       "Princess Elara holds a banqueting feast to win their trust.",
+       "The King and his Royal Mages evaluate each student's Status screen in court.",
+       "The kingdom assigns roles to each classmate, separating the useful combatants from the 'useless' ones."
+      ],
+      "step_every_hours": 6.0,
+      "owner_id": "princess-elara",
+      "thread_id": "hero-duty",
+      "known_to_player": true
+     }
+    ],
+    "threads": [
+     {
+      "id": "hero-duty",
+      "title": "The Kingdom's Expectations",
+      "kind": "threat",
+      "stakes": "The class will be pressured to sign blood contracts binding them to the war effort.",
+      "involved_ids": [
+       "princess-elara",
+       "daiki-ryo",
+       "player"
+      ],
+      "clock_id": "hero-evaluation",
+      "known_to_player": true
+     }
+    ],
+    "mysteries": [
+     {
+      "id": "summoning-conspiracy",
+      "question": "Why did the ritual target our specific class?",
+      "answer": "A rogue summoning spell requires high-potential young souls that have not yet been acclimated to any world's magic, allowing the kingdom to imprint arbitrary 'Hero' templates onto them. It was a calculated sacrifice of an entire class's future for the kingdom's military gain.",
+      "clues": [
+       "The summoning runes match ancient sacrificial patterns rather than pure spatial transit circles.",
+       "Princess Elara seems intensely relieved that the students are teenagers rather than trained soldiers.",
+       "An old library ledger records that previous summonings always targeted young, impressionable minds."
+      ],
+      "thread_id": "hero-duty",
+      "known_to_player": false
+     }
+    ],
+    "known_facts": [
+     "Your entire classroom was suddenly engulfed in white light during homeroom.",
+     "You have materialized in a medieval-looking fantasy chamber.",
+     "A young woman claiming to be a princess is pleading for your help."
+    ],
+    "opening": {
+     "place_id": "summoning-chamber",
+     "present_ids": [
+      "princess-elara",
+      "daiki-ryo"
+     ],
+     "positions": [
+      "Princess Elara stands at the front of the altar.",
+      "Daiki Ryo is looking around in awe and excitement."
+     ],
+     "props": [
+      "glowing runic circle"
+     ],
+     "situation": "A magic circle glows beneath your feet as your entire high school class materializes in a grand, stone chamber before a pleading princess."
+    },
+    "summary": "A bored high school boy who is effortlessly good at everything finds himself summoned to another world alongside his entire class. While his peers are excited to become legendary heroes, he sees it as just another set of rules to easily master."
+   },
+   "character": {
+    "name": "Daichi Shindo",
+    "aliases": [
+     "The Unamused Genius"
+    ],
+    "age": 17,
+    "lifespan_years": 80,
+    "people_id": "humans",
+    "description": "Always looking slightly sleepy or disinterested, standing with a casual slouch.",
+    "appearance": "Slightly messy dark hair, sharp obsidian eyes, wearing a dark blue school uniform with the top button undone.",
+    "location_id": "summoning-chamber",
+    "attributes": {
+     "strength": 3,
+     "speed": 3,
+     "toughness": 3,
+     "wits": 5,
+     "knowledge": 4,
+     "willpower": 4,
+     "charm": 3,
+     "nerve": 5,
+     "bearing": 3
+    },
+    "skills": [
+     {
+      "name": "Observation",
+      "level": "expert",
+      "notes": "He notices small details and tells intentions easily because he is always bored and watching."
+     },
+     {
+      "name": "Academics",
+      "level": "skilled",
+      "notes": "Effortless high school level knowledge."
+     }
+    ],
+    "traits": [
+     {
+      "name": "Apathetic",
+      "kind": "quirk",
+      "description": "Very little excites him, making him highly resistant to fear or charm spells, but difficult to motivate."
+     }
+    ],
+    "talents": [
+     {
+      "said": "good at everything he tries",
+      "name": "Flawless Adaptability",
+      "covers": "Any skill, physical movement, or mental discipline he attempts.",
+      "strength": "genius",
+      "general": true,
+      "reason": ""
+     }
+    ],
+    "powers": [
+     {
+      "id": "status-gaze",
+      "name": "System Appraisal",
+      "description": "Can view the Status, attributes, and basic skills of any living being or item.",
+      "kind_id": "world-system",
+      "gift": false,
+      "strength": null,
+      "limits": [
+       "Cannot see information of entities more than 40 levels higher than himself."
+      ],
+      "costs": [],
+      "secret": false,
+      "time": null
+     }
+    ],
+    "techniques": [],
+    "temperament": {
+     "traits": [
+      "bored",
+      "analytical",
+      "calm"
+     ],
+     "values": [
+      "efficiency",
+      "personal freedom"
+     ],
+     "loves": [
+      "novelty",
+      "quiet places"
+     ],
+     "fears": [
+      "eternal boredom"
+     ],
+     "wants": [],
+     "voice": "Low, quiet, and slightly monotone."
+    },
+    "items": [],
+    "money": 0,
+    "currency": "copper coins",
+    "title": "Summoned Hero",
+    "rank": "Commoner",
+    "family_name": "Shindo",
+    "connections": [
+     {
+      "name": "The Class of 2-B",
+      "kind": "other",
+      "character_id": "",
+      "note": "His classmates who were summoned along with him."
+     }
+    ],
+    "parent_ids": [],
+    "memberships": [],
+    "ladders": [
+     {
+      "ladder_id": "system-levels",
+      "rung": "Novice (Levels 1-10)",
+      "stage": "early"
+     }
+    ],
+    "axes": {
+     "might": 1,
+     "influence": 1,
+     "wealth": 1,
+     "knowledge": 3,
+     "stealth": 2
+    },
+    "reserves": [
+     {
+      "name": "mana",
+      "level": 100
+     }
+    ],
+    "goals": [],
+    "backstory": [
+     "You lived an effortless life in Japan, finding sports, academics, and games incredibly easy and utterly boring.",
+     "Just as you were wondering if your entire life would be this dull, a blinding magic circle summoned your entire classroom here."
+    ],
+    "hidden_past": []
+   }
+  },
+  "rating": "teen",
+  "premise_id": null,
+  "physics": "fun_first",
+  "gift": null,
+  "released_rules": [],
+  "language": "en",
+  "told": []
+ }
+}

@@ -1,0 +1,1700 @@
+{
+ "premise": "I'm the best hacker in Night City. Corporations pay fortunes to keep me out of their systems.",
+ "language": "en",
+ "rating": "mature",
+ "settings": {
+  "narration_length": "medium",
+  "tone": null,
+  "difficulty": "balanced",
+  "event_frequency": "normal",
+  "images": "key_moments",
+  "suggestions": true,
+  "language": "en",
+  "accent": null
+ },
+ "seed": "play/x-hacker",
+ "state": {
+  "schema_version": 1,
+  "turn": 1,
+  "timeline_id": "main",
+  "world_s": 0,
+  "bible": {
+   "title": "Night City: The Price of Silence",
+   "genre": "Cyberpunk",
+   "tone": "Gritty Noir",
+   "era": "Night City, 2077: cybernetics, neural networks, and corporate hegemony",
+   "extraordinary": [
+    {
+     "id": "cybernetics",
+     "kind": "cybernetics",
+     "prevalence": "common",
+     "reach": "Advanced mechanical prosthetics, dermal plating, and neural processors.",
+     "rule_ids": [
+      "cybernetics-exists"
+     ]
+    },
+    {
+     "id": "the-net",
+     "kind": "neural netrunning",
+     "prevalence": "common",
+     "reach": "Deep dive neural hacking where thoughts translate directly into code.",
+     "rule_ids": [
+      "netrunning-danger",
+      "the-net-exists"
+     ]
+    }
+   ],
+   "peoples": [
+    {
+     "id": "human",
+     "name": "Human",
+     "description": "",
+     "lifespan_years": 80,
+     "gifts": [],
+     "culture": "Diverse, transhumanist urban culture driven by survival, street status, and high technology.",
+     "relations": [],
+     "path": ""
+    }
+   ],
+   "creatures": [],
+   "nature": [],
+   "physics": "fun_first",
+   "force": {
+    "tier1_joules": 10000.0,
+    "per_tier": 10.0
+   },
+   "ladders": [],
+   "calendar": {
+    "style": "gregorian",
+    "time_of_day": "clock",
+    "epoch": "2077-10-12T22:00",
+    "start_second_of_day": 79200,
+    "months": [],
+    "start_year": 1,
+    "start_month": 1,
+    "start_day": 1,
+    "era": ""
+   },
+   "travel": {
+    "description": "People move via automated hover-cabs, high-speed rail lines, and heavily armored corporate air vehicles.",
+    "instant_messages": true
+   },
+   "medicine": {
+    "healing": "Nano-dermal regenerators and cybernetic organ replacements can repair almost any non-lethal trauma in minutes.",
+    "resurrection": "none",
+    "resurrection_means": ""
+   },
+   "laws": [
+    {
+     "id": "corporate-immunity",
+     "text": "Any action taken inside corporate property is subject entirely to corporate enforcement, not municipal law.",
+     "enforcer": "Corporate Security Forces",
+     "enforcer_faction_id": null,
+     "zeal": "high",
+     "corruptible": true
+    }
+   ],
+   "norms": [],
+   "several_partners": false,
+   "unions": "easy",
+   "rules": [
+    {
+     "id": "netrunning-danger",
+     "text": "Neural interfaces allow hackers to interact with digital systems at lightspeed, but corporate black ICE can physically fry a netrunner's brain.",
+     "fixed": true,
+     "topic": "nature"
+    },
+    {
+     "id": "corp-extraterritoriality",
+     "text": "Megacorporations operate above local laws, enforcing their own will through heavily armed private militaries.",
+     "fixed": true,
+     "topic": "law"
+    },
+    {
+     "id": "cybernetics-exists",
+     "text": "Cybernetics: real, and everywhere.",
+     "fixed": true,
+     "topic": "existence"
+    },
+    {
+     "id": "the-net-exists",
+     "text": "Neural netrunning: real, and everywhere.",
+     "fixed": true,
+     "topic": "existence"
+    }
+   ],
+   "mysteries": [
+    {
+     "id": "the-watson-leak",
+     "question": "How did Arasaka trace my secure signature back to the Kabuki safehouse?",
+     "answer": "Arthur Vanderbilt leaked the encryption keys to Arasaka to manufacture a crisis, intending to 'save' you with a Militech contract.",
+     "clues": [
+      "A fragment of a Militech digital handshake found embedded in the tracing code.",
+      "A encrypted data burst sent to Arasaka servers from a terminal inside Militech Tower."
+     ],
+     "thread_id": "the-corporate-collar",
+     "solved": false
+    }
+   ]
+  },
+  "player_id": "player",
+  "characters": {
+   "player": {
+    "id": "player",
+    "name": "Zero",
+    "aliases": [
+     "Julian Vance",
+     "The Ghost of Watson"
+    ],
+    "prominence": "key",
+    "description": "An intensely focused, brilliant netrunner who moves with restless energy and thinks in lines of code.",
+    "appearance": "Pale skin, short black hair with glowing blue fiber-optic highlights, custom neural-link ports at the base of the skull, wearing an armored, dark-gray long coat.",
+    "look_version": 1,
+    "age": 28,
+    "people_id": "human",
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "kabuki-apartment",
+    "personal_offset_s": 0,
+    "memberships": [],
+    "sheet": {
+     "attributes": {
+      "strength": 2,
+      "speed": 3,
+      "toughness": 2,
+      "wits": 5,
+      "knowledge": 5,
+      "willpower": 4,
+      "charm": 3,
+      "nerve": 4,
+      "bearing": 3
+     },
+     "skills": [
+      {
+       "name": "Netrunning",
+       "level": "master",
+       "notes": "Bypassing corporate ICE, rewriting security sub-routines, and rapid data extraction."
+      },
+      {
+       "name": "Electronics",
+       "level": "expert",
+       "notes": "Modifying cyberdecks, fabricating custom signal scramblers, and hotwiring security systems."
+      },
+      {
+       "name": "Streetwise",
+       "level": "skilled",
+       "notes": "Understanding fixer etiquette and navigating the criminal hierarchy."
+      }
+     ],
+     "traits": [
+      {
+       "name": "Famous Netrunner",
+       "kind": "gift",
+       "description": "Your reputation precedes you; corporations treat you with caution and respect, and street crews know you're the best."
+      },
+      {
+       "name": "Corporate Target",
+       "kind": "flaw",
+       "description": "Megacorporations view you as a walking security disaster; you are constantly watched and targeted."
+      }
+     ],
+     "talents": [],
+     "powers": [
+      {
+       "id": "neural-dive",
+       "name": "Neural Deep Dive",
+       "description": "You can translate your consciousness directly into digital networks, navigating security architectures like three-dimensional physical structures.",
+       "strength": null,
+       "limits": [
+        "Requires a direct neural jack physical port or high-bandwidth proxy transmitter.",
+        "Leaves your physical body completely vulnerable while diving."
+       ],
+       "costs": [
+        {
+         "kind": "fatigue",
+         "text": "Causes intense neural heating and mental exhaustion; prolonged sessions require ice-bath cooling or neural stabilizers."
+        }
+       ],
+       "secret": false,
+       "time": null,
+       "settings": {},
+       "ready_at_personal_s": null
+      }
+     ],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "independent",
+        "cautious",
+        "calculating"
+       ],
+       "values": [
+        "freedom",
+        "expertise",
+        "credits"
+       ],
+       "loves": [
+        "Clean code",
+        "Decrypted secrets"
+       ],
+       "fears": [
+        "Being permanently locked down by Black ICE or a corporate leash"
+       ],
+       "wants": [],
+       "voice": ""
+      },
+      "attitudes": {}
+     },
+     "resources": {
+      "items": [
+       {
+        "id": "custom-military-grade-cyberdeck",
+        "name": "Custom Military-Grade Cyberdeck",
+        "kind": "gear",
+        "description": "An illegally modified, liquid-cooled deck running black-market decryption suites and custom anti-ICE daemons.",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       },
+       {
+        "id": "smart-pistol",
+        "name": "Smart Pistol",
+        "kind": "weapon",
+        "description": "A compact hand weapon with self-guiding micro-projectiles linked to your visual HUD interface.",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       }
+      ],
+      "money": 150000,
+      "currency": "Eurodollars",
+      "title": "Elite Netrunner",
+      "rank": "",
+      "family_name": "",
+      "connections": [
+       {
+        "name": "Rogue Amendiares",
+        "kind": "ally",
+        "character_id": "rogue",
+        "note": "A reliable business contact who values your unmatched digital skills."
+       }
+      ]
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": 80,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   },
+   "rogue": {
+    "id": "rogue",
+    "name": "Rogue Amendiares",
+    "aliases": [],
+    "prominence": "key",
+    "description": "The queen of Night City fixers: sharp, thoroughly professional, and possessing connections in every corner of the city.",
+    "appearance": "An older but intensely fit woman with sharp eyes, gray-streaked dark hair, wearing a custom-tailored armored leather jacket.",
+    "look_version": 1,
+    "age": 72,
+    "people_id": null,
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "afterlife",
+    "personal_offset_s": 0,
+    "memberships": [],
+    "sheet": {
+     "attributes": {
+      "strength": 3,
+      "speed": 3,
+      "toughness": 3,
+      "wits": 5,
+      "knowledge": 4,
+      "willpower": 4,
+      "charm": 4,
+      "nerve": 5,
+      "bearing": 5
+     },
+     "skills": [
+      {
+       "name": "Streetwise",
+       "level": "master",
+       "notes": "Unmatched knowledge of Night City's criminal and mercenary underworld."
+      }
+     ],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "calculating",
+        "pragmatic",
+        "influential"
+       ],
+       "values": [
+        "reputation",
+        "credits",
+        "survival"
+       ],
+       "loves": [
+        "A clean job well done"
+       ],
+       "fears": [
+        "A corporate war tearing down her business"
+       ],
+       "wants": [],
+       "voice": ""
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 0,
+        "fear": 0,
+        "trust": 0,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   },
+   "vanderbilt": {
+    "id": "vanderbilt",
+    "name": "Arthur Vanderbilt",
+    "aliases": [],
+    "prominence": "key",
+    "description": "A cold, immaculate Militech executive who treats people as assets or liabilities and hates being told no.",
+    "appearance": "An executive with a perfect corporate haircut, an expensive cybernetic monocle over his left eye, wearing an tailored, high-collar three-piece suit.",
+    "look_version": 1,
+    "age": 45,
+    "people_id": null,
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "militech-hq",
+    "personal_offset_s": 0,
+    "memberships": [],
+    "sheet": {
+     "attributes": {
+      "strength": 2,
+      "speed": 2,
+      "toughness": 3,
+      "wits": 4,
+      "knowledge": 4,
+      "willpower": 4,
+      "charm": 4,
+      "nerve": 3,
+      "bearing": 4
+     },
+     "skills": [
+      {
+       "name": "Negotiation",
+       "level": "expert",
+       "notes": ""
+      }
+     ],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "ruthless",
+        "ambitious",
+        "polished"
+       ],
+       "values": [
+        "corporate efficiency",
+        "control"
+       ],
+       "loves": [
+        "Favorable contracts"
+       ],
+       "fears": [
+        "Losing his standing to rival executives"
+       ],
+       "wants": [],
+       "voice": ""
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 0,
+        "fear": 0,
+        "trust": 0,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": {
+     "goal": "Leverage Arasaka's threat to force the player into signing a life-long exclusive security contract with Militech.",
+     "method": "Leaking clues of Arasaka's hunt while offering an 'escape' option via a Militech contract.",
+     "secret": "",
+     "clock_id": null
+    },
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   }
+  },
+  "factions": {
+   "militech": {
+    "id": "militech",
+    "name": "Militech",
+    "kind": "megacorporation",
+    "description": "A global military armaments and security megacorporation known for its aggressive expansion and private armies.",
+    "parent_id": null,
+    "status": "intact",
+    "status_history": [],
+    "activity": "active",
+    "leader_ids": [
+     "vanderbilt"
+    ],
+    "goal": "To secure exclusive control over the player's hacking capabilities, either by contract or capture.",
+    "methods": "Deploying recovery teams and elite corporate negotiators.",
+    "strength": "High-grade military weaponry, deep pockets, and private black-ops squads.",
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "threat": 0,
+    "relations": {},
+    "survivors": [],
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ]
+   },
+   "arasaka": {
+    "id": "arasaka",
+    "name": "Arasaka",
+    "kind": "megacorporation",
+    "description": "An influential Japanese security megacorporation famous for its high-tech ICE and lethal assassins.",
+    "parent_id": null,
+    "status": "intact",
+    "status_history": [],
+    "activity": "active",
+    "leader_ids": [],
+    "goal": "To neutralize or capture the hacker who has breached their secure database.",
+    "methods": "Tracking digital footprints and deploying cyber-ninja kill teams.",
+    "strength": "State-of-the-art cybernetics and ruthless corporate netrunners.",
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "threat": 0,
+    "relations": {},
+    "survivors": [],
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "places": {
+   "night-city": {
+    "id": "night-city",
+    "name": "Night City",
+    "kind": "city",
+    "description": "A sprawling, neon-drenched metropolis controlled by monolithic corporations and plagued by gang wars.",
+    "parent_id": null,
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "watson": {
+    "id": "watson",
+    "name": "Watson District",
+    "kind": "region",
+    "description": "A crowded, decaying industrial district filled with bustling street markets, neon signs, and dark alleys.",
+    "parent_id": "night-city",
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "corpo-plaza",
+      "travel_s": 1800,
+      "mode": "by train"
+     },
+     {
+      "to_id": "kabuki-apartment",
+      "travel_s": 360,
+      "mode": "on foot"
+     },
+     {
+      "to_id": "afterlife",
+      "travel_s": 720,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "kabuki-apartment": {
+    "id": "kabuki-apartment",
+    "name": "Kabuki Safehouse",
+    "kind": "room",
+    "description": "A cramped, high-tech apartment cluttered with monitors, glowing terminals, cyberdeck components, and loose wiring.",
+    "parent_id": "watson",
+    "setting": "indoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "watson",
+      "travel_s": 360,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [
+     "player"
+    ],
+    "judged": []
+   },
+   "afterlife": {
+    "id": "afterlife",
+    "name": "The Afterlife",
+    "kind": "building",
+    "description": "The legendary mercenary bar where elite fixers and solos plan the scores that make or break careers.",
+    "parent_id": "watson",
+    "setting": "indoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "watson",
+      "travel_s": 720,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "corpo-plaza": {
+    "id": "corpo-plaza",
+    "name": "Corporate Plaza",
+    "kind": "region",
+    "description": "The sleek, heavily guarded core of the city, where glass-and-steel megacorporation towers pierce the smoggy sky.",
+    "parent_id": "night-city",
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "militech-hq",
+      "travel_s": 360,
+      "mode": "on foot"
+     },
+     {
+      "to_id": "watson",
+      "travel_s": 1800,
+      "mode": "by train"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "militech-hq": {
+    "id": "militech-hq",
+    "name": "Militech Tower",
+    "kind": "building",
+    "description": "A monolithic, fortress-like tower housing the local headquarters of the global military armaments giant.",
+    "parent_id": "corpo-plaza",
+    "setting": "indoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "corpo-plaza",
+      "travel_s": 360,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   }
+  },
+  "deeds": {},
+  "rumors": {},
+  "bonds": {},
+  "lives": {},
+  "aged_s": null,
+  "changes": {},
+  "strife_s": {},
+  "facts": {
+   "fact-1": {
+    "id": "fact-1",
+    "text": "Megacorporations pay massive retainers to keep you from breaching their servers.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-2": {
+    "id": "fact-2",
+    "text": "Arasaka is tracking down a high-profile hack that took place last week.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-3": {
+    "id": "fact-3",
+    "text": "The Afterlife bar is the safest place to find work or information.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   }
+  },
+  "goals": {},
+  "leads": {},
+  "threads": {
+   "the-corporate-collar": {
+    "id": "the-corporate-collar",
+    "title": "The Corporate Collar",
+    "kind": "threat",
+    "stakes": "Militech wants to put you on their payroll permanently to keep you out of their systems, which would mean losing your independent freedom.",
+    "involved_ids": [
+     "player",
+     "vanderbilt"
+    ],
+    "clock_id": null,
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "status": "open",
+    "opened_turn": 0,
+    "last_active_turn": 0,
+    "taken_up_turn": null,
+    "closed_turn": null,
+    "arc": null,
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "clocks": {
+   "arasaka-hunt": {
+    "id": "arasaka-hunt",
+    "name": "Arasaka's Black ICE Trace",
+    "steps": [
+     "Arasaka security flags your local access node.",
+     "Netwatch registers suspicious traffic in Kabuki.",
+     "Arasaka elite strike teams mobilize to your sector.",
+     "Kill-teams breach your safehouse door."
+    ],
+    "filled": 0,
+    "advances_on": [],
+    "reverses_on": [],
+    "interval_s": 86400,
+    "next_step_s": 86400,
+    "owner_id": null,
+    "thread_id": null,
+    "status": "running",
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "pending_events": {
+   "event-1": {
+    "id": "event-1",
+    "kind": "world.clock_step",
+    "title": "Arasaka's Black ICE Trace: Arasaka security flags your local access node.",
+    "due_s": 86400,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": {
+     "kind": "clock",
+     "ref_id": "arasaka-hunt",
+     "text": ""
+    },
+    "payload": {
+     "clock_id": "arasaka-hunt"
+    },
+    "seed": "story=play%2Fx-hacker/timeline=main/turn=1/world/schedule/event-1",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-2": {
+    "id": "event-2",
+    "kind": "world.old_age",
+    "title": "Your years run short",
+    "due_s": 1631994477,
+    "timeline_id": "main",
+    "needs_player": true,
+    "status": "pending",
+    "subject_ids": [
+     "player"
+    ],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "phase": "near",
+     "who": "player",
+     "span": 80,
+     "day_s": 1665667864
+    },
+    "seed": "story=play%2Fx-hacker/timeline=main/turn=1/world/schedule/event-2",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-3": {
+    "id": "event-3",
+    "kind": "world.tick",
+    "title": "The world moves on",
+    "due_s": 86400,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "last_s": 0,
+     "stride_s": 86400
+    },
+    "seed": "story=play%2Fx-hacker/timeline=main/turn=1/world/schedule/event-3",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   }
+  },
+  "transfers": [],
+  "time_effects": [],
+  "scene": {
+   "place_id": "kabuki-apartment",
+   "present_ids": [
+    "player"
+   ],
+   "positions": [
+    "Zero sits at the primary terminal, jacked into the screaming cyberdeck."
+   ],
+   "props": [
+    "custom-military-grade-cyberdeck",
+    "smart-pistol"
+   ],
+   "ended_on": "The crimson warning lights flash across your monitors as the Arasaka trace nears your final layer of ICE.",
+   "encounter": null
+  },
+  "director": {
+   "turns_without_stakes": 0,
+   "low_stakes_streak": 0,
+   "last_action_key": null,
+   "last_event_turn": null,
+   "last_event_size": null,
+   "last_event_s": {},
+   "last_small_s": null,
+   "recent_moments": [],
+   "recent_clock": [
+    0
+   ],
+   "frequency_drift": 0.0,
+   "recent_sources": [],
+   "auto_pictures": 1,
+   "picture_credit": 1.1,
+   "pictured": [
+    "portrait:player",
+    "portrait:player:v1"
+   ],
+   "fight": null,
+   "deck_draws": 0,
+   "road_stops": 0
+  },
+  "summary": "As the premier hacker in Night City, corporations pay you astronomical fortunes just to keep out of their systems. But a sudden, highly coordinated trace by Arasaka has compromised your safehouse, forcing you to navigate corporate greed and survival.",
+  "chapters": [],
+  "id_counters": {
+   "fact": 3,
+   "goal": 0,
+   "bond": 0,
+   "event": 3
+  },
+  "fallen": [],
+  "opening_due": false,
+  "misses_in_a_row": 0,
+  "openings": [],
+  "journey": null,
+  "untold": [
+   "person:rogue",
+   "person:vanderbilt"
+  ]
+ },
+ "scenes": [
+  {
+   "turn": 1,
+   "narration": "You sit before the glowing wall of monitors in your secure Kabuki apartment, the hum of your custom cyberdeck vibrating through your neural jack as the latest wire transfer from a desperate megacorp clears. A cool one hundred and fifty thousand Eurodollars, freshly laundered through three different shell companies in the Neo-Soviet Union, settle into your account. Another corporate giant paying premium rates just to ensure you keep your hands off their servers. Outside, the rain of Night City streaks down the dirty windowpane, refracting the neon-red glare of Kabuki's street signs. Suddenly, the steady green hum of your monitors flickers, replaced by a jagged, violent crimson. A high-priority trace warning screams across your visual HUD. Not a standard municipal check, but a deep-probe military ping. Arasaka. They aren't just looking for a breach; they've pinpointed your proxy server in the district and are burning through your local subnets to find this exact room. The cooling fans on your deck scream as they work to dump the massive heat load, and you have only seconds before your physical location is entirely compromised.",
+   "player_action": null
+  }
+ ],
+ "choices": [
+  "Initiate a counter-hack to scramble their trace and buy time.",
+  "Rip the neural jack out and flee into the Kabuki rain.",
+  "Grab your smart pistol and prepare for incoming corporate security."
+ ],
+ "cost_usd": 0.1300815,
+ "draft": {
+  "premise": "I'm the best hacker in Night City. Corporations pay fortunes to keep me out of their systems.",
+  "proposal": {
+   "world": {
+    "title": "Night City: The Price of Silence",
+    "genre": "Cyberpunk",
+    "tone": "Gritty Noir",
+    "era": "Night City, 2077: cybernetics, neural networks, and corporate hegemony",
+    "extraordinary": [
+     {
+      "id": "cybernetics",
+      "kind": "cybernetics",
+      "prevalence": "common",
+      "reach": "Advanced mechanical prosthetics, dermal plating, and neural processors."
+     },
+     {
+      "id": "the-net",
+      "kind": "neural netrunning",
+      "prevalence": "common",
+      "reach": "Deep dive neural hacking where thoughts translate directly into code."
+     }
+    ],
+    "rules": [
+     {
+      "id": "netrunning-danger",
+      "text": "Neural interfaces allow hackers to interact with digital systems at lightspeed, but corporate black ICE can physically fry a netrunner's brain.",
+      "fixed": true,
+      "topic": "nature",
+      "about": [
+       "the-net"
+      ]
+     },
+     {
+      "id": "corp-extraterritoriality",
+      "text": "Megacorporations operate above local laws, enforcing their own will through heavily armed private militaries.",
+      "fixed": true,
+      "topic": "law",
+      "about": []
+     }
+    ],
+    "dropped_rule_ids": [],
+    "peoples": [
+     {
+      "id": "human",
+      "name": "Human",
+      "description": "",
+      "lifespan_years": 80,
+      "gifts": [],
+      "culture": "Diverse, transhumanist urban culture driven by survival, street status, and high technology.",
+      "relations": [],
+      "path": ""
+     }
+    ],
+    "creatures": [],
+    "nature": [],
+    "ladders": [],
+    "calendar": {
+     "style": "gregorian",
+     "clock_time": true,
+     "epoch": "2077-10-12T22:00",
+     "start_hour": 22,
+     "months": [],
+     "start_year": 1,
+     "start_month": 1,
+     "start_day": 1,
+     "era": ""
+    },
+    "travel": {
+     "description": "People move via automated hover-cabs, high-speed rail lines, and heavily armored corporate air vehicles.",
+     "instant_messages": true
+    },
+    "medicine": {
+     "healing": "Nano-dermal regenerators and cybernetic organ replacements can repair almost any non-lethal trauma in minutes.",
+     "resurrection": "none",
+     "resurrection_means": ""
+    },
+    "laws": [
+     {
+      "id": "corporate-immunity",
+      "text": "Any action taken inside corporate property is subject entirely to corporate enforcement, not municipal law.",
+      "enforcer": "Corporate Security Forces",
+      "enforcer_faction_id": "",
+      "zeal": "high",
+      "corruptible": true
+     }
+    ],
+    "norms": [],
+    "several_partners": false,
+    "unions": "easy",
+    "places": [
+     {
+      "id": "night-city",
+      "name": "Night City",
+      "kind": "city",
+      "description": "A sprawling, neon-drenched metropolis controlled by monolithic corporations and plagued by gang wars.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "watson",
+      "name": "Watson District",
+      "kind": "region",
+      "description": "A crowded, decaying industrial district filled with bustling street markets, neon signs, and dark alleys.",
+      "parent_id": "night-city",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "corpo-plaza",
+        "travel_hours": 0.5,
+        "mode": "by train"
+       }
+      ]
+     },
+     {
+      "id": "kabuki-apartment",
+      "name": "Kabuki Safehouse",
+      "kind": "room",
+      "description": "A cramped, high-tech apartment cluttered with monitors, glowing terminals, cyberdeck components, and loose wiring.",
+      "parent_id": "watson",
+      "setting": "indoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "watson",
+        "travel_hours": 0.1,
+        "mode": "on foot"
+       }
+      ]
+     },
+     {
+      "id": "afterlife",
+      "name": "The Afterlife",
+      "kind": "building",
+      "description": "The legendary mercenary bar where elite fixers and solos plan the scores that make or break careers.",
+      "parent_id": "watson",
+      "setting": "indoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "watson",
+        "travel_hours": 0.2,
+        "mode": "on foot"
+       }
+      ]
+     },
+     {
+      "id": "corpo-plaza",
+      "name": "Corporate Plaza",
+      "kind": "region",
+      "description": "The sleek, heavily guarded core of the city, where glass-and-steel megacorporation towers pierce the smoggy sky.",
+      "parent_id": "night-city",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "militech-hq",
+        "travel_hours": 0.1,
+        "mode": "on foot"
+       }
+      ]
+     },
+     {
+      "id": "militech-hq",
+      "name": "Militech Tower",
+      "kind": "building",
+      "description": "A monolithic, fortress-like tower housing the local headquarters of the global military armaments giant.",
+      "parent_id": "corpo-plaza",
+      "setting": "indoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     }
+    ],
+    "factions": [
+     {
+      "id": "militech",
+      "name": "Militech",
+      "kind": "megacorporation",
+      "description": "A global military armaments and security megacorporation known for its aggressive expansion and private armies.",
+      "parent_id": "",
+      "leader_ids": [
+       "vanderbilt"
+      ],
+      "goal": "To secure exclusive control over the player's hacking capabilities, either by contract or capture.",
+      "methods": "Deploying recovery teams and elite corporate negotiators.",
+      "strength": "High-grade military weaponry, deep pockets, and private black-ops squads.",
+      "relations": [],
+      "secrets": [],
+      "known_to_player": true
+     },
+     {
+      "id": "arasaka",
+      "name": "Arasaka",
+      "kind": "megacorporation",
+      "description": "An influential Japanese security megacorporation famous for its high-tech ICE and lethal assassins.",
+      "parent_id": "",
+      "leader_ids": [],
+      "goal": "To neutralize or capture the hacker who has breached their secure database.",
+      "methods": "Tracking digital footprints and deploying cyber-ninja kill teams.",
+      "strength": "State-of-the-art cybernetics and ruthless corporate netrunners.",
+      "relations": [],
+      "secrets": [],
+      "known_to_player": true
+     }
+    ],
+    "npcs": [
+     {
+      "id": "rogue",
+      "name": "Rogue Amendiares",
+      "aliases": [],
+      "description": "The queen of Night City fixers: sharp, thoroughly professional, and possessing connections in every corner of the city.",
+      "appearance": "An older but intensely fit woman with sharp eyes, gray-streaked dark hair, wearing a custom-tailored armored leather jacket.",
+      "age": 72,
+      "people_id": "",
+      "location_id": "afterlife",
+      "memberships": [],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "calculating",
+        "pragmatic",
+        "influential"
+       ],
+       "values": [
+        "reputation",
+        "credits",
+        "survival"
+       ],
+       "loves": [
+        "A clean job well done"
+       ],
+       "fears": [
+        "A corporate war tearing down her business"
+       ],
+       "wants": [],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 3,
+       "speed": 3,
+       "toughness": 3,
+       "wits": 5,
+       "knowledge": 4,
+       "willpower": 4,
+       "charm": 4,
+       "nerve": 5,
+       "bearing": 5
+      },
+      "skills": [
+       {
+        "name": "Streetwise",
+        "level": "master",
+        "notes": "Unmatched knowledge of Night City's criminal and mercenary underworld."
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 0,
+       "fear": 0,
+       "trust": 0,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "met"
+     },
+     {
+      "id": "vanderbilt",
+      "name": "Arthur Vanderbilt",
+      "aliases": [],
+      "description": "A cold, immaculate Militech executive who treats people as assets or liabilities and hates being told no.",
+      "appearance": "An executive with a perfect corporate haircut, an expensive cybernetic monocle over his left eye, wearing an tailored, high-collar three-piece suit.",
+      "age": 45,
+      "people_id": "",
+      "location_id": "militech-hq",
+      "memberships": [],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "ruthless",
+        "ambitious",
+        "polished"
+       ],
+       "values": [
+        "corporate efficiency",
+        "control"
+       ],
+       "loves": [
+        "Favorable contracts"
+       ],
+       "fears": [
+        "Losing his standing to rival executives"
+       ],
+       "wants": [],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 2,
+       "speed": 2,
+       "toughness": 3,
+       "wits": 4,
+       "knowledge": 4,
+       "willpower": 4,
+       "charm": 4,
+       "nerve": 3,
+       "bearing": 4
+      },
+      "skills": [
+       {
+        "name": "Negotiation",
+        "level": "expert",
+        "notes": ""
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 0,
+       "fear": 0,
+       "trust": 0,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": {
+       "goal": "Leverage Arasaka's threat to force the player into signing a life-long exclusive security contract with Militech.",
+       "method": "Leaking clues of Arasaka's hunt while offering an 'escape' option via a Militech contract.",
+       "secret": "",
+       "clock_id": ""
+      },
+      "secrets": [],
+      "player_knows": "heard_of"
+     }
+    ],
+    "clocks": [
+     {
+      "id": "arasaka-hunt",
+      "name": "Arasaka's Black ICE Trace",
+      "steps": [
+       "Arasaka security flags your local access node.",
+       "Netwatch registers suspicious traffic in Kabuki.",
+       "Arasaka elite strike teams mobilize to your sector.",
+       "Kill-teams breach your safehouse door."
+      ],
+      "step_every_hours": 24.0,
+      "owner_id": "",
+      "thread_id": "",
+      "known_to_player": true
+     }
+    ],
+    "threads": [
+     {
+      "id": "the-corporate-collar",
+      "title": "The Corporate Collar",
+      "kind": "threat",
+      "stakes": "Militech wants to put you on their payroll permanently to keep you out of their systems, which would mean losing your independent freedom.",
+      "involved_ids": [
+       "player",
+       "vanderbilt"
+      ],
+      "clock_id": "",
+      "known_to_player": true
+     }
+    ],
+    "mysteries": [
+     {
+      "id": "the-watson-leak",
+      "question": "How did Arasaka trace my secure signature back to the Kabuki safehouse?",
+      "answer": "Arthur Vanderbilt leaked the encryption keys to Arasaka to manufacture a crisis, intending to 'save' you with a Militech contract.",
+      "clues": [
+       "A fragment of a Militech digital handshake found embedded in the tracing code.",
+       "A encrypted data burst sent to Arasaka servers from a terminal inside Militech Tower."
+      ],
+      "thread_id": "the-corporate-collar",
+      "known_to_player": true
+     }
+    ],
+    "known_facts": [
+     "Megacorporations pay massive retainers to keep you from breaching their servers.",
+     "Arasaka is tracking down a high-profile hack that took place last week.",
+     "The Afterlife bar is the safest place to find work or information."
+    ],
+    "opening": {
+     "place_id": "kabuki-apartment",
+     "present_ids": [],
+     "positions": [],
+     "props": [],
+     "situation": "You sit before the glowing wall of monitors in your secure Kabuki apartment, the hum of your custom cyberdeck vibrating through your neural jack as the latest wire transfer from a desperate megacorp clears."
+    },
+    "summary": "As the premier hacker in Night City, corporations pay you astronomical fortunes just to keep out of their systems. But a sudden, highly coordinated trace by Arasaka has compromised your safehouse, forcing you to navigate corporate greed and survival."
+   },
+   "character": {
+    "name": "Zero",
+    "aliases": [
+     "Julian Vance",
+     "The Ghost of Watson"
+    ],
+    "age": 28,
+    "lifespan_years": 80,
+    "people_id": "human",
+    "description": "An intensely focused, brilliant netrunner who moves with restless energy and thinks in lines of code.",
+    "appearance": "Pale skin, short black hair with glowing blue fiber-optic highlights, custom neural-link ports at the base of the skull, wearing an armored, dark-gray long coat.",
+    "location_id": "kabuki-apartment",
+    "attributes": {
+     "strength": 2,
+     "speed": 3,
+     "toughness": 2,
+     "wits": 5,
+     "knowledge": 5,
+     "willpower": 4,
+     "charm": 3,
+     "nerve": 4,
+     "bearing": 3
+    },
+    "skills": [
+     {
+      "name": "Netrunning",
+      "level": "master",
+      "notes": "Bypassing corporate ICE, rewriting security sub-routines, and rapid data extraction."
+     },
+     {
+      "name": "Electronics",
+      "level": "expert",
+      "notes": "Modifying cyberdecks, fabricating custom signal scramblers, and hotwiring security systems."
+     },
+     {
+      "name": "Streetwise",
+      "level": "skilled",
+      "notes": "Understanding fixer etiquette and navigating the criminal hierarchy."
+     }
+    ],
+    "traits": [
+     {
+      "name": "Famous Netrunner",
+      "kind": "gift",
+      "description": "Your reputation precedes you; corporations treat you with caution and respect, and street crews know you're the best."
+     },
+     {
+      "name": "Corporate Target",
+      "kind": "flaw",
+      "description": "Megacorporations view you as a walking security disaster; you are constantly watched and targeted."
+     }
+    ],
+    "talents": [],
+    "powers": [
+     {
+      "id": "neural-dive",
+      "name": "Neural Deep Dive",
+      "description": "You can translate your consciousness directly into digital networks, navigating security architectures like three-dimensional physical structures.",
+      "kind_id": "the-net",
+      "gift": false,
+      "strength": null,
+      "limits": [
+       "Requires a direct neural jack physical port or high-bandwidth proxy transmitter.",
+       "Leaves your physical body completely vulnerable while diving."
+      ],
+      "costs": [
+       {
+        "kind": "fatigue",
+        "text": "Causes intense neural heating and mental exhaustion; prolonged sessions require ice-bath cooling or neural stabilizers."
+       }
+      ],
+      "secret": false,
+      "time": null
+     }
+    ],
+    "techniques": [],
+    "temperament": {
+     "traits": [
+      "independent",
+      "cautious",
+      "calculating"
+     ],
+     "values": [
+      "freedom",
+      "expertise",
+      "credits"
+     ],
+     "loves": [
+      "Clean code",
+      "Decrypted secrets"
+     ],
+     "fears": [
+      "Being permanently locked down by Black ICE or a corporate leash"
+     ],
+     "wants": [],
+     "voice": ""
+    },
+    "items": [
+     {
+      "name": "Custom Military-Grade Cyberdeck",
+      "kind": "gear",
+      "description": "An illegally modified, liquid-cooled deck running black-market decryption suites and custom anti-ICE daemons.",
+      "quantity": 1,
+      "carried": true
+     },
+     {
+      "name": "Smart Pistol",
+      "kind": "weapon",
+      "description": "A compact hand weapon with self-guiding micro-projectiles linked to your visual HUD interface.",
+      "quantity": 1,
+      "carried": true
+     }
+    ],
+    "money": 150000,
+    "currency": "Eurodollars",
+    "title": "Elite Netrunner",
+    "rank": "",
+    "family_name": "",
+    "connections": [
+     {
+      "name": "Rogue Amendiares",
+      "kind": "ally",
+      "character_id": "rogue",
+      "note": "A reliable business contact who values your unmatched digital skills."
+     }
+    ],
+    "parent_ids": [],
+    "memberships": [],
+    "ladders": [],
+    "axes": {
+     "might": 1,
+     "influence": 1,
+     "wealth": 1,
+     "knowledge": 1,
+     "stealth": 1
+    },
+    "reserves": [],
+    "goals": [],
+    "backstory": [],
+    "hidden_past": []
+   }
+  },
+  "rating": "mature",
+  "premise_id": null,
+  "physics": "fun_first",
+  "gift": null,
+  "released_rules": [],
+  "language": "en",
+  "told": []
+ }
+}

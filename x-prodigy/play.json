@@ -1,0 +1,2111 @@
+{
+ "premise": "A 17-year-old chess prodigy who just enrolled in an elite academy where everything, even your rank, is decided by strategy games.",
+ "language": "en",
+ "rating": "teen",
+ "settings": {
+  "narration_length": "medium",
+  "tone": null,
+  "difficulty": "balanced",
+  "event_frequency": "normal",
+  "images": "key_moments",
+  "suggestions": true,
+  "language": "en",
+  "accent": null
+ },
+ "seed": "play/x-prodigy",
+ "state": {
+  "schema_version": 1,
+  "turn": 1,
+  "timeline_id": "main",
+  "world_s": 0,
+  "bible": {
+   "title": "Apex Academy: The Game of Ranks",
+   "genre": "school drama, strategy, psychological",
+   "tone": "intense, analytical, competitive",
+   "era": "Modern day: smartphones, digital boards, high-tech academy grounds",
+   "extraordinary": [
+    {
+     "id": "magic-or-supernatural",
+     "kind": "magic or anything supernatural",
+     "prevalence": "none",
+     "reach": "",
+     "rule_ids": [
+      "rule-ranking-matches",
+      "rule-cheating",
+      "rule-game-choice",
+      "no-supernatural"
+     ]
+    }
+   ],
+   "peoples": [
+    {
+     "id": "human",
+     "name": "Human",
+     "description": "",
+     "lifespan_years": 80,
+     "gifts": [],
+     "culture": "A hyper-competitive academic society focused on intellectual supremacy.",
+     "relations": [],
+     "path": ""
+    }
+   ],
+   "creatures": [],
+   "nature": [],
+   "physics": "fun_first",
+   "force": {
+    "tier1_joules": 10000.0,
+    "per_tier": 10.0
+   },
+   "ladders": [
+    {
+     "id": "academy-ranks",
+     "name": "Academy Ranks",
+     "axis": "influence",
+     "rungs": [
+      {
+       "name": "Rank F",
+       "tier": 2,
+       "description": "The bottom tier. Freshmen and those stripped of all academy privileges.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 0,
+       "added_s": null
+      },
+      {
+       "name": "Rank D",
+       "tier": 4,
+       "description": "Average students with standard access to school grounds and basic meals.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 0,
+       "added_s": null
+      },
+      {
+       "name": "Rank C",
+       "tier": 6,
+       "description": "Competent players who hold club memberships and better accommodations.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 0,
+       "added_s": null
+      },
+      {
+       "name": "Rank B",
+       "tier": 8,
+       "description": "The elite competitive circle of the academy, allowed to wager high-value points.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 0,
+       "added_s": null
+      },
+      {
+       "name": "Rank A",
+       "tier": 10,
+       "description": "Top-tier strategists, often club presidents or student council candidates.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 0,
+       "added_s": null
+      },
+      {
+       "name": "Rank S",
+       "tier": 12,
+       "description": "The undisputed masters of the Student Council who control academy policy.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 0,
+       "added_s": null
+      }
+     ],
+     "standing_follows": true,
+     "sensing": false,
+     "rung_levels": 1,
+     "shrugs_off": 3,
+     "known_to_all": 6
+    }
+   ],
+   "calendar": {
+    "style": "day_count",
+    "time_of_day": "clock",
+    "epoch": null,
+    "start_second_of_day": 28800,
+    "months": [],
+    "start_year": 1,
+    "start_month": 1,
+    "start_day": 1,
+    "era": ""
+   },
+   "travel": {
+    "description": "Students navigate the vast campus grounds on foot, using smartphones to schedule matches and trade assets.",
+    "instant_messages": true
+   },
+   "medicine": {
+    "healing": "Standard modern medicine is available at the academy clinic.",
+    "resurrection": "none",
+    "resurrection_means": ""
+   },
+   "laws": [
+    {
+     "id": "academy-rules",
+     "text": "Students must obey the Student Council's directives and all binding match outcomes.",
+     "enforcer": "Student Council Disciplinary Committee",
+     "enforcer_faction_id": null,
+     "zeal": "high",
+     "corruptible": false
+    }
+   ],
+   "norms": [],
+   "several_partners": false,
+   "unions": "held",
+   "rules": [
+    {
+     "id": "rule-ranking-matches",
+     "text": "All status, privileges, and disputes within the Academy are decided by official strategy game matches.",
+     "fixed": true,
+     "topic": "law"
+    },
+    {
+     "id": "rule-cheating",
+     "text": "Any form of physical or digital cheating in an official match results in immediate expulsion.",
+     "fixed": true,
+     "topic": "law"
+    },
+    {
+     "id": "rule-game-choice",
+     "text": "The challenged party has the right to choose the game, provided both players are familiar with its rules.",
+     "fixed": false,
+     "topic": "other"
+    },
+    {
+     "id": "no-supernatural",
+     "text": "Grounded: no magic and nothing supernatural, and that won't change.",
+     "fixed": true,
+     "topic": "existence"
+    }
+   ],
+   "mysteries": [
+    {
+     "id": "previous-prodigy",
+     "question": "Why did the school's previous chess prodigy suddenly drop out?",
+     "answer": "Marcus Vance set up a fabricated cheating scandal and blackmailed them into resigning.",
+     "clues": [
+      "A corrupted security log on the Grand Pavilion's digital chess boards.",
+      "An anonymous warning note left in your locker.",
+      "Marcus Vance's private match diary containing records of a redacted match."
+     ],
+     "thread_id": "climb-to-the-top",
+     "solved": false
+    }
+   ]
+  },
+  "player_id": "player",
+  "characters": {
+   "player": {
+    "id": "player",
+    "name": "Leo",
+    "aliases": [
+     "The Chess Prodigy"
+    ],
+    "prominence": "key",
+    "description": "A quiet, intensely focused youth whose mind is constantly calculating moves ahead.",
+    "appearance": "Slender build, messy dark hair, sharp grey eyes, wearing the crisp but plain black blazer of an unranked Rank F freshman.",
+    "look_version": 1,
+    "age": 17,
+    "people_id": null,
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "grand-pavilion",
+    "personal_offset_s": 0,
+    "memberships": [],
+    "sheet": {
+     "attributes": {
+      "strength": 2,
+      "speed": 2,
+      "toughness": 2,
+      "wits": 5,
+      "knowledge": 4,
+      "willpower": 4,
+      "charm": 3,
+      "nerve": 5,
+      "bearing": 3
+     },
+     "skills": [
+      {
+       "name": "Chess",
+       "level": "master",
+       "notes": ""
+      },
+      {
+       "name": "Tactical Analysis",
+       "level": "expert",
+       "notes": ""
+      },
+      {
+       "name": "Bluffing",
+       "level": "fair",
+       "notes": ""
+      }
+     ],
+     "traits": [
+      {
+       "name": "Analytical Mind",
+       "kind": "gift",
+       "description": "You spot patterns and structural weaknesses that others miss entirely."
+      }
+     ],
+     "talents": [
+      {
+       "id": "chess-prodigy",
+       "name": "Chess Prodigy",
+       "covers": "Chess and abstract strategy board games.",
+       "strength": "genius",
+       "general": false,
+       "reason": ""
+      }
+     ],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "analytical",
+        "observant",
+        "competitive"
+       ],
+       "values": [
+        "fair play",
+        "intellectual dominance"
+       ],
+       "loves": [
+        "complex endgame puzzles",
+        "a worthy opponent"
+       ],
+       "fears": [
+        "making an irreversible tactical blunder",
+        "mindless chaos"
+       ],
+       "wants": [],
+       "voice": "Calm, deliberate, and direct."
+      },
+      "attitudes": {}
+     },
+     "resources": {
+      "items": [
+       {
+        "id": "pocket-chess-set",
+        "name": "Pocket Chess Set",
+        "kind": "gear",
+        "description": "A small, well-worn magnetic chess set you carry everywhere.",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       },
+       {
+        "id": "academy-smart-tablet",
+        "name": "Academy Smart Tablet",
+        "kind": "gear",
+        "description": "Issued to all students to track ranking points and challenge logs.",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       }
+      ],
+      "money": 100,
+      "currency": "Academy Points",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": [
+       {
+        "name": "Lily Sato",
+        "kind": "ally",
+        "character_id": "lily-sato",
+        "note": "A classmate who welcomed you and keeps you updated on campus rumors."
+       }
+      ]
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 2,
+      "wealth": 1,
+      "knowledge": 4,
+      "stealth": 1
+     },
+     "ladders": [
+      {
+       "ladder_id": "academy-ranks",
+       "rung": 0,
+       "stage": "early",
+       "shown_rung": null,
+       "yearly_s": null
+      }
+     ],
+     "rungs_heard": [
+      {
+       "ladder_id": "academy-ranks",
+       "rung": 1,
+       "heard_s": 0,
+       "known_s": 0,
+       "known_from": "lily-sato"
+      },
+      {
+       "ladder_id": "academy-ranks",
+       "rung": 4,
+       "heard_s": 0,
+       "known_s": 0,
+       "known_from": "marcus-vance"
+      },
+      {
+       "ladder_id": "academy-ranks",
+       "rung": 5,
+       "heard_s": 0,
+       "known_s": 0,
+       "known_from": "president-elena"
+      }
+     ],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": [
+      {
+       "text": "You spent your childhood dominating local chess tournaments, earning the reputation of a legendary prodigy.",
+       "turn": 0
+      },
+      {
+       "text": "Your exceptional performance caught the attention of Apex Academy scouts, earning you a scholarship.",
+       "turn": 0
+      },
+      {
+       "text": "You arrived at the academy only to find that your past achievements mean nothing—you must earn your status from scratch.",
+       "turn": 0
+      }
+     ]
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": 80,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   },
+   "president-elena": {
+    "id": "president-elena",
+    "name": "President Elena Roselyn",
+    "aliases": [
+     "The Iron Queen"
+    ],
+    "prominence": "key",
+    "description": "A cold, immaculate young woman who commands absolute authority with a single glance.",
+    "appearance": "Tall, long silver hair, sharp blue eyes, wearing an ornate Student Council uniform.",
+    "look_version": 1,
+    "age": 18,
+    "people_id": "human",
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "grand-pavilion",
+    "personal_offset_s": 0,
+    "memberships": [
+     {
+      "faction_id": "student-council",
+      "rank": "President",
+      "loyalty": 100
+     }
+    ],
+    "sheet": {
+     "attributes": {
+      "strength": 3,
+      "speed": 3,
+      "toughness": 3,
+      "wits": 5,
+      "knowledge": 5,
+      "willpower": 5,
+      "charm": 4,
+      "nerve": 5,
+      "bearing": 5
+     },
+     "skills": [
+      {
+       "name": "Game Theory",
+       "level": "master",
+       "notes": ""
+      },
+      {
+       "name": "Psychological Manipulation",
+       "level": "master",
+       "notes": ""
+      }
+     ],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "ruthless",
+        "calculating",
+        "calm"
+       ],
+       "values": [
+        "merit",
+        "order"
+       ],
+       "loves": [
+        "perfectly executed plays"
+       ],
+       "fears": [
+        "unpredictability",
+        "rebellion"
+       ],
+       "wants": [
+        "Find a worthy rival who can challenge her S-Rank supremacy."
+       ],
+       "voice": ""
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 0,
+        "fear": 0,
+        "trust": 0,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 12,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [
+      {
+       "ladder_id": "academy-ranks",
+       "rung": 5,
+       "stage": "peak",
+       "shown_rung": null,
+       "yearly_s": null
+      }
+     ],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": 0,
+    "near_s": null,
+    "met_s": null
+   },
+   "marcus-vance": {
+    "id": "marcus-vance",
+    "name": "Marcus Vance",
+    "aliases": [
+     "The Grandmaster of Chess Club"
+    ],
+    "prominence": "key",
+    "description": "An arrogant strategist who takes pride in utterly breaking his opponents' spirits.",
+    "appearance": "Sharp facial features, slicked-back blonde hair, wearing a tailored red Chess Club blazer.",
+    "look_version": 1,
+    "age": 17,
+    "people_id": "human",
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "grand-pavilion",
+    "personal_offset_s": 0,
+    "memberships": [
+     {
+      "faction_id": "chess-club",
+      "rank": "Vice-President",
+      "loyalty": 90
+     }
+    ],
+    "sheet": {
+     "attributes": {
+      "strength": 3,
+      "speed": 3,
+      "toughness": 3,
+      "wits": 4,
+      "knowledge": 5,
+      "willpower": 4,
+      "charm": 3,
+      "nerve": 4,
+      "bearing": 4
+     },
+     "skills": [
+      {
+       "name": "Chess",
+       "level": "master",
+       "notes": ""
+      },
+      {
+       "name": "Bluffing",
+       "level": "expert",
+       "notes": ""
+      }
+     ],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "arrogant",
+        "cunning",
+        "obsessive"
+       ],
+       "values": [
+        "status",
+        "victory"
+       ],
+       "loves": [
+        "crushing freshman hopefuls"
+       ],
+       "fears": [
+        "humiliation",
+        "losing his rank"
+       ],
+       "wants": [
+        "Dethrone Elena and claim the Student Council presidency."
+       ],
+       "voice": ""
+      },
+      "attitudes": {
+       "player": {
+        "affinity": -10,
+        "fear": 0,
+        "trust": -10,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 10,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [
+      {
+       "ladder_id": "academy-ranks",
+       "rung": 4,
+       "stage": "late",
+       "shown_rung": null,
+       "yearly_s": null
+      }
+     ],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": 0,
+    "near_s": null,
+    "met_s": null
+   },
+   "lily-sato": {
+    "id": "lily-sato",
+    "name": "Lily Sato",
+    "aliases": [],
+    "prominence": "key",
+    "description": "An energetic and friendly student who struggles to maintain her rank but knows the academy inside out.",
+    "appearance": "Short brown hair in pigtails, bright eyes, messy uniform, carrying a small handheld gaming console.",
+    "look_version": 1,
+    "age": 16,
+    "people_id": "human",
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "grand-pavilion",
+    "personal_offset_s": 0,
+    "memberships": [],
+    "sheet": {
+     "attributes": {
+      "strength": 3,
+      "speed": 4,
+      "toughness": 3,
+      "wits": 3,
+      "knowledge": 3,
+      "willpower": 3,
+      "charm": 4,
+      "nerve": 2,
+      "bearing": 2
+     },
+     "skills": [
+      {
+       "name": "Academy Gossip",
+       "level": "expert",
+       "notes": ""
+      },
+      {
+       "name": "Quick Calculations",
+       "level": "skilled",
+       "notes": ""
+      }
+     ],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "optimistic",
+        "gossip",
+        "loyal"
+       ],
+       "values": [
+        "friendship",
+        "fun"
+       ],
+       "loves": [
+        "informal card games",
+        "school gossip"
+       ],
+       "fears": [
+        "getting expelled",
+        "confrontation"
+       ],
+       "wants": [
+        "Survive the freshman year without dropping to Rank F."
+       ],
+       "voice": ""
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 25,
+        "fear": 0,
+        "trust": 20,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 4,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [
+      {
+       "ladder_id": "academy-ranks",
+       "rung": 1,
+       "stage": "middle",
+       "shown_rung": null,
+       "yearly_s": null
+      }
+     ],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": 0,
+    "near_s": null,
+    "met_s": null
+   }
+  },
+  "factions": {
+   "student-council": {
+    "id": "student-council",
+    "name": "The Student Council",
+    "kind": "court",
+    "description": "The ultimate governing body of the academy, consisting entirely of S-Rank players.",
+    "parent_id": null,
+    "status": "intact",
+    "status_history": [],
+    "activity": "active",
+    "leader_ids": [
+     "president-elena"
+    ],
+    "goal": "Maintain strict meritocratic control and elite performance standards across the school.",
+    "methods": "Enforcing harsh ranking regulations and staging grand tournaments.",
+    "strength": "Absolute administrative power, financial control, and undefeated S-Rank records.",
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "threat": 0,
+    "relations": {},
+    "survivors": [],
+    "secrets": [
+     "They manipulate match brackets to prevent low-ranking factions from uniting."
+    ],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ]
+   },
+   "chess-club": {
+    "id": "chess-club",
+    "name": "The Chess Club",
+    "kind": "crew",
+    "description": "The academy's oldest and most prestigious game-specific organization.",
+    "parent_id": null,
+    "status": "intact",
+    "status_history": [],
+    "activity": "active",
+    "leader_ids": [
+     "marcus-vance"
+    ],
+    "goal": "Secure the Chess Club's dominance over alternative board game clubs.",
+    "methods": "Scouting talented freshmen and challenging rival club leaders.",
+    "strength": "Dozens of high-ranking A and B Rank players.",
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "threat": 0,
+    "relations": {},
+    "survivors": [],
+    "secrets": [
+     "Several elite members share a private cheat database detailing their opponents' behavioral ticks."
+    ],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "places": {
+   "apex-academy": {
+    "id": "apex-academy",
+    "name": "Apex Academy Grounds",
+    "kind": "region",
+    "description": "A sprawling, state-of-the-art campus secluded on a private island.",
+    "parent_id": null,
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "grand-pavilion": {
+    "id": "grand-pavilion",
+    "name": "The Grand Pavilion",
+    "kind": "building",
+    "description": "A massive glass dome where major public exhibition games are held on giant digital displays.",
+    "parent_id": "apex-academy",
+    "setting": "indoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "courtyard",
+      "travel_s": 360,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [
+     "player"
+    ],
+    "judged": []
+   },
+   "courtyard": {
+    "id": "courtyard",
+    "name": "The Central Courtyard",
+    "kind": "wilds",
+    "description": "An open plaza filled with stone chess tables where informal challenges take place.",
+    "parent_id": "apex-academy",
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "dormitories",
+      "travel_s": 540,
+      "mode": "on foot"
+     },
+     {
+      "to_id": "grand-pavilion",
+      "travel_s": 360,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "dormitories": {
+    "id": "dormitories",
+    "name": "The Dormitories",
+    "kind": "building",
+    "description": "A residential complex divided by rank: luxurious penthouses for elite ranks, and cramped basement cells for Rank F.",
+    "parent_id": "apex-academy",
+    "setting": "indoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "courtyard",
+      "travel_s": 540,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "chess-clubroom": {
+    "id": "chess-clubroom",
+    "name": "The Chess Clubroom",
+    "kind": "room",
+    "description": "An elegant room smelling of mahogany and tea, lined with trophies of past champions.",
+    "parent_id": "grand-pavilion",
+    "setting": "indoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   }
+  },
+  "deeds": {},
+  "rumors": {},
+  "bonds": {},
+  "lives": {},
+  "aged_s": null,
+  "changes": {},
+  "strife_s": {},
+  "facts": {
+   "fact-1": {
+    "id": "fact-1",
+    "text": "Apex Academy is an elite boarding school where everything from dorm luxury to cafeteria privileges is decided by strategy game ranks.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-2": {
+    "id": "fact-2",
+    "text": "As a newly enrolled freshman, you are currently unranked (Rank F) and restricted to the lowest tier of facilities.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-3": {
+    "id": "fact-3",
+    "text": "The upcoming Freshman Exhibition Match is your first major opportunity to climb the ladder.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   }
+  },
+  "goals": {},
+  "leads": {},
+  "threads": {
+   "climb-to-the-top": {
+    "id": "climb-to-the-top",
+    "title": "Climbing the Academy Ranks",
+    "kind": "ambition",
+    "stakes": "Gaining absolute rank status and freedom from the Student Council's grip.",
+    "involved_ids": [
+     "player",
+     "president-elena",
+     "marcus-vance"
+    ],
+    "clock_id": null,
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "status": "open",
+    "opened_turn": 0,
+    "last_active_turn": 0,
+    "taken_up_turn": null,
+    "closed_turn": null,
+    "arc": null,
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "clocks": {
+   "freshman-exhibition": {
+    "id": "freshman-exhibition",
+    "name": "The Freshman Exhibition Match",
+    "steps": [
+     "The tournament registration closes.",
+     "Opponents are announced and preparation begins.",
+     "The preliminary rounds commence in the Grand Pavilion.",
+     "The final exhibition match against Marcus Vance begins."
+    ],
+    "filled": 0,
+    "advances_on": [],
+    "reverses_on": [],
+    "interval_s": 86400,
+    "next_step_s": 86400,
+    "owner_id": null,
+    "thread_id": null,
+    "status": "running",
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "pending_events": {
+   "event-1": {
+    "id": "event-1",
+    "kind": "world.clock_step",
+    "title": "The Freshman Exhibition Match: The tournament registration closes.",
+    "due_s": 86400,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": {
+     "kind": "clock",
+     "ref_id": "freshman-exhibition",
+     "text": ""
+    },
+    "payload": {
+     "clock_id": "freshman-exhibition"
+    },
+    "seed": "story=play%2Fx-prodigy/timeline=main/turn=1/world/schedule/event-1",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-2": {
+    "id": "event-2",
+    "kind": "world.old_age",
+    "title": "Your years run short",
+    "due_s": 2070900996,
+    "timeline_id": "main",
+    "needs_player": true,
+    "status": "pending",
+    "subject_ids": [
+     "player"
+    ],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "phase": "near",
+     "who": "player",
+     "span": 80,
+     "day_s": 2102703826
+    },
+    "seed": "story=play%2Fx-prodigy/timeline=main/turn=1/world/schedule/event-2",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-3": {
+    "id": "event-3",
+    "kind": "world.tick",
+    "title": "The world moves on",
+    "due_s": 86400,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "last_s": 0,
+     "stride_s": 86400
+    },
+    "seed": "story=play%2Fx-prodigy/timeline=main/turn=1/world/schedule/event-3",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   }
+  },
+  "transfers": [],
+  "time_effects": [],
+  "scene": {
+   "place_id": "grand-pavilion",
+   "present_ids": [
+    "player",
+    "president-elena",
+    "marcus-vance",
+    "lily-sato"
+   ],
+   "positions": [
+    "sitting in the spectator row under the spotlight",
+    "standing at the central podium watching you cold-eyed",
+    "standing beside Elena with his electronic tablet in hand",
+    "sitting right next to you, looking wide-eyed and anxious"
+   ],
+   "props": [
+    "a giant digital display chess board",
+    "electronic ranking tablet",
+    "gilded podiums"
+   ],
+   "ended_on": "The spotlight rests squarely on you as Marcus waits for your step.",
+   "encounter": null
+  },
+  "director": {
+   "turns_without_stakes": 0,
+   "low_stakes_streak": 0,
+   "last_action_key": null,
+   "last_event_turn": null,
+   "last_event_size": null,
+   "last_event_s": {},
+   "last_small_s": null,
+   "recent_moments": [],
+   "recent_clock": [
+    0
+   ],
+   "frequency_drift": 0.0,
+   "recent_sources": [],
+   "auto_pictures": 1,
+   "picture_credit": 1.1,
+   "pictured": [
+    "portrait:player",
+    "portrait:player:v1"
+   ],
+   "fight": null,
+   "deck_draws": 0,
+   "road_stops": 0
+  },
+  "summary": "You have just enrolled in Apex Academy, an elite institution where strategy games determine a student's social rank and privileges. As an unranked Rank F freshman, you must rely on your chess talent to survive a ruthless system governed by a powerful Student Council and cunning rivals. Your rise through the ranks begins now.",
+  "chapters": [],
+  "id_counters": {
+   "fact": 3,
+   "goal": 0,
+   "bond": 0,
+   "event": 3
+  },
+  "fallen": [],
+  "opening_due": false,
+  "misses_in_a_row": 0,
+  "openings": [],
+  "journey": null,
+  "untold": [
+   "thread:climb-to-the-top"
+  ]
+ },
+ "scenes": [
+  {
+   "turn": 1,
+   "narration": "The glass dome of the Grand Pavilion arches high above, casting a stark, daylight glow over the sea of gathered students. You sit in the hard plastic spectator rows, the smooth black fabric of your unranked freshman blazer feeling stiff and foreign against your skin. Next to you, Lily Sato shifts nervously in her seat, clutching her handheld console with white-knuckled intensity. All eyes are drawn to the central gilded podium. There stands President Elena Roselyn, her long silver hair gleaming under the skylights, her immaculate Student Council uniform projecting absolute, freezing authority. Behind her, Marcus Vance stands with arms crossed, a razor-thin, patronising smirk on his face that matches the sharp lines of his red Chess Club blazer.\\n\\n\\\"The rules of the Freshman Exhibition tournament are simple,\\\" Elena's cold voice echoes clearly through the immense hall. Above her, the giant digital display chess board flickers to life, blank and waiting. \\\"A single-elimination bracket. The victor earns an immediate promotion to Rank D. The first challenger will be selected now.\\\"\\n\\nMarcus steps forward, tapping his own electronic tablet, and a spotlight sweeps over the crowd, snapping directly onto you. \\\"Let's see what the scholarship prodigy can actually do,\\\" Marcus challenges.",
+   "player_action": null
+  }
+ ],
+ "choices": [
+  "Accept the challenge and step up to the podium",
+  "Study Elena's reaction before making your move",
+  "Whisper to Lily to ask what she knows about Marcus's style"
+ ],
+ "cost_usd": 0.1359165,
+ "draft": {
+  "premise": "A 17-year-old chess prodigy who just enrolled in an elite academy where everything, even your rank, is decided by strategy games.",
+  "proposal": {
+   "world": {
+    "title": "Apex Academy: The Game of Ranks",
+    "genre": "school drama, strategy, psychological",
+    "tone": "intense, analytical, competitive",
+    "era": "Modern day: smartphones, digital boards, high-tech academy grounds",
+    "extraordinary": [
+     {
+      "id": "magic-or-supernatural",
+      "kind": "magic or anything supernatural",
+      "prevalence": "none",
+      "reach": ""
+     }
+    ],
+    "rules": [
+     {
+      "id": "rule-ranking-matches",
+      "text": "All status, privileges, and disputes within the Academy are decided by official strategy game matches.",
+      "fixed": true,
+      "topic": "law",
+      "about": [
+       "magic-or-supernatural"
+      ]
+     },
+     {
+      "id": "rule-cheating",
+      "text": "Any form of physical or digital cheating in an official match results in immediate expulsion.",
+      "fixed": true,
+      "topic": "law",
+      "about": [
+       "magic-or-supernatural"
+      ]
+     },
+     {
+      "id": "rule-game-choice",
+      "text": "The challenged party has the right to choose the game, provided both players are familiar with its rules.",
+      "fixed": false,
+      "topic": "other",
+      "about": [
+       "magic-or-supernatural"
+      ]
+     }
+    ],
+    "dropped_rule_ids": [],
+    "peoples": [
+     {
+      "id": "human",
+      "name": "Human",
+      "description": "",
+      "lifespan_years": 80,
+      "gifts": [],
+      "culture": "A hyper-competitive academic society focused on intellectual supremacy.",
+      "relations": [],
+      "path": ""
+     }
+    ],
+    "creatures": [],
+    "nature": [],
+    "ladders": [
+     {
+      "id": "academy-ranks",
+      "name": "Academy Ranks",
+      "axis": "influence",
+      "rungs": [
+       {
+        "name": "Rank F",
+        "description": "The bottom tier. Freshmen and those stripped of all academy privileges.",
+        "lifespan_years": null
+       },
+       {
+        "name": "Rank D",
+        "description": "Average students with standard access to school grounds and basic meals.",
+        "lifespan_years": null
+       },
+       {
+        "name": "Rank C",
+        "description": "Competent players who hold club memberships and better accommodations.",
+        "lifespan_years": null
+       },
+       {
+        "name": "Rank B",
+        "description": "The elite competitive circle of the academy, allowed to wager high-value points.",
+        "lifespan_years": null
+       },
+       {
+        "name": "Rank A",
+        "description": "Top-tier strategists, often club presidents or student council candidates.",
+        "lifespan_years": null
+       },
+       {
+        "name": "Rank S",
+        "description": "The undisputed masters of the Student Council who control academy policy.",
+        "lifespan_years": null
+       }
+      ],
+      "known_to_all": 6,
+      "sensing": false,
+      "standing_follows": true,
+      "lengthens_life": false
+     }
+    ],
+    "calendar": {
+     "style": "day_count",
+     "clock_time": true,
+     "epoch": "",
+     "start_hour": 8,
+     "months": [],
+     "start_year": 1,
+     "start_month": 1,
+     "start_day": 1,
+     "era": ""
+    },
+    "travel": {
+     "description": "Students navigate the vast campus grounds on foot, using smartphones to schedule matches and trade assets.",
+     "instant_messages": true
+    },
+    "medicine": {
+     "healing": "Standard modern medicine is available at the academy clinic.",
+     "resurrection": "none",
+     "resurrection_means": ""
+    },
+    "laws": [
+     {
+      "id": "academy-rules",
+      "text": "Students must obey the Student Council's directives and all binding match outcomes.",
+      "enforcer": "Student Council Disciplinary Committee",
+      "enforcer_faction_id": "",
+      "zeal": "high",
+      "corruptible": false
+     }
+    ],
+    "norms": [],
+    "several_partners": false,
+    "unions": "held",
+    "places": [
+     {
+      "id": "apex-academy",
+      "name": "Apex Academy Grounds",
+      "kind": "region",
+      "description": "A sprawling, state-of-the-art campus secluded on a private island.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "grand-pavilion",
+      "name": "The Grand Pavilion",
+      "kind": "building",
+      "description": "A massive glass dome where major public exhibition games are held on giant digital displays.",
+      "parent_id": "apex-academy",
+      "setting": "indoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "courtyard",
+        "travel_hours": 0.1,
+        "mode": "on foot"
+       }
+      ]
+     },
+     {
+      "id": "courtyard",
+      "name": "The Central Courtyard",
+      "kind": "wilds",
+      "description": "An open plaza filled with stone chess tables where informal challenges take place.",
+      "parent_id": "apex-academy",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "dormitories",
+        "travel_hours": 0.15,
+        "mode": "on foot"
+       }
+      ]
+     },
+     {
+      "id": "dormitories",
+      "name": "The Dormitories",
+      "kind": "building",
+      "description": "A residential complex divided by rank: luxurious penthouses for elite ranks, and cramped basement cells for Rank F.",
+      "parent_id": "apex-academy",
+      "setting": "indoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "chess-clubroom",
+      "name": "The Chess Clubroom",
+      "kind": "room",
+      "description": "An elegant room smelling of mahogany and tea, lined with trophies of past champions.",
+      "parent_id": "grand-pavilion",
+      "setting": "indoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     }
+    ],
+    "factions": [
+     {
+      "id": "student-council",
+      "name": "The Student Council",
+      "kind": "court",
+      "description": "The ultimate governing body of the academy, consisting entirely of S-Rank players.",
+      "parent_id": "",
+      "leader_ids": [
+       "president-elena"
+      ],
+      "goal": "Maintain strict meritocratic control and elite performance standards across the school.",
+      "methods": "Enforcing harsh ranking regulations and staging grand tournaments.",
+      "strength": "Absolute administrative power, financial control, and undefeated S-Rank records.",
+      "relations": [],
+      "secrets": [
+       "They manipulate match brackets to prevent low-ranking factions from uniting."
+      ],
+      "known_to_player": true
+     },
+     {
+      "id": "chess-club",
+      "name": "The Chess Club",
+      "kind": "crew",
+      "description": "The academy's oldest and most prestigious game-specific organization.",
+      "parent_id": "",
+      "leader_ids": [
+       "marcus-vance"
+      ],
+      "goal": "Secure the Chess Club's dominance over alternative board game clubs.",
+      "methods": "Scouting talented freshmen and challenging rival club leaders.",
+      "strength": "Dozens of high-ranking A and B Rank players.",
+      "relations": [],
+      "secrets": [
+       "Several elite members share a private cheat database detailing their opponents' behavioral ticks."
+      ],
+      "known_to_player": true
+     }
+    ],
+    "npcs": [
+     {
+      "id": "president-elena",
+      "name": "President Elena Roselyn",
+      "aliases": [
+       "The Iron Queen"
+      ],
+      "description": "A cold, immaculate young woman who commands absolute authority with a single glance.",
+      "appearance": "Tall, long silver hair, sharp blue eyes, wearing an ornate Student Council uniform.",
+      "age": 18,
+      "people_id": "human",
+      "location_id": "grand-pavilion",
+      "memberships": [
+       {
+        "faction_id": "student-council",
+        "rank": "President",
+        "loyalty": 100
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "ruthless",
+        "calculating",
+        "calm"
+       ],
+       "values": [
+        "merit",
+        "order"
+       ],
+       "loves": [
+        "perfectly executed plays"
+       ],
+       "fears": [
+        "unpredictability",
+        "rebellion"
+       ],
+       "wants": [
+        "Find a worthy rival who can challenge her S-Rank supremacy."
+       ],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 3,
+       "speed": 3,
+       "toughness": 3,
+       "wits": 5,
+       "knowledge": 5,
+       "willpower": 5,
+       "charm": 4,
+       "nerve": 5,
+       "bearing": 5
+      },
+      "skills": [
+       {
+        "name": "Game Theory",
+        "level": "master",
+        "notes": ""
+       },
+       {
+        "name": "Psychological Manipulation",
+        "level": "master",
+        "notes": ""
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [
+       {
+        "ladder_id": "academy-ranks",
+        "rung": "Rank S",
+        "stage": "peak"
+       }
+      ],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 0,
+       "fear": 0,
+       "trust": 0,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "heard_of"
+     },
+     {
+      "id": "marcus-vance",
+      "name": "Marcus Vance",
+      "aliases": [
+       "The Grandmaster of Chess Club"
+      ],
+      "description": "An arrogant strategist who takes pride in utterly breaking his opponents' spirits.",
+      "appearance": "Sharp facial features, slicked-back blonde hair, wearing a tailored red Chess Club blazer.",
+      "age": 17,
+      "people_id": "human",
+      "location_id": "chess-clubroom",
+      "memberships": [
+       {
+        "faction_id": "chess-club",
+        "rank": "Vice-President",
+        "loyalty": 90
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "arrogant",
+        "cunning",
+        "obsessive"
+       ],
+       "values": [
+        "status",
+        "victory"
+       ],
+       "loves": [
+        "crushing freshman hopefuls"
+       ],
+       "fears": [
+        "humiliation",
+        "losing his rank"
+       ],
+       "wants": [
+        "Dethrone Elena and claim the Student Council presidency."
+       ],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 3,
+       "speed": 3,
+       "toughness": 3,
+       "wits": 4,
+       "knowledge": 5,
+       "willpower": 4,
+       "charm": 3,
+       "nerve": 4,
+       "bearing": 4
+      },
+      "skills": [
+       {
+        "name": "Chess",
+        "level": "master",
+        "notes": ""
+       },
+       {
+        "name": "Bluffing",
+        "level": "expert",
+        "notes": ""
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [
+       {
+        "ladder_id": "academy-ranks",
+        "rung": "Rank A",
+        "stage": "late"
+       }
+      ],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": -10,
+       "fear": 0,
+       "trust": -10,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "heard_of"
+     },
+     {
+      "id": "lily-sato",
+      "name": "Lily Sato",
+      "aliases": [],
+      "description": "An energetic and friendly student who struggles to maintain her rank but knows the academy inside out.",
+      "appearance": "Short brown hair in pigtails, bright eyes, messy uniform, carrying a small handheld gaming console.",
+      "age": 16,
+      "people_id": "human",
+      "location_id": "grand-pavilion",
+      "memberships": [],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "optimistic",
+        "gossip",
+        "loyal"
+       ],
+       "values": [
+        "friendship",
+        "fun"
+       ],
+       "loves": [
+        "informal card games",
+        "school gossip"
+       ],
+       "fears": [
+        "getting expelled",
+        "confrontation"
+       ],
+       "wants": [
+        "Survive the freshman year without dropping to Rank F."
+       ],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 3,
+       "speed": 4,
+       "toughness": 3,
+       "wits": 3,
+       "knowledge": 3,
+       "willpower": 3,
+       "charm": 4,
+       "nerve": 2,
+       "bearing": 2
+      },
+      "skills": [
+       {
+        "name": "Academy Gossip",
+        "level": "expert",
+        "notes": ""
+       },
+       {
+        "name": "Quick Calculations",
+        "level": "skilled",
+        "notes": ""
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [
+       {
+        "ladder_id": "academy-ranks",
+        "rung": "Rank D",
+        "stage": "middle"
+       }
+      ],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 25,
+       "fear": 0,
+       "trust": 20,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "met"
+     }
+    ],
+    "clocks": [
+     {
+      "id": "freshman-exhibition",
+      "name": "The Freshman Exhibition Match",
+      "steps": [
+       "The tournament registration closes.",
+       "Opponents are announced and preparation begins.",
+       "The preliminary rounds commence in the Grand Pavilion.",
+       "The final exhibition match against Marcus Vance begins."
+      ],
+      "step_every_hours": 24.0,
+      "owner_id": "",
+      "thread_id": "",
+      "known_to_player": true
+     }
+    ],
+    "threads": [
+     {
+      "id": "climb-to-the-top",
+      "title": "Climbing the Academy Ranks",
+      "kind": "ambition",
+      "stakes": "Gaining absolute rank status and freedom from the Student Council's grip.",
+      "involved_ids": [
+       "player",
+       "president-elena",
+       "marcus-vance"
+      ],
+      "clock_id": "",
+      "known_to_player": true
+     }
+    ],
+    "mysteries": [
+     {
+      "id": "previous-prodigy",
+      "question": "Why did the school's previous chess prodigy suddenly drop out?",
+      "answer": "Marcus Vance set up a fabricated cheating scandal and blackmailed them into resigning.",
+      "clues": [
+       "A corrupted security log on the Grand Pavilion's digital chess boards.",
+       "An anonymous warning note left in your locker.",
+       "Marcus Vance's private match diary containing records of a redacted match."
+      ],
+      "thread_id": "climb-to-the-top",
+      "known_to_player": true
+     }
+    ],
+    "known_facts": [
+     "Apex Academy is an elite boarding school where everything from dorm luxury to cafeteria privileges is decided by strategy game ranks.",
+     "As a newly enrolled freshman, you are currently unranked (Rank F) and restricted to the lowest tier of facilities.",
+     "The upcoming Freshman Exhibition Match is your first major opportunity to climb the ladder."
+    ],
+    "opening": {
+     "place_id": "grand-pavilion",
+     "present_ids": [
+      "president-elena",
+      "marcus-vance",
+      "lily-sato"
+     ],
+     "positions": [
+      "at the central podium",
+      "standing rigidly behind her with arms crossed",
+      "sitting right next to you in the spectator rows"
+     ],
+     "props": [
+      "a giant digital display chess board",
+      "gilded podiums",
+      "an electronic ranking tablet"
+     ],
+     "situation": "You stand in the crowded Grand Pavilion during the opening ceremony as President Elena Roselyn announces the start of the high-stakes Freshman Exhibition tournament."
+    },
+    "summary": "You have just enrolled in Apex Academy, an elite institution where strategy games determine a student's social rank and privileges. As an unranked Rank F freshman, you must rely on your chess talent to survive a ruthless system governed by a powerful Student Council and cunning rivals. Your rise through the ranks begins now."
+   },
+   "character": {
+    "name": "Leo",
+    "aliases": [
+     "The Chess Prodigy"
+    ],
+    "age": 17,
+    "lifespan_years": 80,
+    "people_id": "",
+    "description": "A quiet, intensely focused youth whose mind is constantly calculating moves ahead.",
+    "appearance": "Slender build, messy dark hair, sharp grey eyes, wearing the crisp but plain black blazer of an unranked Rank F freshman.",
+    "location_id": "grand-pavilion",
+    "attributes": {
+     "strength": 2,
+     "speed": 2,
+     "toughness": 2,
+     "wits": 5,
+     "knowledge": 4,
+     "willpower": 4,
+     "charm": 3,
+     "nerve": 5,
+     "bearing": 3
+    },
+    "skills": [
+     {
+      "name": "Chess",
+      "level": "master",
+      "notes": ""
+     },
+     {
+      "name": "Tactical Analysis",
+      "level": "expert",
+      "notes": ""
+     },
+     {
+      "name": "Bluffing",
+      "level": "fair",
+      "notes": ""
+     }
+    ],
+    "traits": [
+     {
+      "name": "Analytical Mind",
+      "kind": "gift",
+      "description": "You spot patterns and structural weaknesses that others miss entirely."
+     }
+    ],
+    "talents": [
+     {
+      "said": "chess prodigy",
+      "name": "Chess Prodigy",
+      "covers": "Chess and abstract strategy board games.",
+      "strength": "genius",
+      "general": false,
+      "reason": ""
+     }
+    ],
+    "powers": [],
+    "techniques": [],
+    "temperament": {
+     "traits": [
+      "analytical",
+      "observant",
+      "competitive"
+     ],
+     "values": [
+      "fair play",
+      "intellectual dominance"
+     ],
+     "loves": [
+      "complex endgame puzzles",
+      "a worthy opponent"
+     ],
+     "fears": [
+      "making an irreversible tactical blunder",
+      "mindless chaos"
+     ],
+     "wants": [
+      "Succeed in the academy and prove my strategy is unbeatable."
+     ],
+     "voice": "Calm, deliberate, and direct."
+    },
+    "items": [
+     {
+      "name": "Pocket Chess Set",
+      "kind": "gear",
+      "description": "A small, well-worn magnetic chess set you carry everywhere.",
+      "quantity": 1,
+      "carried": true
+     },
+     {
+      "name": "Academy Smart Tablet",
+      "kind": "gear",
+      "description": "Issued to all students to track ranking points and challenge logs.",
+      "quantity": 1,
+      "carried": true
+     }
+    ],
+    "money": 100,
+    "currency": "Academy Points",
+    "title": "",
+    "rank": "",
+    "family_name": "",
+    "connections": [
+     {
+      "name": "Lily Sato",
+      "kind": "ally",
+      "character_id": "lily-sato",
+      "note": "A classmate who welcomed you and keeps you updated on campus rumors."
+     }
+    ],
+    "parent_ids": [],
+    "memberships": [],
+    "ladders": [
+     {
+      "ladder_id": "academy-ranks",
+      "rung": "Rank F",
+      "stage": "early"
+     }
+    ],
+    "axes": {
+     "might": 1,
+     "influence": 1,
+     "wealth": 1,
+     "knowledge": 4,
+     "stealth": 1
+    },
+    "reserves": [],
+    "goals": [],
+    "backstory": [
+     "You spent your childhood dominating local chess tournaments, earning the reputation of a legendary prodigy.",
+     "Your exceptional performance caught the attention of Apex Academy scouts, earning you a scholarship.",
+     "You arrived at the academy only to find that your past achievements mean nothing—you must earn your status from scratch."
+    ],
+    "hidden_past": []
+   }
+  },
+  "rating": "teen",
+  "premise_id": null,
+  "physics": "fun_first",
+  "gift": null,
+  "released_rules": [],
+  "language": "en",
+  "told": []
+ }
+}

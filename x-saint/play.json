@@ -1,0 +1,1772 @@
+{
+ "premise": "An 80-year-old sword saint who retired to a quiet mountain village decades ago. He was once the best swordsman in the kingdom.",
+ "language": "en",
+ "rating": "teen",
+ "settings": {
+  "narration_length": "medium",
+  "tone": null,
+  "difficulty": "balanced",
+  "event_frequency": "normal",
+  "images": "key_moments",
+  "suggestions": true,
+  "language": "en",
+  "accent": null
+ },
+ "seed": "play/x-saint",
+ "state": {
+  "schema_version": 1,
+  "turn": 1,
+  "timeline_id": "main",
+  "world_s": 0,
+  "bible": {
+   "title": "The Retired Saint",
+   "genre": "Wuxia, Martial Arts",
+   "tone": "Nostalgic, peaceful, yet watchful",
+   "era": "A medieval Eastern kingdom where steel swords and horse carriage travel prevail.",
+   "extraordinary": [
+    {
+     "id": "aura",
+     "kind": "Aura channeling",
+     "prevalence": "rare",
+     "reach": "Enables masters to enhance their strikes, cut iron, and project deadly shockwaves.",
+     "rule_ids": [
+      "aura-strains-body",
+      "saintly-neutrality",
+      "aura-exists"
+     ]
+    }
+   ],
+   "peoples": [
+    {
+     "id": "human",
+     "name": "Humans",
+     "description": "",
+     "lifespan_years": 80,
+     "gifts": [],
+     "culture": "A society deeply rooted in honor, martial sects, and agrarian tradition.",
+     "relations": [],
+     "path": ""
+    }
+   ],
+   "creatures": [],
+   "nature": [],
+   "physics": "fun_first",
+   "force": {
+    "tier1_joules": 10000.0,
+    "per_tier": 10.0
+   },
+   "ladders": [
+    {
+     "id": "martial-realms",
+     "name": "Martial Realms",
+     "axis": "might",
+     "rungs": [
+      {
+       "name": "Disciple",
+       "tier": 2,
+       "description": "One who has just begun to feel the flow of physical energy.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 0,
+       "added_s": null
+      },
+      {
+       "name": "Expert",
+       "tier": 4,
+       "description": "Capable of infusing weapons with physical strength.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 0,
+       "added_s": null
+      },
+      {
+       "name": "Grandmaster",
+       "tier": 6,
+       "description": "Can project outer aura, easily shattering shields and stone.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 0,
+       "added_s": null
+      },
+      {
+       "name": "Sword Saint",
+       "tier": 8,
+       "description": "A legendary status where the sword and soul are one, cutting through air itself.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 0,
+       "added_s": null
+      }
+     ],
+     "standing_follows": true,
+     "sensing": true,
+     "rung_levels": 1,
+     "shrugs_off": 3,
+     "known_to_all": 4
+    }
+   ],
+   "calendar": {
+    "style": "day_count",
+    "time_of_day": "parts",
+    "epoch": null,
+    "start_second_of_day": 25200,
+    "months": [],
+    "start_year": 1,
+    "start_month": 1,
+    "start_day": 1,
+    "era": ""
+   },
+   "travel": {
+    "description": "News and people travel by horse, messenger bird, or carriage along dirt roads.",
+    "instant_messages": false
+   },
+   "medicine": {
+    "healing": "Herbal poultices speed natural recovery; deep internal injuries require aura regulation.",
+    "resurrection": "none",
+    "resurrection_means": ""
+   },
+   "laws": [
+    {
+     "id": "imperial-peace",
+     "text": "Sect violence is forbidden within village borders under penalty of treason.",
+     "enforcer": "Imperial Magistrates",
+     "enforcer_faction_id": null,
+     "zeal": "low",
+     "corruptible": true
+    }
+   ],
+   "norms": [],
+   "several_partners": false,
+   "unions": "held",
+   "rules": [
+    {
+     "id": "aura-strains-body",
+     "text": "Channeling aura grants immense power but inflicts severe physical strain on an elderly body.",
+     "fixed": true,
+     "topic": "nature"
+    },
+    {
+     "id": "saintly-neutrality",
+     "text": "By ancient custom, retired Sword Saints are exempt from royal conscription unless they brandish their blade in public.",
+     "fixed": true,
+     "topic": "law"
+    },
+    {
+     "id": "aura-exists",
+     "text": "Aura channeling: real, and rare.",
+     "fixed": true,
+     "topic": "existence"
+    }
+   ],
+   "mysteries": [
+    {
+     "id": "the-leak",
+     "question": "How did outsiders discover my decades-old hiding place?",
+     "answer": "Commander Chen leaked the location to both the rebels and the Shadow Sect, intending to disrupt your peace and force you to pick up the sword for the Empire once more.",
+     "clues": [
+      "An Imperial seal found on a scout near the mountain pass.",
+      "Commander Chen arrives 'coincidentally' right after an assassin attack."
+     ],
+     "thread_id": "peaceful-retirement",
+     "solved": false
+    }
+   ]
+  },
+  "player_id": "player",
+  "characters": {
+   "player": {
+    "id": "player",
+    "name": "Master Jian",
+    "aliases": [
+     "The Sword Saint",
+     "Jianmu"
+    ],
+    "prominence": "key",
+    "description": "A calm, slow-moving old man with a deep, quiet presence that hints at a lifetime of supreme mastery.",
+    "appearance": "Long, snow-white hair tied in a simple bun, a weathered face etched with deep wisdom lines, and warm, sharp eyes. He wears faded gray cotton robes and straw sandals.",
+    "look_version": 1,
+    "age": 80,
+    "people_id": "human",
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "saint-cottage",
+    "personal_offset_s": 0,
+    "memberships": [],
+    "sheet": {
+     "attributes": {
+      "strength": 3,
+      "speed": 4,
+      "toughness": 3,
+      "wits": 5,
+      "knowledge": 5,
+      "willpower": 5,
+      "charm": 4,
+      "nerve": 5,
+      "bearing": 5
+     },
+     "skills": [
+      {
+       "name": "swordplay",
+       "level": "master",
+       "notes": "Your blade work is flawless, relying on muscle memory and supreme technique rather than raw brute strength."
+      },
+      {
+       "name": "meditation",
+       "level": "expert",
+       "notes": "Allows you to keep your mind tranquil and focus your remaining aura."
+      },
+      {
+       "name": "calligraphy",
+       "level": "skilled",
+       "notes": "A peaceful hobby that helps you channel your discipline."
+      }
+     ],
+     "traits": [
+      {
+       "name": "Aged Body",
+       "kind": "flaw",
+       "description": "Your physical stamina is limited; long fights will exhaust your muscles and breath much faster than in your prime."
+      },
+      {
+       "name": "Unshakable Calm",
+       "kind": "gift",
+       "description": "Having faced death hundreds of times, no threat or sudden crisis can break your concentration."
+      }
+     ],
+     "talents": [],
+     "powers": [
+      {
+       "id": "saint-aura",
+       "name": "Sword Aura Mastery",
+       "description": "Allows you to channel your remaining vital energy into your sword, producing invisible waves of cutting force.",
+       "strength": null,
+       "limits": [
+        "Requires a sword or a sword-like object."
+       ],
+       "costs": [
+        {
+         "kind": "fatigue",
+         "text": "Using this power drains your elderly body's stamina rapidly."
+        }
+       ],
+       "secret": false,
+       "time": null,
+       "settings": {},
+       "ready_at_personal_s": null
+      }
+     ],
+     "techniques": [
+      {
+       "id": "severing-wind",
+       "name": "Severing Wind",
+       "style": "Sword Saint Style",
+       "effect": "A single swift slash that projects aura up to thirty paces, cleanly cutting wood, stone, or armor.",
+       "cost": "Moderate stamina drain",
+       "requirements": "A sword and a calm breath",
+       "learned_from": "",
+       "power_id": null,
+       "mastery": "practiced",
+       "uses": 0
+      }
+     ],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "wise",
+        "serene",
+        "reflective"
+       ],
+       "values": [
+        "peace",
+        "humility"
+       ],
+       "loves": [
+        "hot tea",
+        "quiet mornings"
+       ],
+       "fears": [
+        "the village being dragged into war"
+       ],
+       "wants": [],
+       "voice": ""
+      },
+      "attitudes": {}
+     },
+     "resources": {
+      "items": [
+       {
+        "id": "the-willow-blade",
+        "name": "The Willow Blade",
+        "kind": "weapon",
+        "description": "Your legendary steel sword, now wrapped in coarse linen and hidden under the floorboards.",
+        "quantity": 1,
+        "carried": false,
+        "history": ""
+       },
+       {
+        "id": "worn-broom",
+        "name": "Worn Broom",
+        "kind": "gear",
+        "description": "A simple bamboo broom used for sweeping the cottage porch.",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       }
+      ],
+      "money": 15,
+      "currency": "silver coins",
+      "title": "Retired Sword Saint",
+      "rank": "Legend",
+      "family_name": "",
+      "connections": [
+       {
+        "name": "Xiaotian",
+        "kind": "trusts_them",
+        "character_id": "xiaotian",
+        "note": "A local boy who looks up to you and begs for martial arts stories."
+       }
+      ]
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [
+       {
+        "name": "aura",
+        "level": 100,
+        "recovery_s": null
+       }
+      ],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 8,
+      "influence": 4,
+      "wealth": 2,
+      "knowledge": 5,
+      "stealth": 3
+     },
+     "ladders": [
+      {
+       "ladder_id": "martial-realms",
+       "rung": 3,
+       "stage": "peak",
+       "shown_rung": null,
+       "yearly_s": null
+      }
+     ],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": [
+      {
+       "text": "You were once the undisputed master of the sword in the Jade Kingdom.",
+       "turn": 0
+      },
+      {
+       "text": "Fifty years ago, sick of the blood, court intrigue, and endless challengers, you faked your death or simply walked away, finding refuge in this mountain valley.",
+       "turn": 0
+      }
+     ]
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": 100,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   },
+   "xiaotian": {
+    "id": "xiaotian",
+    "name": "Xiaotian",
+    "aliases": [],
+    "prominence": "key",
+    "description": "A bright-eyed village youth who dreams of becoming a legendary martial artist.",
+    "appearance": "A thin boy of fourteen in patched linen clothes, his hair tied back with a simple string.",
+    "look_version": 1,
+    "age": 14,
+    "people_id": "human",
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "saint-cottage",
+    "personal_offset_s": 0,
+    "memberships": [],
+    "sheet": {
+     "attributes": {
+      "strength": 2,
+      "speed": 3,
+      "toughness": 2,
+      "wits": 3,
+      "knowledge": 1,
+      "willpower": 4,
+      "charm": 3,
+      "nerve": 3,
+      "bearing": 2
+     },
+     "skills": [
+      {
+       "name": "woodcutting",
+       "level": "novice",
+       "notes": ""
+      }
+     ],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "eager",
+        "honest",
+        "curious"
+       ],
+       "values": [
+        "honor",
+        "strength"
+       ],
+       "loves": [
+        "sword stories"
+       ],
+       "fears": [
+        "disappointing others"
+       ],
+       "wants": [
+        "To learn real swordplay"
+       ],
+       "voice": ""
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 60,
+        "fear": 10,
+        "trust": 70,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": true,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": 0,
+    "near_s": null,
+    "met_s": null
+   },
+   "commander-chen": {
+    "id": "commander-chen",
+    "name": "Commander Chen",
+    "aliases": [],
+    "prominence": "key",
+    "description": "A battle-hardened imperial envoy sent to find the lost legend.",
+    "appearance": "A tall man in his mid-forties wearing heavy steel plate armor, with a stern face and a deep scar across his jaw.",
+    "look_version": 1,
+    "age": 45,
+    "people_id": "human",
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "capital-city",
+    "personal_offset_s": 0,
+    "memberships": [
+     {
+      "faction_id": "imperial-court",
+      "rank": "Commander",
+      "loyalty": 85
+     }
+    ],
+    "sheet": {
+     "attributes": {
+      "strength": 4,
+      "speed": 3,
+      "toughness": 4,
+      "wits": 4,
+      "knowledge": 3,
+      "willpower": 4,
+      "charm": 3,
+      "nerve": 4,
+      "bearing": 4
+     },
+     "skills": [
+      {
+       "name": "military tactics",
+       "level": "expert",
+       "notes": ""
+      },
+      {
+       "name": "spearplay",
+       "level": "expert",
+       "notes": ""
+      }
+     ],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "disciplined",
+        "calculating",
+        "loyal"
+       ],
+       "values": [
+        "duty",
+        "victory"
+       ],
+       "loves": [
+        "military tactics"
+       ],
+       "fears": [
+        "the fall of the empire"
+       ],
+       "wants": [
+        "To bring the Sword Saint back to the capital"
+       ],
+       "voice": ""
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 10,
+        "fear": 40,
+        "trust": 20,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 4,
+      "influence": 5,
+      "wealth": 3,
+      "knowledge": 2,
+      "stealth": 1
+     },
+     "ladders": [
+      {
+       "ladder_id": "martial-realms",
+       "rung": 1,
+       "stage": "",
+       "shown_rung": null,
+       "yearly_s": null
+      }
+     ],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": {
+     "goal": "Conscript or guilt-trip the Sword Saint into aiding the Imperial Court.",
+     "method": "Revealing the location to rebels or assassins to force his hand.",
+     "secret": "He leaked the coordinates of the valley to force the Saint's hand.",
+     "clock_id": null
+    },
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   }
+  },
+  "factions": {
+   "shadow-sect": {
+    "id": "shadow-sect",
+    "name": "The Shadow Sect",
+    "kind": "sect",
+    "description": "A rogue organization of assassins and greedy martial artists seeking legendary manuals.",
+    "parent_id": null,
+    "status": "intact",
+    "status_history": [],
+    "activity": "active",
+    "leader_ids": [],
+    "goal": "Locate the retired Sword Saint and steal his legendary scripture.",
+    "methods": "Espionage, infiltration, and poison.",
+    "strength": "Dozens of expert assassins and a few rogue grandmasters.",
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "threat": 0,
+    "relations": {},
+    "survivors": [],
+    "secrets": [
+     "They have bribed a local scout to find the village."
+    ],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": []
+   },
+   "imperial-court": {
+    "id": "imperial-court",
+    "name": "The Imperial Court",
+    "kind": "court",
+    "description": "The ruling authority of the kingdom, currently facing internal rebellion.",
+    "parent_id": null,
+    "status": "intact",
+    "status_history": [],
+    "activity": "active",
+    "leader_ids": [],
+    "goal": "Conscript strong martial masters to suppress the rebels.",
+    "methods": "Edicts, monetary rewards, and leverage.",
+    "strength": "The royal army and elite imperial guards.",
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "threat": 0,
+    "relations": {},
+    "survivors": [],
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "places": {
+   "serene-valley": {
+    "id": "serene-valley",
+    "name": "Serene Valley",
+    "kind": "region",
+    "description": "A mist-shrouded mountain region far from the capital's politics.",
+    "parent_id": null,
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "mountain-village": {
+    "id": "mountain-village",
+    "name": "Mountain Village",
+    "kind": "village",
+    "description": "A quiet agrarian settlement where life revolves around farming and seasonal festivals.",
+    "parent_id": "serene-valley",
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "mountain-pass",
+      "travel_s": 10800,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "saint-cottage": {
+    "id": "saint-cottage",
+    "name": "The Retired Saint's Cottage",
+    "kind": "building",
+    "description": "A modest wooden home nestled against a bamboo grove at the village edge.",
+    "parent_id": "mountain-village",
+    "setting": "indoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [
+     "player"
+    ],
+    "judged": []
+   },
+   "mountain-pass": {
+    "id": "mountain-pass",
+    "name": "Whispering Pass",
+    "kind": "wilds",
+    "description": "The narrow, windy gateway that connects the valley to the outside world.",
+    "parent_id": "serene-valley",
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "capital-city",
+      "travel_s": 172800,
+      "mode": "by cart"
+     },
+     {
+      "to_id": "mountain-village",
+      "travel_s": 10800,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "capital-city": {
+    "id": "capital-city",
+    "name": "The Jade Capital",
+    "kind": "city",
+    "description": "The bustling heart of the kingdom, filled with grand temples and martial schools.",
+    "parent_id": null,
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "mountain-pass",
+      "travel_s": 172800,
+      "mode": "by cart"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   }
+  },
+  "deeds": {},
+  "rumors": {},
+  "bonds": {},
+  "lives": {},
+  "aged_s": null,
+  "changes": {},
+  "strife_s": {},
+  "facts": {
+   "fact-1": {
+    "id": "fact-1",
+    "text": "You were once the best swordsman in the kingdom, revered as the Sword Saint.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-2": {
+    "id": "fact-2",
+    "text": "Decades ago, you retired to this quiet mountain village to escape the endless cycles of blood and ambition.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   }
+  },
+  "goals": {},
+  "leads": {},
+  "threads": {
+   "peaceful-retirement": {
+    "id": "peaceful-retirement",
+    "title": "A Quiet Retirement Threatened",
+    "kind": "threat",
+    "stakes": "The peace of your quiet mountain village and your hidden life.",
+    "involved_ids": [
+     "player",
+     "xiaotian"
+    ],
+    "clock_id": "shadow-sect-infiltration",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "status": "open",
+    "opened_turn": 0,
+    "last_active_turn": 0,
+    "taken_up_turn": null,
+    "closed_turn": null,
+    "arc": null,
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "clocks": {
+   "shadow-sect-infiltration": {
+    "id": "shadow-sect-infiltration",
+    "name": "The Shadow Sect's Search",
+    "steps": [
+     "Rumours of a white-haired master in the Serene Valley reach the Shadow Sect.",
+     "Sect scouts begin questioning merchants at Whispering Pass.",
+     "Assassins slip into the village under the cover of night, looking for your home."
+    ],
+    "filled": 0,
+    "advances_on": [],
+    "reverses_on": [],
+    "interval_s": 172800,
+    "next_step_s": 172800,
+    "owner_id": null,
+    "thread_id": "peaceful-retirement",
+    "status": "running",
+    "known_by": []
+   }
+  },
+  "pending_events": {
+   "event-1": {
+    "id": "event-1",
+    "kind": "world.clock_step",
+    "title": "The Shadow Sect's Search: Rumours of a white-haired master in the Serene Valley reach the Shadow Sect.",
+    "due_s": 172800,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": {
+     "kind": "clock",
+     "ref_id": "shadow-sect-infiltration",
+     "text": ""
+    },
+    "payload": {
+     "clock_id": "shadow-sect-infiltration"
+    },
+    "seed": "story=play%2Fx-saint/timeline=main/turn=1/world/schedule/event-1",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-2": {
+    "id": "event-2",
+    "kind": "world.old_age",
+    "title": "Your years run short",
+    "due_s": 956252524,
+    "timeline_id": "main",
+    "needs_player": true,
+    "status": "pending",
+    "subject_ids": [
+     "player"
+    ],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "phase": "near",
+     "who": "player",
+     "span": 100,
+     "day_s": 993039231
+    },
+    "seed": "story=play%2Fx-saint/timeline=main/turn=1/world/schedule/event-2",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-3": {
+    "id": "event-3",
+    "kind": "world.tick",
+    "title": "The world moves on",
+    "due_s": 86400,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "last_s": 0,
+     "stride_s": 86400
+    },
+    "seed": "story=play%2Fx-saint/timeline=main/turn=1/world/schedule/event-3",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   }
+  },
+  "transfers": [],
+  "time_effects": [],
+  "scene": {
+   "place_id": "saint-cottage",
+   "present_ids": [
+    "xiaotian"
+   ],
+   "positions": [
+    "You are standing on the porch holding your broom.",
+    "Xiaotian is leaning on his wooden sword at the bottom of the porch steps."
+   ],
+   "props": [
+    "A rusted tea kettle heating on a small brazier.",
+    "Worn Broom"
+   ],
+   "ended_on": "You stand on your porch with your broom in hand, watching the breathless boy wait for your reply.",
+   "encounter": null
+  },
+  "director": {
+   "turns_without_stakes": 0,
+   "low_stakes_streak": 0,
+   "last_action_key": null,
+   "last_event_turn": null,
+   "last_event_size": null,
+   "last_event_s": {},
+   "last_small_s": null,
+   "recent_moments": [],
+   "recent_clock": [
+    0
+   ],
+   "frequency_drift": 0.0,
+   "recent_sources": [],
+   "auto_pictures": 1,
+   "picture_credit": 1.1,
+   "pictured": [
+    "portrait:player",
+    "portrait:player:v1"
+   ],
+   "fight": null,
+   "deck_draws": 0,
+   "road_stops": 0
+  },
+  "summary": "An eighty-year-old retired Sword Saint lives a peaceful life in a remote mountain village, but the whispers of his past are beginning to catch up to him.",
+  "chapters": [],
+  "id_counters": {
+   "fact": 2,
+   "goal": 0,
+   "bond": 0,
+   "event": 3
+  },
+  "fallen": [],
+  "opening_due": false,
+  "misses_in_a_row": 0,
+  "openings": [],
+  "journey": null,
+  "untold": [
+   "person:commander-chen"
+  ]
+ },
+ "scenes": [
+  {
+   "turn": 1,
+   "narration": "You drag the worn bamboo broom over the porch, its rhythmic scrape a comforting melody in the crisp mountain air. Wisps of steam rise from the rusted tea kettle on the brazier, carrying the faint, earthy scent of wild mountain leaves. For decades, this silence has been your shield. But the peace of the valley is easily startled, like a deer in the brush.\n\nYoung Xiaotian comes skidding around the bend of the dirt trail. He is panting, his wooden sword gripped tightly in his small, calloused fist. His thin chest heaves beneath his patched linen tunic, his cheeks flushed red from the sprint up the slope.\n\n\"Master Jian!\" the boy gasps, leaning heavily on his wooden blade. His eyes are wide with a mixture of terror and awe. \"Down by the village well... there are horses. Grand, sleek warhorses with silver-trimmed saddles. Men in dark blue silk robes are asking for a master of the white-hair style. They say they carry an imperial crest!\"\n\nYou pause your sweeping, resting both hands on the smooth bamboo handle of your broom. The wind rustles through the bamboo grove behind your cottage, a cold reminder that the past never truly stays buried.",
+   "player_action": null
+  }
+ ],
+ "choices": [
+  "Ask Xiaotian quietly how many soldiers are in the village.",
+  "Pour two cups of hot tea and invite the boy to sit.",
+  "Retrieve the Willow Blade from beneath the floorboards."
+ ],
+ "cost_usd": 0.12015,
+ "draft": {
+  "premise": "An 80-year-old sword saint who retired to a quiet mountain village decades ago. He was once the best swordsman in the kingdom.",
+  "proposal": {
+   "world": {
+    "title": "The Retired Saint",
+    "genre": "Wuxia, Martial Arts",
+    "tone": "Nostalgic, peaceful, yet watchful",
+    "era": "A medieval Eastern kingdom where steel swords and horse carriage travel prevail.",
+    "extraordinary": [
+     {
+      "id": "aura",
+      "kind": "Aura channeling",
+      "prevalence": "rare",
+      "reach": "Enables masters to enhance their strikes, cut iron, and project deadly shockwaves."
+     }
+    ],
+    "rules": [
+     {
+      "id": "aura-strains-body",
+      "text": "Channeling aura grants immense power but inflicts severe physical strain on an elderly body.",
+      "fixed": true,
+      "topic": "nature",
+      "about": [
+       "aura"
+      ]
+     },
+     {
+      "id": "saintly-neutrality",
+      "text": "By ancient custom, retired Sword Saints are exempt from royal conscription unless they brandish their blade in public.",
+      "fixed": true,
+      "topic": "law",
+      "about": [
+       "aura"
+      ]
+     }
+    ],
+    "dropped_rule_ids": [],
+    "peoples": [
+     {
+      "id": "human",
+      "name": "Humans",
+      "description": "",
+      "lifespan_years": 80,
+      "gifts": [],
+      "culture": "A society deeply rooted in honor, martial sects, and agrarian tradition.",
+      "relations": [],
+      "path": ""
+     }
+    ],
+    "creatures": [],
+    "nature": [],
+    "ladders": [
+     {
+      "id": "martial-realms",
+      "name": "Martial Realms",
+      "axis": "might",
+      "rungs": [
+       {
+        "name": "Disciple",
+        "description": "One who has just begun to feel the flow of physical energy.",
+        "lifespan_years": null
+       },
+       {
+        "name": "Expert",
+        "description": "Capable of infusing weapons with physical strength.",
+        "lifespan_years": null
+       },
+       {
+        "name": "Grandmaster",
+        "description": "Can project outer aura, easily shattering shields and stone.",
+        "lifespan_years": null
+       },
+       {
+        "name": "Sword Saint",
+        "description": "A legendary status where the sword and soul are one, cutting through air itself.",
+        "lifespan_years": null
+       }
+      ],
+      "known_to_all": 4,
+      "sensing": true,
+      "standing_follows": true,
+      "lengthens_life": true
+     }
+    ],
+    "calendar": {
+     "style": "day_count",
+     "clock_time": false,
+     "epoch": "",
+     "start_hour": 7,
+     "months": [],
+     "start_year": 1,
+     "start_month": 1,
+     "start_day": 1,
+     "era": "Peace"
+    },
+    "travel": {
+     "description": "News and people travel by horse, messenger bird, or carriage along dirt roads.",
+     "instant_messages": false
+    },
+    "medicine": {
+     "healing": "Herbal poultices speed natural recovery; deep internal injuries require aura regulation.",
+     "resurrection": "none",
+     "resurrection_means": ""
+    },
+    "laws": [
+     {
+      "id": "imperial-peace",
+      "text": "Sect violence is forbidden within village borders under penalty of treason.",
+      "enforcer": "Imperial Magistrates",
+      "enforcer_faction_id": "",
+      "zeal": "low",
+      "corruptible": true
+     }
+    ],
+    "norms": [],
+    "several_partners": false,
+    "unions": "held",
+    "places": [
+     {
+      "id": "serene-valley",
+      "name": "Serene Valley",
+      "kind": "region",
+      "description": "A mist-shrouded mountain region far from the capital's politics.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "mountain-village",
+      "name": "Mountain Village",
+      "kind": "village",
+      "description": "A quiet agrarian settlement where life revolves around farming and seasonal festivals.",
+      "parent_id": "serene-valley",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "mountain-pass",
+        "travel_hours": 3.0,
+        "mode": "on foot"
+       }
+      ]
+     },
+     {
+      "id": "saint-cottage",
+      "name": "The Retired Saint's Cottage",
+      "kind": "building",
+      "description": "A modest wooden home nestled against a bamboo grove at the village edge.",
+      "parent_id": "mountain-village",
+      "setting": "indoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "mountain-pass",
+      "name": "Whispering Pass",
+      "kind": "wilds",
+      "description": "The narrow, windy gateway that connects the valley to the outside world.",
+      "parent_id": "serene-valley",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "capital-city",
+        "travel_hours": 48.0,
+        "mode": "by cart"
+       }
+      ]
+     },
+     {
+      "id": "capital-city",
+      "name": "The Jade Capital",
+      "kind": "city",
+      "description": "The bustling heart of the kingdom, filled with grand temples and martial schools.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     }
+    ],
+    "factions": [
+     {
+      "id": "shadow-sect",
+      "name": "The Shadow Sect",
+      "kind": "sect",
+      "description": "A rogue organization of assassins and greedy martial artists seeking legendary manuals.",
+      "parent_id": "",
+      "leader_ids": [],
+      "goal": "Locate the retired Sword Saint and steal his legendary scripture.",
+      "methods": "Espionage, infiltration, and poison.",
+      "strength": "Dozens of expert assassins and a few rogue grandmasters.",
+      "relations": [],
+      "secrets": [
+       "They have bribed a local scout to find the village."
+      ],
+      "known_to_player": false
+     },
+     {
+      "id": "imperial-court",
+      "name": "The Imperial Court",
+      "kind": "court",
+      "description": "The ruling authority of the kingdom, currently facing internal rebellion.",
+      "parent_id": "",
+      "leader_ids": [],
+      "goal": "Conscript strong martial masters to suppress the rebels.",
+      "methods": "Edicts, monetary rewards, and leverage.",
+      "strength": "The royal army and elite imperial guards.",
+      "relations": [],
+      "secrets": [],
+      "known_to_player": true
+     }
+    ],
+    "npcs": [
+     {
+      "id": "xiaotian",
+      "name": "Xiaotian",
+      "aliases": [],
+      "description": "A bright-eyed village youth who dreams of becoming a legendary martial artist.",
+      "appearance": "A thin boy of fourteen in patched linen clothes, his hair tied back with a simple string.",
+      "age": 14,
+      "people_id": "human",
+      "location_id": "mountain-village",
+      "memberships": [],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "eager",
+        "honest",
+        "curious"
+       ],
+       "values": [
+        "honor",
+        "strength"
+       ],
+       "loves": [
+        "sword stories"
+       ],
+       "fears": [
+        "disappointing others"
+       ],
+       "wants": [
+        "To learn real swordplay"
+       ],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 2,
+       "speed": 3,
+       "toughness": 2,
+       "wits": 3,
+       "knowledge": 1,
+       "willpower": 4,
+       "charm": 3,
+       "nerve": 3,
+       "bearing": 2
+      },
+      "skills": [
+       {
+        "name": "woodcutting",
+        "level": "novice",
+        "notes": ""
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 60,
+       "fear": 10,
+       "trust": 70,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": true,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "met"
+     },
+     {
+      "id": "commander-chen",
+      "name": "Commander Chen",
+      "aliases": [],
+      "description": "A battle-hardened imperial envoy sent to find the lost legend.",
+      "appearance": "A tall man in his mid-forties wearing heavy steel plate armor, with a stern face and a deep scar across his jaw.",
+      "age": 45,
+      "people_id": "human",
+      "location_id": "capital-city",
+      "memberships": [
+       {
+        "faction_id": "imperial-court",
+        "rank": "Commander",
+        "loyalty": 85
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "disciplined",
+        "calculating",
+        "loyal"
+       ],
+       "values": [
+        "duty",
+        "victory"
+       ],
+       "loves": [
+        "military tactics"
+       ],
+       "fears": [
+        "the fall of the empire"
+       ],
+       "wants": [
+        "To bring the Sword Saint back to the capital"
+       ],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 4,
+       "speed": 3,
+       "toughness": 4,
+       "wits": 4,
+       "knowledge": 3,
+       "willpower": 4,
+       "charm": 3,
+       "nerve": 4,
+       "bearing": 4
+      },
+      "skills": [
+       {
+        "name": "military tactics",
+        "level": "expert",
+        "notes": ""
+       },
+       {
+        "name": "spearplay",
+        "level": "expert",
+        "notes": ""
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [
+       {
+        "ladder_id": "martial-realms",
+        "rung": "Expert",
+        "stage": ""
+       }
+      ],
+      "axes": {
+       "might": 3,
+       "influence": 5,
+       "wealth": 3,
+       "knowledge": 2,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 10,
+       "fear": 40,
+       "trust": 20,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": {
+       "goal": "Conscript or guilt-trip the Sword Saint into aiding the Imperial Court.",
+       "method": "Revealing the location to rebels or assassins to force his hand.",
+       "secret": "He leaked the coordinates of the valley to force the Saint's hand.",
+       "clock_id": ""
+      },
+      "secrets": [],
+      "player_knows": "heard_of"
+     }
+    ],
+    "clocks": [
+     {
+      "id": "shadow-sect-infiltration",
+      "name": "The Shadow Sect's Search",
+      "steps": [
+       "Rumours of a white-haired master in the Serene Valley reach the Shadow Sect.",
+       "Sect scouts begin questioning merchants at Whispering Pass.",
+       "Assassins slip into the village under the cover of night, looking for your home."
+      ],
+      "step_every_hours": 48.0,
+      "owner_id": "",
+      "thread_id": "",
+      "known_to_player": false
+     }
+    ],
+    "threads": [
+     {
+      "id": "peaceful-retirement",
+      "title": "A Quiet Retirement Threatened",
+      "kind": "threat",
+      "stakes": "The peace of your quiet mountain village and your hidden life.",
+      "involved_ids": [
+       "player",
+       "xiaotian"
+      ],
+      "clock_id": "shadow-sect-infiltration",
+      "known_to_player": true
+     }
+    ],
+    "mysteries": [
+     {
+      "id": "the-leak",
+      "question": "How did outsiders discover my decades-old hiding place?",
+      "answer": "Commander Chen leaked the location to both the rebels and the Shadow Sect, intending to disrupt your peace and force you to pick up the sword for the Empire once more.",
+      "clues": [
+       "An Imperial seal found on a scout near the mountain pass.",
+       "Commander Chen arrives 'coincidentally' right after an assassin attack."
+      ],
+      "thread_id": "peaceful-retirement",
+      "known_to_player": false
+     }
+    ],
+    "known_facts": [
+     "You were once the best swordsman in the kingdom, revered as the Sword Saint.",
+     "Decades ago, you retired to this quiet mountain village to escape the endless cycles of blood and ambition."
+    ],
+    "opening": {
+     "place_id": "saint-cottage",
+     "present_ids": [
+      "xiaotian"
+     ],
+     "positions": [
+      "You are sitting on your wooden porch.",
+      "Xiaotian is holding a wooden training sword."
+     ],
+     "props": [
+      "A rusted tea kettle heating on a small brazier.",
+      "Your old, worn broom."
+     ],
+     "situation": "You sweep the autumn leaves from your porch when young Xiaotian runs up the mountain trail, breathless and clutching his wooden sword."
+    },
+    "summary": "An eighty-year-old retired Sword Saint lives a peaceful life in a remote mountain village, but the whispers of his past are beginning to catch up to him."
+   },
+   "character": {
+    "name": "Master Jian",
+    "aliases": [
+     "The Sword Saint",
+     "Jianmu"
+    ],
+    "age": 80,
+    "lifespan_years": 100,
+    "people_id": "human",
+    "description": "A calm, slow-moving old man with a deep, quiet presence that hints at a lifetime of supreme mastery.",
+    "appearance": "Long, snow-white hair tied in a simple bun, a weathered face etched with deep wisdom lines, and warm, sharp eyes. He wears faded gray cotton robes and straw sandals.",
+    "location_id": "saint-cottage",
+    "attributes": {
+     "strength": 3,
+     "speed": 4,
+     "toughness": 3,
+     "wits": 5,
+     "knowledge": 5,
+     "willpower": 5,
+     "charm": 4,
+     "nerve": 5,
+     "bearing": 5
+    },
+    "skills": [
+     {
+      "name": "swordplay",
+      "level": "master",
+      "notes": "Your blade work is flawless, relying on muscle memory and supreme technique rather than raw brute strength."
+     },
+     {
+      "name": "meditation",
+      "level": "expert",
+      "notes": "Allows you to keep your mind tranquil and focus your remaining aura."
+     },
+     {
+      "name": "calligraphy",
+      "level": "skilled",
+      "notes": "A peaceful hobby that helps you channel your discipline."
+     }
+    ],
+    "traits": [
+     {
+      "name": "Aged Body",
+      "kind": "flaw",
+      "description": "Your physical stamina is limited; long fights will exhaust your muscles and breath much faster than in your prime."
+     },
+     {
+      "name": "Unshakable Calm",
+      "kind": "gift",
+      "description": "Having faced death hundreds of times, no threat or sudden crisis can break your concentration."
+     }
+    ],
+    "talents": [],
+    "powers": [
+     {
+      "id": "saint-aura",
+      "name": "Sword Aura Mastery",
+      "description": "Allows you to channel your remaining vital energy into your sword, producing invisible waves of cutting force.",
+      "kind_id": "aura",
+      "gift": false,
+      "strength": null,
+      "limits": [
+       "Requires a sword or a sword-like object."
+      ],
+      "costs": [
+       {
+        "kind": "fatigue",
+        "text": "Using this power drains your elderly body's stamina rapidly."
+       }
+      ],
+      "secret": false,
+      "time": null
+     }
+    ],
+    "techniques": [
+     {
+      "name": "Severing Wind",
+      "style": "Sword Saint Style",
+      "effect": "A single swift slash that projects aura up to thirty paces, cleanly cutting wood, stone, or armor.",
+      "cost": "Moderate stamina drain",
+      "requirements": "A sword and a calm breath"
+     }
+    ],
+    "temperament": {
+     "traits": [
+      "wise",
+      "serene",
+      "reflective"
+     ],
+     "values": [
+      "peace",
+      "humility"
+     ],
+     "loves": [
+      "hot tea",
+      "quiet mornings"
+     ],
+     "fears": [
+      "the village being dragged into war"
+     ],
+     "wants": [],
+     "voice": ""
+    },
+    "items": [
+     {
+      "name": "The Willow Blade",
+      "kind": "weapon",
+      "description": "Your legendary steel sword, now wrapped in coarse linen and hidden under the floorboards.",
+      "quantity": 1,
+      "carried": false
+     },
+     {
+      "name": "Worn Broom",
+      "kind": "gear",
+      "description": "A simple bamboo broom used for sweeping the cottage porch.",
+      "quantity": 1,
+      "carried": true
+     }
+    ],
+    "money": 15,
+    "currency": "silver coins",
+    "title": "Retired Sword Saint",
+    "rank": "Legend",
+    "family_name": "",
+    "connections": [
+     {
+      "name": "Xiaotian",
+      "kind": "trusts_them",
+      "character_id": "xiaotian",
+      "note": "A local boy who looks up to you and begs for martial arts stories."
+     }
+    ],
+    "parent_ids": [],
+    "memberships": [],
+    "ladders": [
+     {
+      "ladder_id": "martial-realms",
+      "rung": "Sword Saint",
+      "stage": "peak"
+     }
+    ],
+    "axes": {
+     "might": 5,
+     "influence": 4,
+     "wealth": 2,
+     "knowledge": 5,
+     "stealth": 3
+    },
+    "reserves": [
+     {
+      "name": "aura",
+      "level": 100
+     }
+    ],
+    "goals": [],
+    "backstory": [
+     "You were once the undisputed master of the sword in the Jade Kingdom.",
+     "Fifty years ago, sick of the blood, court intrigue, and endless challengers, you faked your death or simply walked away, finding refuge in this mountain valley."
+    ],
+    "hidden_past": []
+   }
+  },
+  "rating": "teen",
+  "premise_id": null,
+  "physics": "fun_first",
+  "gift": null,
+  "released_rules": [],
+  "language": "en",
+  "told": []
+ }
+}

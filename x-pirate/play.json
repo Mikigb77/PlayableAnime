@@ -1,0 +1,1489 @@
+{
+ "premise": "I want to be a pirate.",
+ "language": "en",
+ "rating": "teen",
+ "settings": {
+  "narration_length": "medium",
+  "tone": null,
+  "difficulty": "balanced",
+  "event_frequency": "normal",
+  "images": "key_moments",
+  "suggestions": true,
+  "language": "en",
+  "accent": null
+ },
+ "seed": "play/x-pirate",
+ "state": {
+  "schema_version": 1,
+  "turn": 1,
+  "timeline_id": "main",
+  "world_s": 0,
+  "bible": {
+   "title": "Sails of Fortune",
+   "genre": "historical swashbuckler",
+   "tone": "adventure",
+   "era": "The Caribbean, 1715: flintlocks, cutlasses, galleons, and spyglasses",
+   "extraordinary": [
+    {
+     "id": "supernatural",
+     "kind": "magic or anything supernatural",
+     "prevalence": "none",
+     "reach": "",
+     "rule_ids": [
+      "no-magic",
+      "naval-law",
+      "pirate-code",
+      "no-supernatural"
+     ]
+    }
+   ],
+   "peoples": [
+    {
+     "id": "human",
+     "name": "Human",
+     "description": "",
+     "lifespan_years": 80,
+     "gifts": [],
+     "culture": "A mix of sailors, merchants, naval officers, and outlaws from various nations.",
+     "relations": [],
+     "path": ""
+    }
+   ],
+   "creatures": [],
+   "nature": [
+    "The Caribbean weather is unpredictable, with devastating hurricanes that can sink any ship."
+   ],
+   "physics": "fun_first",
+   "force": {
+    "tier1_joules": 10000.0,
+    "per_tier": 10.0
+   },
+   "ladders": [],
+   "calendar": {
+    "style": "day_count",
+    "time_of_day": "parts",
+    "epoch": null,
+    "start_second_of_day": 28800,
+    "months": [],
+    "start_year": 1,
+    "start_month": 1,
+    "start_day": 1,
+    "era": ""
+   },
+   "travel": {
+    "description": "Travel is by sailing ships across the ocean. News travels as fast as the wind carries the ships.",
+    "instant_messages": false
+   },
+   "medicine": {
+    "healing": "Basic 18th-century surgery, amputation, and rum for pain.",
+    "resurrection": "none",
+    "resurrection_means": ""
+   },
+   "laws": [
+    {
+     "id": "piracy-law",
+     "text": "Piracy is a capital crime, punishable by hanging in gibbets.",
+     "enforcer": "Royal Navy",
+     "enforcer_faction_id": null,
+     "zeal": "high",
+     "corruptible": false
+    }
+   ],
+   "norms": [],
+   "several_partners": false,
+   "unions": "held",
+   "rules": [
+    {
+     "id": "no-magic",
+     "text": "Magic, monsters, and the supernatural do not exist; the sea is governed only by wind, tide, and iron.",
+     "fixed": true,
+     "topic": "nature"
+    },
+    {
+     "id": "naval-law",
+     "text": "The Royal Navy hunts pirates relentlessly, and the penalty for piracy is hanging.",
+     "fixed": true,
+     "topic": "law"
+    },
+    {
+     "id": "pirate-code",
+     "text": "The Brethren of the Coast follow a loose set of articles, but betrayal is common.",
+     "fixed": true,
+     "topic": "law"
+    },
+    {
+     "id": "no-supernatural",
+     "text": "Grounded: no magic and nothing supernatural, and that won't change.",
+     "fixed": true,
+     "topic": "existence"
+    }
+   ],
+   "mysteries": [
+    {
+     "id": "lost-treasure",
+     "question": "Where is the lost wreckage of the Santa Isabella?",
+     "answer": "It lies in the shallow reefs off the uninhabited Serpent's Tooth island, guarded by jagged rocks.",
+     "clues": [
+      "A torn piece of a Spanish sea chart",
+      "A half-mad sailor's ramblings in a Tortuga tavern"
+     ],
+     "thread_id": "lost-treasure",
+     "solved": false
+    }
+   ]
+  },
+  "player_id": "player",
+  "characters": {
+   "player": {
+    "id": "player",
+    "name": "Jack",
+    "aliases": [
+     "Lucky Jack"
+    ],
+    "prominence": "key",
+    "description": "A young, ambitious sailor with a hunger for freedom and gold.",
+    "appearance": "Sun-bronzed skin, messy dark hair, wearing a loose white linen shirt, rugged leather boots, and a tricorn hat.",
+    "look_version": 1,
+    "age": 24,
+    "people_id": null,
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "tortuga",
+    "personal_offset_s": 0,
+    "memberships": [],
+    "sheet": {
+     "attributes": {
+      "strength": 3,
+      "speed": 4,
+      "toughness": 3,
+      "wits": 4,
+      "knowledge": 2,
+      "willpower": 4,
+      "charm": 4,
+      "nerve": 5,
+      "bearing": 3
+     },
+     "skills": [
+      {
+       "name": "Sailing",
+       "level": "skilled",
+       "notes": ""
+      },
+      {
+       "name": "Swordsmanship",
+       "level": "fair",
+       "notes": ""
+      },
+      {
+       "name": "Pistol Shooting",
+       "level": "fair",
+       "notes": ""
+      }
+     ],
+     "traits": [
+      {
+       "name": "Daring",
+       "kind": "gift",
+       "description": "Bold actions often work in your favor."
+      },
+      {
+       "name": "Wanted",
+       "kind": "flaw",
+       "description": "The Navy recognizes your face from minor merchant ship mutinies."
+      }
+     ],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "ambitious",
+        "reckless"
+       ],
+       "values": [],
+       "loves": [],
+       "fears": [],
+       "wants": [
+        "I want to be a pirate."
+       ],
+       "voice": ""
+      },
+      "attitudes": {}
+     },
+     "resources": {
+      "items": [
+       {
+        "id": "weathered-cutlass",
+        "name": "Weathered Cutlass",
+        "kind": "weapon",
+        "description": "A sturdy, reliable sword perfect for boarding actions.",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       },
+       {
+        "id": "flintlock-pistol",
+        "name": "Flintlock Pistol",
+        "kind": "weapon",
+        "description": "A single-shot pistol that packs a punch but takes time to reload.",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       },
+       {
+        "id": "spyglass",
+        "name": "Spyglass",
+        "kind": "gear",
+        "description": "A brass telescope for spotting prey on the horizon.",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       }
+      ],
+      "money": 50,
+      "currency": "silver shillings",
+      "title": "Captain",
+      "rank": "Outlaw",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": [
+      {
+       "text": "You spent years as a merchant sailor, tired of low pay and harsh beatings, before deciding to take your fate into your own hands.",
+       "turn": 0
+      }
+     ]
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": 80,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   },
+   "captain-blackbeak": {
+    "id": "captain-blackbeak",
+    "name": "Captain Edward 'Blackbeak' Teach",
+    "aliases": [],
+    "prominence": "key",
+    "description": "A fearsome pirate lord with burning slow-matches tucked into his hat.",
+    "appearance": "",
+    "look_version": 1,
+    "age": 42,
+    "people_id": null,
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "tortuga",
+    "personal_offset_s": 0,
+    "memberships": [
+     {
+      "faction_id": "brethren-of-the-coast",
+      "rank": "Captain",
+      "loyalty": 80
+     }
+    ],
+    "sheet": {
+     "attributes": {
+      "strength": 3,
+      "speed": 3,
+      "toughness": 3,
+      "wits": 3,
+      "knowledge": 3,
+      "willpower": 3,
+      "charm": 3,
+      "nerve": 3,
+      "bearing": 3
+     },
+     "skills": [],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "ruthless",
+        "shrewd",
+        "charismatic"
+       ],
+       "values": [],
+       "loves": [],
+       "fears": [],
+       "wants": [
+        "The legendary Spanish Silver Fleet treasures"
+       ],
+       "voice": ""
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 0,
+        "fear": 0,
+        "trust": 0,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": 0,
+    "near_s": null,
+    "met_s": null
+   },
+   "governor-sterling": {
+    "id": "governor-sterling",
+    "name": "Governor Edward Sterling",
+    "aliases": [],
+    "prominence": "key",
+    "description": "The stern, unyielding governor of Port Royal.",
+    "appearance": "",
+    "look_version": 1,
+    "age": 55,
+    "people_id": null,
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "port-royal",
+    "personal_offset_s": 0,
+    "memberships": [
+     {
+      "faction_id": "royal-navy",
+      "rank": "Governor",
+      "loyalty": 100
+     }
+    ],
+    "sheet": {
+     "attributes": {
+      "strength": 3,
+      "speed": 3,
+      "toughness": 3,
+      "wits": 3,
+      "knowledge": 3,
+      "willpower": 3,
+      "charm": 3,
+      "nerve": 3,
+      "bearing": 3
+     },
+     "skills": [],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "cold",
+        "disciplined",
+        "corruptible"
+       ],
+       "values": [],
+       "loves": [],
+       "fears": [],
+       "wants": [
+        "A clean, pirate-free sea to secure his trade routes"
+       ],
+       "voice": ""
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 0,
+        "fear": 0,
+        "trust": 0,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   }
+  },
+  "factions": {
+   "royal-navy": {
+    "id": "royal-navy",
+    "name": "The Royal Navy",
+    "kind": "fleet",
+    "description": "The disciplined naval force of the British Crown, tasked with wiping out piracy.",
+    "parent_id": null,
+    "status": "intact",
+    "status_history": [],
+    "activity": "active",
+    "leader_ids": [],
+    "goal": "Eradicate all pirate havens in the Caribbean.",
+    "methods": "Blockades, heavy warships, and public executions.",
+    "strength": "",
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "threat": 0,
+    "relations": {},
+    "survivors": [],
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ]
+   },
+   "brethren-of-the-coast": {
+    "id": "brethren-of-the-coast",
+    "name": "Brethren of the Coast",
+    "kind": "sect",
+    "description": "A loose alliance of pirate captains and buccaneers.",
+    "parent_id": null,
+    "status": "intact",
+    "status_history": [],
+    "activity": "active",
+    "leader_ids": [],
+    "goal": "Maintain Tortuga's independence and plunder Spanish gold.",
+    "methods": "Raiding shipping lanes and sharing plunder.",
+    "strength": "",
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "threat": 0,
+    "relations": {},
+    "survivors": [],
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "places": {
+   "tortuga": {
+    "id": "tortuga",
+    "name": "Tortuga",
+    "kind": "island",
+    "description": "A lawless haven filled with taverns, brothels, and pirate crews.",
+    "parent_id": null,
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "windward-passage",
+      "travel_s": 43200,
+      "mode": "by ship"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [
+     "player"
+    ],
+    "judged": []
+   },
+   "windward-passage": {
+    "id": "windward-passage",
+    "name": "Windward Passage",
+    "kind": "wilds",
+    "description": "A treacherous stretch of open ocean frequented by merchant ships and hunting navy vessels.",
+    "parent_id": null,
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "port-royal",
+      "travel_s": 86400,
+      "mode": "by ship"
+     },
+     {
+      "to_id": "tortuga",
+      "travel_s": 43200,
+      "mode": "by ship"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "port-royal": {
+    "id": "port-royal",
+    "name": "Port Royal",
+    "kind": "city",
+    "description": "A wealthy English colony guarded by a massive stone fort.",
+    "parent_id": null,
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "windward-passage",
+      "travel_s": 86400,
+      "mode": "by ship"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   }
+  },
+  "deeds": {},
+  "rumors": {},
+  "bonds": {},
+  "lives": {},
+  "aged_s": null,
+  "changes": {},
+  "strife_s": {},
+  "facts": {
+   "fact-1": {
+    "id": "fact-1",
+    "text": "The Royal Navy is offering a 500 gold doubloon bounty for Captain Blackbeak.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-2": {
+    "id": "fact-2",
+    "text": "The Windward Passage is currently crawling with rich merchant ships.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   }
+  },
+  "goals": {},
+  "leads": {},
+  "threads": {
+   "pirate-reputation": {
+    "id": "pirate-reputation",
+    "title": "Making a Name on the High Seas",
+    "kind": "ambition",
+    "stakes": "Become a feared pirate captain or end up swinging from the gallows.",
+    "involved_ids": [
+     "player",
+     "captain-blackbeak"
+    ],
+    "clock_id": null,
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "status": "open",
+    "opened_turn": 0,
+    "last_active_turn": 0,
+    "taken_up_turn": null,
+    "closed_turn": null,
+    "arc": null,
+    "known_by": [
+     "player"
+    ]
+   },
+   "lost-treasure": {
+    "id": "lost-treasure",
+    "title": "Where is the lost wreckage of the Santa Isabella?",
+    "kind": "mystery",
+    "stakes": "",
+    "involved_ids": [
+     "player"
+    ],
+    "clock_id": null,
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "status": "open",
+    "opened_turn": 0,
+    "last_active_turn": 0,
+    "taken_up_turn": null,
+    "closed_turn": null,
+    "arc": null,
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "clocks": {
+   "navy-raid": {
+    "id": "navy-raid",
+    "name": "The Navy Raid on Tortuga",
+    "steps": [
+     "Navy spies map Tortuga's defenses.",
+     "A blockade is established around the island.",
+     "Warships begin bombardment of the docks.",
+     "Marines land to purge the pirate haven."
+    ],
+    "filled": 0,
+    "advances_on": [],
+    "reverses_on": [],
+    "interval_s": 259200,
+    "next_step_s": 259200,
+    "owner_id": null,
+    "thread_id": null,
+    "status": "running",
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "pending_events": {
+   "event-1": {
+    "id": "event-1",
+    "kind": "world.clock_step",
+    "title": "The Navy Raid on Tortuga: Navy spies map Tortuga's defenses.",
+    "due_s": 259200,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": {
+     "kind": "clock",
+     "ref_id": "navy-raid",
+     "text": ""
+    },
+    "payload": {
+     "clock_id": "navy-raid"
+    },
+    "seed": "story=play%2Fx-pirate/timeline=main/turn=1/world/schedule/event-1",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-2": {
+    "id": "event-2",
+    "kind": "world.old_age",
+    "title": "Your years run short",
+    "due_s": 1871709838,
+    "timeline_id": "main",
+    "needs_player": true,
+    "status": "pending",
+    "subject_ids": [
+     "player"
+    ],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "phase": "near",
+     "who": "player",
+     "span": 80,
+     "day_s": 1926310547
+    },
+    "seed": "story=play%2Fx-pirate/timeline=main/turn=1/world/schedule/event-2",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-3": {
+    "id": "event-3",
+    "kind": "world.tick",
+    "title": "The world moves on",
+    "due_s": 86400,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "last_s": 0,
+     "stride_s": 86400
+    },
+    "seed": "story=play%2Fx-pirate/timeline=main/turn=1/world/schedule/event-3",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   }
+  },
+  "transfers": [],
+  "time_effects": [],
+  "scene": {
+   "place_id": "tortuga",
+   "present_ids": [
+    "player",
+    "captain-blackbeak"
+   ],
+   "positions": [
+    "Jack is standing on the docks looking at his sloop.",
+    "Captain Blackbeak is leaning against cargo crates near Jack."
+   ],
+   "props": [
+    "sloop",
+    "deed"
+   ],
+   "ended_on": "Blackbeak watches you, waiting to see how you will claim your new ship and your future.",
+   "encounter": null
+  },
+  "director": {
+   "turns_without_stakes": 0,
+   "low_stakes_streak": 0,
+   "last_action_key": null,
+   "last_event_turn": null,
+   "last_event_size": null,
+   "last_event_s": {},
+   "last_small_s": null,
+   "recent_moments": [],
+   "recent_clock": [
+    0
+   ],
+   "frequency_drift": 0.0,
+   "recent_sources": [],
+   "auto_pictures": 1,
+   "picture_credit": 1.1,
+   "pictured": [
+    "portrait:player",
+    "portrait:player:v1"
+   ],
+   "fight": null,
+   "deck_draws": 0,
+   "road_stops": 0
+  },
+  "summary": "You have arrived in Tortuga with a fresh ship, ready to make your fortune. With the Royal Navy closing in and pirate lords dominating the waves, you must carve out your own legend.",
+  "chapters": [],
+  "id_counters": {
+   "fact": 2,
+   "goal": 0,
+   "bond": 0,
+   "event": 3
+  },
+  "fallen": [],
+  "opening_due": false,
+  "misses_in_a_row": 0,
+  "openings": [],
+  "journey": null,
+  "untold": [
+   "person:governor-sterling",
+   "thread:lost-treasure",
+   "thread:pirate-reputation"
+  ]
+ },
+ "scenes": [
+  {
+   "turn": 1,
+   "narration": "The salt air of Tortuga carries the stench of spilled rum, roasting meat, and rotting fish. You stand on the sun-baked timber of the docks, the deed to a weathered sloop clutched tightly in your hand. She is a beautiful thing in her own rugged way, her mast cutting clean against the bright Caribbean sky. You won her fair and square on a final roll of the dice, and now she is yours to command. \n\n\"A fine piece of wood, if she doesn't take on water at the first swell,\" a gravelly voice rumbles beside you. \n\nYou turn to find Captain Edward \"Blackbeak\" Teach leaning against a stack of cargo crates. Smoke from the slow-matches tucked beneath his tricorn hat drifts lazily around his bearded face. His dark eyes size you up with cold, calculated interest, weighing whether you are a captain worth knowing or just another fool destined for the gallows. He nods toward your new vessel. \"A sloop like that needs a crew, and a crew needs gold. What is your play, Captain?\"",
+   "player_action": null
+  }
+ ],
+ "choices": [
+  "Address Blackbeak and ask him for advice on recruiting a crew.",
+  "Inspect the sloop's hull and sails to ensure she is seaworthy.",
+  "Head to the nearest tavern to celebrate your win and buy drinks."
+ ],
+ "cost_usd": 0.10437,
+ "draft": {
+  "premise": "I want to be a pirate.",
+  "proposal": {
+   "world": {
+    "title": "Sails of Fortune",
+    "genre": "historical swashbuckler",
+    "tone": "adventure",
+    "era": "The Caribbean, 1715: flintlocks, cutlasses, galleons, and spyglasses",
+    "extraordinary": [
+     {
+      "id": "supernatural",
+      "kind": "magic or anything supernatural",
+      "prevalence": "none",
+      "reach": ""
+     }
+    ],
+    "rules": [
+     {
+      "id": "no-magic",
+      "text": "Magic, monsters, and the supernatural do not exist; the sea is governed only by wind, tide, and iron.",
+      "fixed": true,
+      "topic": "nature",
+      "about": [
+       "supernatural"
+      ]
+     },
+     {
+      "id": "naval-law",
+      "text": "The Royal Navy hunts pirates relentlessly, and the penalty for piracy is hanging.",
+      "fixed": true,
+      "topic": "law",
+      "about": [
+       "supernatural"
+      ]
+     },
+     {
+      "id": "pirate-code",
+      "text": "The Brethren of the Coast follow a loose set of articles, but betrayal is common.",
+      "fixed": true,
+      "topic": "law",
+      "about": [
+       "supernatural"
+      ]
+     }
+    ],
+    "dropped_rule_ids": [],
+    "peoples": [
+     {
+      "id": "human",
+      "name": "Human",
+      "description": "",
+      "lifespan_years": 80,
+      "gifts": [],
+      "culture": "A mix of sailors, merchants, naval officers, and outlaws from various nations.",
+      "relations": [],
+      "path": ""
+     }
+    ],
+    "creatures": [],
+    "nature": [
+     "The Caribbean weather is unpredictable, with devastating hurricanes that can sink any ship."
+    ],
+    "ladders": [],
+    "calendar": {
+     "style": "day_count",
+     "clock_time": false,
+     "epoch": "",
+     "start_hour": 8,
+     "months": [],
+     "start_year": 1,
+     "start_month": 1,
+     "start_day": 1,
+     "era": ""
+    },
+    "travel": {
+     "description": "Travel is by sailing ships across the ocean. News travels as fast as the wind carries the ships.",
+     "instant_messages": false
+    },
+    "medicine": {
+     "healing": "Basic 18th-century surgery, amputation, and rum for pain.",
+     "resurrection": "none",
+     "resurrection_means": ""
+    },
+    "laws": [
+     {
+      "id": "piracy-law",
+      "text": "Piracy is a capital crime, punishable by hanging in gibbets.",
+      "enforcer": "Royal Navy",
+      "enforcer_faction_id": "",
+      "zeal": "high",
+      "corruptible": false
+     }
+    ],
+    "norms": [],
+    "several_partners": false,
+    "unions": "held",
+    "places": [
+     {
+      "id": "tortuga",
+      "name": "Tortuga",
+      "kind": "island",
+      "description": "A lawless haven filled with taverns, brothels, and pirate crews.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "windward-passage",
+        "travel_hours": 12.0,
+        "mode": "by ship"
+       }
+      ]
+     },
+     {
+      "id": "windward-passage",
+      "name": "Windward Passage",
+      "kind": "wilds",
+      "description": "A treacherous stretch of open ocean frequented by merchant ships and hunting navy vessels.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "port-royal",
+        "travel_hours": 24.0,
+        "mode": "by ship"
+       }
+      ]
+     },
+     {
+      "id": "port-royal",
+      "name": "Port Royal",
+      "kind": "city",
+      "description": "A wealthy English colony guarded by a massive stone fort.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     }
+    ],
+    "factions": [
+     {
+      "id": "royal-navy",
+      "name": "The Royal Navy",
+      "kind": "fleet",
+      "description": "The disciplined naval force of the British Crown, tasked with wiping out piracy.",
+      "parent_id": "",
+      "leader_ids": [],
+      "goal": "Eradicate all pirate havens in the Caribbean.",
+      "methods": "Blockades, heavy warships, and public executions.",
+      "strength": "",
+      "relations": [],
+      "secrets": [],
+      "known_to_player": true
+     },
+     {
+      "id": "brethren-of-the-coast",
+      "name": "Brethren of the Coast",
+      "kind": "sect",
+      "description": "A loose alliance of pirate captains and buccaneers.",
+      "parent_id": "",
+      "leader_ids": [],
+      "goal": "Maintain Tortuga's independence and plunder Spanish gold.",
+      "methods": "Raiding shipping lanes and sharing plunder.",
+      "strength": "",
+      "relations": [],
+      "secrets": [],
+      "known_to_player": true
+     }
+    ],
+    "npcs": [
+     {
+      "id": "captain-blackbeak",
+      "name": "Captain Edward 'Blackbeak' Teach",
+      "aliases": [],
+      "description": "A fearsome pirate lord with burning slow-matches tucked into his hat.",
+      "appearance": "",
+      "age": 42,
+      "people_id": "",
+      "location_id": "tortuga",
+      "memberships": [
+       {
+        "faction_id": "brethren-of-the-coast",
+        "rank": "Captain",
+        "loyalty": 80
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "ruthless",
+        "shrewd",
+        "charismatic"
+       ],
+       "values": [],
+       "loves": [],
+       "fears": [],
+       "wants": [
+        "The legendary Spanish Silver Fleet treasures"
+       ],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 3,
+       "speed": 3,
+       "toughness": 3,
+       "wits": 3,
+       "knowledge": 3,
+       "willpower": 3,
+       "charm": 3,
+       "nerve": 3,
+       "bearing": 3
+      },
+      "skills": [],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 0,
+       "fear": 0,
+       "trust": 0,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "met"
+     },
+     {
+      "id": "governor-sterling",
+      "name": "Governor Edward Sterling",
+      "aliases": [],
+      "description": "The stern, unyielding governor of Port Royal.",
+      "appearance": "",
+      "age": 55,
+      "people_id": "",
+      "location_id": "port-royal",
+      "memberships": [
+       {
+        "faction_id": "royal-navy",
+        "rank": "Governor",
+        "loyalty": 100
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "cold",
+        "disciplined",
+        "corruptible"
+       ],
+       "values": [],
+       "loves": [],
+       "fears": [],
+       "wants": [
+        "A clean, pirate-free sea to secure his trade routes"
+       ],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 3,
+       "speed": 3,
+       "toughness": 3,
+       "wits": 3,
+       "knowledge": 3,
+       "willpower": 3,
+       "charm": 3,
+       "nerve": 3,
+       "bearing": 3
+      },
+      "skills": [],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 0,
+       "fear": 0,
+       "trust": 0,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "met"
+     }
+    ],
+    "clocks": [
+     {
+      "id": "navy-raid",
+      "name": "The Navy Raid on Tortuga",
+      "steps": [
+       "Navy spies map Tortuga's defenses.",
+       "A blockade is established around the island.",
+       "Warships begin bombardment of the docks.",
+       "Marines land to purge the pirate haven."
+      ],
+      "step_every_hours": 72.0,
+      "owner_id": "",
+      "thread_id": "",
+      "known_to_player": true
+     }
+    ],
+    "threads": [
+     {
+      "id": "pirate-reputation",
+      "title": "Making a Name on the High Seas",
+      "kind": "ambition",
+      "stakes": "Become a feared pirate captain or end up swinging from the gallows.",
+      "involved_ids": [
+       "player",
+       "captain-blackbeak"
+      ],
+      "clock_id": "",
+      "known_to_player": true
+     }
+    ],
+    "mysteries": [
+     {
+      "id": "lost-treasure",
+      "question": "Where is the lost wreckage of the Santa Isabella?",
+      "answer": "It lies in the shallow reefs off the uninhabited Serpent's Tooth island, guarded by jagged rocks.",
+      "clues": [
+       "A torn piece of a Spanish sea chart",
+       "A half-mad sailor's ramblings in a Tortuga tavern"
+      ],
+      "thread_id": "",
+      "known_to_player": true
+     }
+    ],
+    "known_facts": [
+     "The Royal Navy is offering a 500 gold doubloon bounty for Captain Blackbeak.",
+     "The Windward Passage is currently crawling with rich merchant ships."
+    ],
+    "opening": {
+     "place_id": "tortuga",
+     "present_ids": [
+      "captain-blackbeak"
+     ],
+     "positions": [],
+     "props": [],
+     "situation": "You stand on the bustling docks of Tortuga, staring at a weathered sloop you just won in a game of dice."
+    },
+    "summary": "You have arrived in Tortuga with a fresh ship, ready to make your fortune. With the Royal Navy closing in and pirate lords dominating the waves, you must carve out your own legend."
+   },
+   "character": {
+    "name": "Jack",
+    "aliases": [
+     "Lucky Jack"
+    ],
+    "age": 24,
+    "lifespan_years": 80,
+    "people_id": "",
+    "description": "A young, ambitious sailor with a hunger for freedom and gold.",
+    "appearance": "Sun-bronzed skin, messy dark hair, wearing a loose white linen shirt, rugged leather boots, and a tricorn hat.",
+    "location_id": "tortuga",
+    "attributes": {
+     "strength": 3,
+     "speed": 4,
+     "toughness": 3,
+     "wits": 4,
+     "knowledge": 2,
+     "willpower": 4,
+     "charm": 4,
+     "nerve": 5,
+     "bearing": 3
+    },
+    "skills": [
+     {
+      "name": "Sailing",
+      "level": "skilled",
+      "notes": ""
+     },
+     {
+      "name": "Swordsmanship",
+      "level": "fair",
+      "notes": ""
+     },
+     {
+      "name": "Pistol Shooting",
+      "level": "fair",
+      "notes": ""
+     }
+    ],
+    "traits": [
+     {
+      "name": "Daring",
+      "kind": "gift",
+      "description": "Bold actions often work in your favor."
+     },
+     {
+      "name": "Wanted",
+      "kind": "flaw",
+      "description": "The Navy recognizes your face from minor merchant ship mutinies."
+     }
+    ],
+    "talents": [],
+    "powers": [],
+    "techniques": [],
+    "temperament": {
+     "traits": [
+      "ambitious",
+      "reckless"
+     ],
+     "values": [],
+     "loves": [],
+     "fears": [],
+     "wants": [
+      "I want to be a pirate."
+     ],
+     "voice": ""
+    },
+    "items": [
+     {
+      "name": "Weathered Cutlass",
+      "kind": "weapon",
+      "description": "A sturdy, reliable sword perfect for boarding actions.",
+      "quantity": 1,
+      "carried": true
+     },
+     {
+      "name": "Flintlock Pistol",
+      "kind": "weapon",
+      "description": "A single-shot pistol that packs a punch but takes time to reload.",
+      "quantity": 1,
+      "carried": true
+     },
+     {
+      "name": "Spyglass",
+      "kind": "gear",
+      "description": "A brass telescope for spotting prey on the horizon.",
+      "quantity": 1,
+      "carried": true
+     }
+    ],
+    "money": 50,
+    "currency": "silver shillings",
+    "title": "Captain",
+    "rank": "Outlaw",
+    "family_name": "",
+    "connections": [],
+    "parent_ids": [],
+    "memberships": [],
+    "ladders": [],
+    "axes": {
+     "might": 1,
+     "influence": 1,
+     "wealth": 1,
+     "knowledge": 1,
+     "stealth": 1
+    },
+    "reserves": [],
+    "goals": [
+     "I want to be a pirate."
+    ],
+    "backstory": [
+     "You spent years as a merchant sailor, tired of low pay and harsh beatings, before deciding to take your fate into your own hands."
+    ],
+    "hidden_past": []
+   }
+  },
+  "rating": "teen",
+  "premise_id": null,
+  "physics": "fun_first",
+  "gift": null,
+  "released_rules": [],
+  "language": "en",
+  "told": []
+ }
+}

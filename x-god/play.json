@@ -1,0 +1,1623 @@
+{
+ "premise": "I am an immortal god who got bored and came down to live among mortals as a traveling merchant.",
+ "language": "en",
+ "rating": "teen",
+ "settings": {
+  "narration_length": "medium",
+  "tone": null,
+  "difficulty": "balanced",
+  "event_frequency": "normal",
+  "images": "key_moments",
+  "suggestions": true,
+  "language": "en",
+  "accent": null
+ },
+ "seed": "play/x-god",
+ "state": {
+  "schema_version": 1,
+  "turn": 1,
+  "timeline_id": "main",
+  "world_s": 0,
+  "bible": {
+   "title": "The God's Ledger",
+   "genre": "mythic fantasy",
+   "tone": "wonder",
+   "era": "A classic medieval era with sailing ships, horse-drawn carts, and steel swords",
+   "extraordinary": [
+    {
+     "id": "divine-grace",
+     "kind": "divinity",
+     "prevalence": "rare",
+     "reach": "Absolute control over specific concepts of reality, though heavily limited when manifesting in physical forms.",
+     "rule_ids": [
+      "divine-binding",
+      "immortality-bounds",
+      "divine-grace-exists"
+     ]
+    }
+   ],
+   "peoples": [
+    {
+     "id": "humans",
+     "name": "Humans",
+     "description": "",
+     "lifespan_years": 80,
+     "gifts": [],
+     "culture": "A diverse people focused on trade, agriculture, and seeking the favor of distant gods.",
+     "relations": [],
+     "path": ""
+    }
+   ],
+   "creatures": [],
+   "nature": [
+    "The physical laws of gravity, thermodynamics, and biology apply normally, though divine intervention can locally warp them."
+   ],
+   "physics": "fun_first",
+   "force": {
+    "tier1_joules": 10000.0,
+    "per_tier": 10.0
+   },
+   "ladders": [],
+   "calendar": {
+    "style": "day_count",
+    "time_of_day": "parts",
+    "epoch": null,
+    "start_second_of_day": 28800,
+    "months": [],
+    "start_year": 1,
+    "start_month": 1,
+    "start_day": 1,
+    "era": ""
+   },
+   "travel": {
+    "description": "Travel is slow, relying on sailing ships, horses, carts, and dirt roads. News travels through letters and rumors carried by merchants.",
+    "instant_messages": false
+   },
+   "medicine": {
+    "healing": "Herbal poultices, basic surgery, and rare alchemical draughts.",
+    "resurrection": "none",
+    "resurrection_means": ""
+   },
+   "laws": [
+    {
+     "id": "guild-law",
+     "text": "All merchants operating within settled towns must possess a valid trade permit or pay a hefty fine.",
+     "enforcer": "Town Guards and Guild Wardens",
+     "enforcer_faction_id": null,
+     "zeal": "medium",
+     "corruptible": true
+    }
+   ],
+   "norms": [
+    "Venerating the gods is considered common sense, while claiming to be one in public is usually treated as a sign of madness."
+   ],
+   "several_partners": false,
+   "unions": "held",
+   "rules": [
+    {
+     "id": "divine-binding",
+     "text": "Gods who descend to the mortal realm must bind themselves to physical vessels, making them subject to physical laws unless they choose to reveal their true nature.",
+     "fixed": true,
+     "topic": "nature"
+    },
+    {
+     "id": "immortality-bounds",
+     "text": "True divine immortality prevents death from aging and mortal disease, though a destroyed physical vessel will force the spirit back to the heavens.",
+     "fixed": true,
+     "topic": "medicine"
+    },
+    {
+     "id": "divine-grace-exists",
+     "text": "Divinity: real, and rare.",
+     "fixed": true,
+     "topic": "existence"
+    }
+   ],
+   "mysteries": [
+    {
+     "id": "source-of-exposure",
+     "question": "How did the Pantheon narrow their search down to the Solis Valley?",
+     "answer": "A powerful divine artifact traded by the player to a local noble leaked cosmic energy, alerting the celestial tracking arrays.",
+     "clues": [
+      "Valerius is carrying a ledger tracking a 'glowing blue pearl' sold in Solis Valley.",
+      "A local high priest recently purchased an exquisite relic from a noble."
+     ],
+     "thread_id": "hiding-from-heaven",
+     "solved": false
+    }
+   ]
+  },
+  "player_id": "player",
+  "characters": {
+   "player": {
+    "id": "player",
+    "name": "Aurelius",
+    "aliases": [
+     "The Wandering Merchant",
+     "Aureli"
+    ],
+    "prominence": "key",
+    "description": "A calm, deeply serene merchant whose quiet confidence and seemingly endless knowledge hint at something far greater than a simple trader.",
+    "appearance": "A tall man in his early thirties with dark hair, strikingly clear gray eyes that seem to hold ancient depth, dressed in practical yet fine wool travel robes.",
+    "look_version": 1,
+    "age": 3000,
+    "people_id": null,
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "the-gilded-wagon",
+    "personal_offset_s": 0,
+    "memberships": [],
+    "sheet": {
+     "attributes": {
+      "strength": 3,
+      "speed": 3,
+      "toughness": 3,
+      "wits": 5,
+      "knowledge": 5,
+      "willpower": 5,
+      "charm": 4,
+      "nerve": 5,
+      "bearing": 5
+     },
+     "skills": [
+      {
+       "name": "Bargaining",
+       "level": "expert",
+       "notes": "You have traded with kings and spirits alike over the centuries."
+      },
+      {
+       "name": "Appraising",
+       "level": "expert",
+       "notes": "No mortal craftsmanship can hide its true value from your eyes."
+      },
+      {
+       "name": "Storytelling",
+       "level": "skilled",
+       "notes": "Your descriptions of distant empires captivate mortal audiences."
+      }
+     ],
+     "traits": [
+      {
+       "name": "Ancient Perspective",
+       "kind": "gift",
+       "description": "Centuries of existence allow you to remain completely unfazed by mortal crises."
+      }
+     ],
+     "talents": [],
+     "powers": [
+      {
+       "id": "immortality",
+       "name": "Divine Immortality",
+       "description": "Your true soul is eternal; your current mortal vessel does not age, tire easily, or fall ill.",
+       "strength": null,
+       "limits": [
+        "If this physical body is completely destroyed, your spirit will be forcefully ejected back to the heavens."
+       ],
+       "costs": [],
+       "secret": false,
+       "time": null,
+       "settings": {},
+       "ready_at_personal_s": null
+      },
+      {
+       "id": "mortal-guise",
+       "name": "The Shroud of Mortality",
+       "description": "You completely mask your vast divine aura, appearing to mortal senses and basic magic as nothing more than an ordinary human.",
+       "strength": null,
+       "limits": [
+        "Unleashing any of your true miraculous power will crack this disguise and alert heaven's watchers."
+       ],
+       "costs": [],
+       "secret": false,
+       "time": null,
+       "settings": {},
+       "ready_at_personal_s": null
+      }
+     ],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "patient",
+        "philosophical",
+        "amused"
+       ],
+       "values": [
+        "simple pleasures",
+        "free will",
+        "experience over eternity"
+       ],
+       "loves": [
+        "good tea",
+        "sharp mortal bargains",
+        "quiet evenings"
+       ],
+       "fears": [
+        "returning to the boring courts of heaven"
+       ],
+       "wants": [],
+       "voice": ""
+      },
+      "attitudes": {}
+     },
+     "resources": {
+      "items": [
+       {
+        "id": "exotic-spices",
+        "name": "Exotic spices",
+        "kind": "consumable",
+        "description": "",
+        "quantity": 10,
+        "carried": true,
+        "history": ""
+       },
+       {
+        "id": "fine-silk-rolls",
+        "name": "Fine silk rolls",
+        "kind": "treasure",
+        "description": "",
+        "quantity": 3,
+        "carried": true,
+        "history": ""
+       }
+      ],
+      "money": 120,
+      "currency": "silver shillings",
+      "title": "The Wayfarer",
+      "rank": "Independent Merchant",
+      "family_name": "",
+      "connections": [
+       {
+        "name": "Lyra",
+        "kind": "trusts_them",
+        "character_id": "lyra",
+        "note": "Your loyal mortal apprentice who keeps your books and horse in order."
+       }
+      ]
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": 1000000,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   },
+   "lyra": {
+    "id": "lyra",
+    "name": "Lyra",
+    "aliases": [],
+    "prominence": "key",
+    "description": "An eager and sharp-witted young mortal woman who serves as your apprentice, fascinated by your endless knowledge.",
+    "appearance": "Bright green eyes, wind-swept brown hair tied back, wearing practical leather merchant garments.",
+    "look_version": 1,
+    "age": 19,
+    "people_id": "humans",
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "the-gilded-wagon",
+    "personal_offset_s": 0,
+    "memberships": [],
+    "sheet": {
+     "attributes": {
+      "strength": 2,
+      "speed": 3,
+      "toughness": 2,
+      "wits": 4,
+      "knowledge": 3,
+      "willpower": 3,
+      "charm": 3,
+      "nerve": 3,
+      "bearing": 2
+     },
+     "skills": [
+      {
+       "name": "Appraising",
+       "level": "fair",
+       "notes": ""
+      },
+      {
+       "name": "Bargaining",
+       "level": "fair",
+       "notes": ""
+      }
+     ],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "curious",
+        "loyal",
+        "observant"
+       ],
+       "values": [
+        "learning",
+        "financial independence"
+       ],
+       "loves": [
+        "rare stories",
+        "exotic maps"
+       ],
+       "fears": [
+        "poverty",
+        "being forced to settle down"
+       ],
+       "wants": [
+        "To become a legendary trader and travel the world."
+       ],
+       "voice": ""
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 70,
+        "fear": 0,
+        "trust": 80,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": 0,
+    "near_s": null,
+    "met_s": null
+   },
+   "valerius": {
+    "id": "valerius",
+    "name": "Valerius",
+    "aliases": [],
+    "prominence": "key",
+    "description": "A minor deity of the pantheon, acting as a celestial messenger sent to find the vanished god.",
+    "appearance": "Impeccably handsome with golden eyes and white hair, dressed in fine silk robes that never catch dust.",
+    "look_version": 1,
+    "age": 240,
+    "people_id": null,
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "rivermouth-port",
+    "personal_offset_s": 0,
+    "memberships": [],
+    "sheet": {
+     "attributes": {
+      "strength": 4,
+      "speed": 4,
+      "toughness": 4,
+      "wits": 3,
+      "knowledge": 4,
+      "willpower": 4,
+      "charm": 4,
+      "nerve": 4,
+      "bearing": 5
+     },
+     "skills": [],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "dutiful",
+        "arrogant",
+        "impatient"
+       ],
+       "values": [
+        "celestial hierarchy",
+        "divine duty"
+       ],
+       "loves": [
+        "precision",
+        "holy order"
+       ],
+       "fears": [
+        "the anger of the higher gods"
+       ],
+       "wants": [
+        "To find the wandering god and convince them to return to the skies."
+       ],
+       "voice": ""
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 20,
+        "fear": 40,
+        "trust": 50,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": {
+     "goal": "Track down the player using tracking magic and persuade or coerce them into returning home.",
+     "method": "Investigating high concentrations of divine residue and questioning local priests.",
+     "secret": "",
+     "clock_id": null
+    },
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": true,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   }
+  },
+  "factions": {
+   "pantheon-of-heaven": {
+    "id": "pantheon-of-heaven",
+    "name": "The Pantheon of Heaven",
+    "kind": "sect",
+    "description": "The eternal assembly of gods who rule over destiny and watch the mortal realm.",
+    "parent_id": null,
+    "status": "intact",
+    "status_history": [],
+    "activity": "active",
+    "leader_ids": [],
+    "goal": "Maintain cosmic order and locate their missing peer who abandoned his heavenly duties.",
+    "methods": "Sending divine messengers and portents to mortal high priests.",
+    "strength": "Limitless celestial authority, though bound by ancient laws of non-interference.",
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "threat": 0,
+    "relations": {},
+    "survivors": [],
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ]
+   },
+   "merchant-guild": {
+    "id": "merchant-guild",
+    "name": "The Silver Scale Guild",
+    "kind": "crew",
+    "description": "The local trade network that controls prices, taxes, and trade routes through Solis Valley.",
+    "parent_id": null,
+    "status": "intact",
+    "status_history": [],
+    "activity": "active",
+    "leader_ids": [],
+    "goal": "Monopolize exotic trade goods and keep independent merchants heavily taxed.",
+    "methods": "Bribing local guards and hiring enforcers to pressure independent travelers.",
+    "strength": "Massive wealth and local political leverage.",
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "threat": 0,
+    "relations": {},
+    "survivors": [],
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "places": {
+   "solis-valley": {
+    "id": "solis-valley",
+    "name": "Solis Valley",
+    "kind": "region",
+    "description": "A lush, green basin cradled by mountains, dotted with small villages and trading hubs.",
+    "parent_id": null,
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "solis-crossing": {
+    "id": "solis-crossing",
+    "name": "Solis Crossing",
+    "kind": "village",
+    "description": "A bustling riverside trading post where merchants gather to exchange goods.",
+    "parent_id": "solis-valley",
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "rivermouth-port",
+      "travel_s": 43200,
+      "mode": "by cart"
+     },
+     {
+      "to_id": "shrine-of-the-dawn",
+      "travel_s": 14400,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "rivermouth-port": {
+    "id": "rivermouth-port",
+    "name": "Rivermouth Port",
+    "kind": "city",
+    "description": "A coastal city where river traffic meets ocean-going galleons.",
+    "parent_id": "solis-valley",
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "solis-crossing",
+      "travel_s": 43200,
+      "mode": "by cart"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "the-gilded-wagon": {
+    "id": "the-gilded-wagon",
+    "name": "The Gilded Wagon",
+    "kind": "building",
+    "description": "Your sturdy, horse-drawn merchant carriage, packed with spices, silks, and curiosities.",
+    "parent_id": "solis-crossing",
+    "setting": "indoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [
+     "player"
+    ],
+    "judged": []
+   },
+   "shrine-of-the-dawn": {
+    "id": "shrine-of-the-dawn",
+    "name": "Shrine of the Dawn",
+    "kind": "ruins",
+    "description": "An ancient, moss-covered stone temple dedicated to the celestial pantheon.",
+    "parent_id": "solis-valley",
+    "setting": "indoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "solis-crossing",
+      "travel_s": 14400,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   }
+  },
+  "deeds": {},
+  "rumors": {},
+  "bonds": {},
+  "lives": {},
+  "aged_s": null,
+  "changes": {},
+  "strife_s": {},
+  "facts": {
+   "fact-1": {
+    "id": "fact-1",
+    "text": "You are an immortal god who abandoned the heavens out of sheer boredom.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-2": {
+    "id": "fact-2",
+    "text": "You travel the roads of Solis Valley as a merchant, accompanied by your apprentice Lyra.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-3": {
+    "id": "fact-3",
+    "text": "The pantheon does not approve of gods leaving their duties to live among mortals.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   }
+  },
+  "goals": {},
+  "leads": {},
+  "threads": {
+   "hiding-from-heaven": {
+    "id": "hiding-from-heaven",
+    "title": "A God in Hiding",
+    "kind": "threat",
+    "stakes": "Your peaceful mortal life as a simple merchant will be disrupted if your fellow deities drag you back to heaven.",
+    "involved_ids": [
+     "player",
+     "valerius",
+     "pantheon-of-heaven"
+    ],
+    "clock_id": "celestial-scrutiny",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "status": "open",
+    "opened_turn": 0,
+    "last_active_turn": 0,
+    "taken_up_turn": null,
+    "closed_turn": null,
+    "arc": null,
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "clocks": {
+   "celestial-scrutiny": {
+    "id": "celestial-scrutiny",
+    "name": "The Heavenly Search",
+    "steps": [
+     "Whispers of shooting stars and strange portents trouble the local priests.",
+     "Valerius descends to Rivermouth Port to investigate rumors of an unusually wise merchant.",
+     "Heavenly wardens begin casting tracking arrays over Solis Valley.",
+     "A divine confrontation occurs wherever the player is found."
+    ],
+    "filled": 0,
+    "advances_on": [],
+    "reverses_on": [],
+    "interval_s": 172800,
+    "next_step_s": 172800,
+    "owner_id": null,
+    "thread_id": "hiding-from-heaven",
+    "status": "running",
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "pending_events": {
+   "event-1": {
+    "id": "event-1",
+    "kind": "world.clock_step",
+    "title": "The Heavenly Search: Whispers of shooting stars and strange portents trouble the local priests.",
+    "due_s": 172800,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": {
+     "kind": "clock",
+     "ref_id": "celestial-scrutiny",
+     "text": ""
+    },
+    "payload": {
+     "clock_id": "celestial-scrutiny"
+    },
+    "seed": "story=play%2Fx-god/timeline=main/turn=1/world/schedule/event-1",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-2": {
+    "id": "event-2",
+    "kind": "world.tick",
+    "title": "The world moves on",
+    "due_s": 86400,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "last_s": 0,
+     "stride_s": 86400
+    },
+    "seed": "story=play%2Fx-god/timeline=main/turn=1/world/schedule/event-2",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   }
+  },
+  "transfers": [],
+  "time_effects": [],
+  "scene": {
+   "place_id": "the-gilded-wagon",
+   "present_ids": [
+    "player",
+    "lyra"
+   ],
+   "positions": [
+    "Aurelius sits on the wooden stool near the strongbox",
+    "Lyra stands near the door holding a harness strap"
+   ],
+   "props": [
+    "strongbox",
+    "shillings",
+    "harness"
+   ],
+   "ended_on": "A heavy knock rattles the carriage door, interrupting your quiet morning.",
+   "encounter": null
+  },
+  "director": {
+   "turns_without_stakes": 0,
+   "low_stakes_streak": 0,
+   "last_action_key": null,
+   "last_event_turn": null,
+   "last_event_size": null,
+   "last_event_s": {},
+   "last_small_s": null,
+   "recent_moments": [],
+   "recent_clock": [
+    0
+   ],
+   "frequency_drift": 0.0,
+   "recent_sources": [],
+   "auto_pictures": 1,
+   "picture_credit": 1.1,
+   "pictured": [
+    "portrait:player",
+    "portrait:player:v1"
+   ],
+   "fight": null,
+   "deck_draws": 0,
+   "road_stops": 0
+  },
+  "summary": "Tired of the infinite stagnation of the heavens, the immortal god Aurelius has taken the guise of a traveling merchant in Solis Valley. Accompanied by his young mortal apprentice Lyra, he enjoys a quiet morning inside his trading wagon before an unexpected visitor knocks on the door.",
+  "chapters": [],
+  "id_counters": {
+   "fact": 3,
+   "goal": 0,
+   "bond": 0,
+   "event": 2
+  },
+  "fallen": [],
+  "opening_due": false,
+  "misses_in_a_row": 0,
+  "openings": [],
+  "journey": null,
+  "untold": [
+   "person:valerius",
+   "thread:hiding-from-heaven"
+  ]
+ },
+ "scenes": [
+  {
+   "turn": 1,
+   "narration": "You sit comfortably on a worn wooden stool inside the cozy, wooden cabin of the Gilded Wagon, letting a small pile of silver shillings clink softly into your metal strongbox. The scent of exotic cloves, aged leather, and dried lavender hangs thick in the air, a delightful tapestry of mortal industry. Across the small space, Lyra diligently hums a local folk tune while wiping down the brass buckles of your horse’s leather harness, her young face focused on her work. For a god who has spent millennia observing the cold, eternal patterns of the cosmos, this simple, quiet morning in Solis Valley is a treasure far more precious than gold. Suddenly, the horse outside snorts, and the entire carriage sways slightly as a heavy hand knocks three times on the wooden door frame, followed by a tense, hushed whisper from the street.",
+   "player_action": null
+  }
+ ],
+ "choices": [
+  "Open the door to see who is knocking",
+  "Ask Lyra to check the window first",
+  "Quietly tuck the strongbox away under the seat"
+ ],
+ "cost_usd": 0.10190925,
+ "draft": {
+  "premise": "I am an immortal god who got bored and came down to live among mortals as a traveling merchant.",
+  "proposal": {
+   "world": {
+    "title": "The God's Ledger",
+    "genre": "mythic fantasy",
+    "tone": "wonder",
+    "era": "A classic medieval era with sailing ships, horse-drawn carts, and steel swords",
+    "extraordinary": [
+     {
+      "id": "divine-grace",
+      "kind": "divinity",
+      "prevalence": "rare",
+      "reach": "Absolute control over specific concepts of reality, though heavily limited when manifesting in physical forms."
+     }
+    ],
+    "rules": [
+     {
+      "id": "divine-binding",
+      "text": "Gods who descend to the mortal realm must bind themselves to physical vessels, making them subject to physical laws unless they choose to reveal their true nature.",
+      "fixed": true,
+      "topic": "nature",
+      "about": [
+       "divine-grace"
+      ]
+     },
+     {
+      "id": "immortality-bounds",
+      "text": "True divine immortality prevents death from aging and mortal disease, though a destroyed physical vessel will force the spirit back to the heavens.",
+      "fixed": true,
+      "topic": "medicine",
+      "about": [
+       "divine-grace"
+      ]
+     }
+    ],
+    "dropped_rule_ids": [],
+    "peoples": [
+     {
+      "id": "humans",
+      "name": "Humans",
+      "description": "",
+      "lifespan_years": 80,
+      "gifts": [],
+      "culture": "A diverse people focused on trade, agriculture, and seeking the favor of distant gods.",
+      "relations": [],
+      "path": ""
+     }
+    ],
+    "creatures": [],
+    "nature": [
+     "The physical laws of gravity, thermodynamics, and biology apply normally, though divine intervention can locally warp them."
+    ],
+    "ladders": [],
+    "calendar": {
+     "style": "day_count",
+     "clock_time": false,
+     "epoch": "",
+     "start_hour": 8,
+     "months": [],
+     "start_year": 1422,
+     "start_month": 1,
+     "start_day": 1,
+     "era": ""
+    },
+    "travel": {
+     "description": "Travel is slow, relying on sailing ships, horses, carts, and dirt roads. News travels through letters and rumors carried by merchants.",
+     "instant_messages": false
+    },
+    "medicine": {
+     "healing": "Herbal poultices, basic surgery, and rare alchemical draughts.",
+     "resurrection": "none",
+     "resurrection_means": ""
+    },
+    "laws": [
+     {
+      "id": "guild-law",
+      "text": "All merchants operating within settled towns must possess a valid trade permit or pay a hefty fine.",
+      "enforcer": "Town Guards and Guild Wardens",
+      "enforcer_faction_id": "",
+      "zeal": "medium",
+      "corruptible": true
+     }
+    ],
+    "norms": [
+     "Venerating the gods is considered common sense, while claiming to be one in public is usually treated as a sign of madness."
+    ],
+    "several_partners": false,
+    "unions": "held",
+    "places": [
+     {
+      "id": "solis-valley",
+      "name": "Solis Valley",
+      "kind": "region",
+      "description": "A lush, green basin cradled by mountains, dotted with small villages and trading hubs.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "solis-crossing",
+      "name": "Solis Crossing",
+      "kind": "village",
+      "description": "A bustling riverside trading post where merchants gather to exchange goods.",
+      "parent_id": "solis-valley",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "rivermouth-port",
+        "travel_hours": 12.0,
+        "mode": "by cart"
+       },
+       {
+        "to_id": "shrine-of-the-dawn",
+        "travel_hours": 4.0,
+        "mode": "on foot"
+       }
+      ]
+     },
+     {
+      "id": "rivermouth-port",
+      "name": "Rivermouth Port",
+      "kind": "city",
+      "description": "A coastal city where river traffic meets ocean-going galleons.",
+      "parent_id": "solis-valley",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "the-gilded-wagon",
+      "name": "The Gilded Wagon",
+      "kind": "building",
+      "description": "Your sturdy, horse-drawn merchant carriage, packed with spices, silks, and curiosities.",
+      "parent_id": "solis-crossing",
+      "setting": "indoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "shrine-of-the-dawn",
+      "name": "Shrine of the Dawn",
+      "kind": "ruins",
+      "description": "An ancient, moss-covered stone temple dedicated to the celestial pantheon.",
+      "parent_id": "solis-valley",
+      "setting": "indoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     }
+    ],
+    "factions": [
+     {
+      "id": "pantheon-of-heaven",
+      "name": "The Pantheon of Heaven",
+      "kind": "sect",
+      "description": "The eternal assembly of gods who rule over destiny and watch the mortal realm.",
+      "parent_id": "",
+      "leader_ids": [],
+      "goal": "Maintain cosmic order and locate their missing peer who abandoned his heavenly duties.",
+      "methods": "Sending divine messengers and portents to mortal high priests.",
+      "strength": "Limitless celestial authority, though bound by ancient laws of non-interference.",
+      "relations": [],
+      "secrets": [],
+      "known_to_player": true
+     },
+     {
+      "id": "merchant-guild",
+      "name": "The Silver Scale Guild",
+      "kind": "crew",
+      "description": "The local trade network that controls prices, taxes, and trade routes through Solis Valley.",
+      "parent_id": "",
+      "leader_ids": [],
+      "goal": "Monopolize exotic trade goods and keep independent merchants heavily taxed.",
+      "methods": "Bribing local guards and hiring enforcers to pressure independent travelers.",
+      "strength": "Massive wealth and local political leverage.",
+      "relations": [],
+      "secrets": [],
+      "known_to_player": true
+     }
+    ],
+    "npcs": [
+     {
+      "id": "lyra",
+      "name": "Lyra",
+      "aliases": [],
+      "description": "An eager and sharp-witted young mortal woman who serves as your apprentice, fascinated by your endless knowledge.",
+      "appearance": "Bright green eyes, wind-swept brown hair tied back, wearing practical leather merchant garments.",
+      "age": 19,
+      "people_id": "humans",
+      "location_id": "the-gilded-wagon",
+      "memberships": [],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "curious",
+        "loyal",
+        "observant"
+       ],
+       "values": [
+        "learning",
+        "financial independence"
+       ],
+       "loves": [
+        "rare stories",
+        "exotic maps"
+       ],
+       "fears": [
+        "poverty",
+        "being forced to settle down"
+       ],
+       "wants": [
+        "To become a legendary trader and travel the world."
+       ],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 2,
+       "speed": 3,
+       "toughness": 2,
+       "wits": 4,
+       "knowledge": 3,
+       "willpower": 3,
+       "charm": 3,
+       "nerve": 3,
+       "bearing": 2
+      },
+      "skills": [
+       {
+        "name": "Appraising",
+        "level": "fair",
+        "notes": ""
+       },
+       {
+        "name": "Bargaining",
+        "level": "fair",
+        "notes": ""
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 70,
+       "fear": 0,
+       "trust": 80,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "met"
+     },
+     {
+      "id": "valerius",
+      "name": "Valerius",
+      "aliases": [],
+      "description": "A minor deity of the pantheon, acting as a celestial messenger sent to find the vanished god.",
+      "appearance": "Impeccably handsome with golden eyes and white hair, dressed in fine silk robes that never catch dust.",
+      "age": 240,
+      "people_id": "",
+      "location_id": "rivermouth-port",
+      "memberships": [],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "dutiful",
+        "arrogant",
+        "impatient"
+       ],
+       "values": [
+        "celestial hierarchy",
+        "divine duty"
+       ],
+       "loves": [
+        "precision",
+        "holy order"
+       ],
+       "fears": [
+        "the anger of the higher gods"
+       ],
+       "wants": [
+        "To find the wandering god and convince them to return to the skies."
+       ],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 4,
+       "speed": 4,
+       "toughness": 4,
+       "wits": 3,
+       "knowledge": 4,
+       "willpower": 4,
+       "charm": 4,
+       "nerve": 4,
+       "bearing": 5
+      },
+      "skills": [],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 20,
+       "fear": 40,
+       "trust": 50,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": true,
+      "agenda": {
+       "goal": "Track down the player using tracking magic and persuade or coerce them into returning home.",
+       "method": "Investigating high concentrations of divine residue and questioning local priests.",
+       "secret": "",
+       "clock_id": ""
+      },
+      "secrets": [],
+      "player_knows": "heard_of"
+     }
+    ],
+    "clocks": [
+     {
+      "id": "celestial-scrutiny",
+      "name": "The Heavenly Search",
+      "steps": [
+       "Whispers of shooting stars and strange portents trouble the local priests.",
+       "Valerius descends to Rivermouth Port to investigate rumors of an unusually wise merchant.",
+       "Heavenly wardens begin casting tracking arrays over Solis Valley.",
+       "A divine confrontation occurs wherever the player is found."
+      ],
+      "step_every_hours": 48.0,
+      "owner_id": "",
+      "thread_id": "",
+      "known_to_player": true
+     }
+    ],
+    "threads": [
+     {
+      "id": "hiding-from-heaven",
+      "title": "A God in Hiding",
+      "kind": "threat",
+      "stakes": "Your peaceful mortal life as a simple merchant will be disrupted if your fellow deities drag you back to heaven.",
+      "involved_ids": [
+       "player",
+       "valerius",
+       "pantheon-of-heaven"
+      ],
+      "clock_id": "celestial-scrutiny",
+      "known_to_player": true
+     }
+    ],
+    "mysteries": [
+     {
+      "id": "source-of-exposure",
+      "question": "How did the Pantheon narrow their search down to the Solis Valley?",
+      "answer": "A powerful divine artifact traded by the player to a local noble leaked cosmic energy, alerting the celestial tracking arrays.",
+      "clues": [
+       "Valerius is carrying a ledger tracking a 'glowing blue pearl' sold in Solis Valley.",
+       "A local high priest recently purchased an exquisite relic from a noble."
+      ],
+      "thread_id": "hiding-from-heaven",
+      "known_to_player": false
+     }
+    ],
+    "known_facts": [
+     "You are an immortal god who abandoned the heavens out of sheer boredom.",
+     "You travel the roads of Solis Valley as a merchant, accompanied by your apprentice Lyra.",
+     "The pantheon does not approve of gods leaving their duties to live among mortals."
+    ],
+    "opening": {
+     "place_id": "the-gilded-wagon",
+     "present_ids": [
+      "lyra"
+     ],
+     "positions": [
+      "sitting on a wooden stool counting coins",
+      "cleaning a set of harness leather"
+     ],
+     "props": [
+      "a small metal strongbox",
+      "a shelf of spice jars",
+      "a ledger"
+     ],
+     "situation": "You sit in the warm interior of your trading wagon, enjoying the simple smell of cloves and leather while your apprentice Lyra prepares the carriage for another day on the road."
+    },
+    "summary": "Tired of the infinite stagnation of the heavens, an immortal god has taken the guise of a traveling merchant. Living in Solis Valley with a mortal apprentice, they trade goods and seek quiet amusement, even as their old celestial peers search the earth to bring them home."
+   },
+   "character": {
+    "name": "Aurelius",
+    "aliases": [
+     "The Wandering Merchant",
+     "Aureli"
+    ],
+    "age": 3000,
+    "lifespan_years": 0,
+    "people_id": "",
+    "description": "A calm, deeply serene merchant whose quiet confidence and seemingly endless knowledge hint at something far greater than a simple trader.",
+    "appearance": "A tall man in his early thirties with dark hair, strikingly clear gray eyes that seem to hold ancient depth, dressed in practical yet fine wool travel robes.",
+    "location_id": "the-gilded-wagon",
+    "attributes": {
+     "strength": 3,
+     "speed": 3,
+     "toughness": 3,
+     "wits": 5,
+     "knowledge": 5,
+     "willpower": 5,
+     "charm": 4,
+     "nerve": 5,
+     "bearing": 5
+    },
+    "skills": [
+     {
+      "name": "Bargaining",
+      "level": "expert",
+      "notes": "You have traded with kings and spirits alike over the centuries."
+     },
+     {
+      "name": "Appraising",
+      "level": "expert",
+      "notes": "No mortal craftsmanship can hide its true value from your eyes."
+     },
+     {
+      "name": "Storytelling",
+      "level": "skilled",
+      "notes": "Your descriptions of distant empires captivate mortal audiences."
+     }
+    ],
+    "traits": [
+     {
+      "name": "Ancient Perspective",
+      "kind": "gift",
+      "description": "Centuries of existence allow you to remain completely unfazed by mortal crises."
+     }
+    ],
+    "talents": [],
+    "powers": [
+     {
+      "id": "immortality",
+      "name": "Divine Immortality",
+      "description": "Your true soul is eternal; your current mortal vessel does not age, tire easily, or fall ill.",
+      "kind_id": "divine-grace",
+      "gift": false,
+      "strength": null,
+      "limits": [
+       "If this physical body is completely destroyed, your spirit will be forcefully ejected back to the heavens."
+      ],
+      "costs": [],
+      "secret": false,
+      "time": null
+     },
+     {
+      "id": "mortal-guise",
+      "name": "The Shroud of Mortality",
+      "description": "You completely mask your vast divine aura, appearing to mortal senses and basic magic as nothing more than an ordinary human.",
+      "kind_id": "divine-grace",
+      "gift": false,
+      "strength": null,
+      "limits": [
+       "Unleashing any of your true miraculous power will crack this disguise and alert heaven's watchers."
+      ],
+      "costs": [],
+      "secret": false,
+      "time": null
+     }
+    ],
+    "techniques": [],
+    "temperament": {
+     "traits": [
+      "patient",
+      "philosophical",
+      "amused"
+     ],
+     "values": [
+      "simple pleasures",
+      "free will",
+      "experience over eternity"
+     ],
+     "loves": [
+      "good tea",
+      "sharp mortal bargains",
+      "quiet evenings"
+     ],
+     "fears": [
+      "returning to the boring courts of heaven"
+     ],
+     "wants": [],
+     "voice": ""
+    },
+    "items": [
+     {
+      "name": "Exotic spices",
+      "kind": "consumable",
+      "description": "",
+      "quantity": 10,
+      "carried": true
+     },
+     {
+      "name": "Fine silk rolls",
+      "kind": "treasure",
+      "description": "",
+      "quantity": 3,
+      "carried": true
+     }
+    ],
+    "money": 120,
+    "currency": "silver shillings",
+    "title": "The Wayfarer",
+    "rank": "Independent Merchant",
+    "family_name": "",
+    "connections": [
+     {
+      "name": "Lyra",
+      "kind": "trusts_them",
+      "character_id": "lyra",
+      "note": "Your loyal mortal apprentice who keeps your books and horse in order."
+     }
+    ],
+    "parent_ids": [],
+    "memberships": [],
+    "ladders": [],
+    "axes": {
+     "might": 1,
+     "influence": 1,
+     "wealth": 1,
+     "knowledge": 1,
+     "stealth": 1
+    },
+    "reserves": [],
+    "goals": [],
+    "backstory": [],
+    "hidden_past": []
+   }
+  },
+  "rating": "teen",
+  "premise_id": null,
+  "physics": "fun_first",
+  "gift": null,
+  "released_rules": [],
+  "language": "en",
+  "told": []
+ }
+}

@@ -1,0 +1,1518 @@
+{
+ "premise": "The last dragon rider, bonded to the only dragon still alive.",
+ "language": "en",
+ "rating": "teen",
+ "settings": {
+  "narration_length": "medium",
+  "tone": null,
+  "difficulty": "balanced",
+  "event_frequency": "normal",
+  "images": "key_moments",
+  "suggestions": true,
+  "language": "en",
+  "accent": null
+ },
+ "seed": "play/x-rider",
+ "state": {
+  "schema_version": 1,
+  "turn": 1,
+  "timeline_id": "main",
+  "world_s": 0,
+  "bible": {
+   "title": "The Last Flight",
+   "genre": "High Fantasy",
+   "tone": "melancholic wonder",
+   "era": "A medieval world of swords, stone keeps, and messenger birds.",
+   "extraordinary": [
+    {
+     "id": "dragons",
+     "kind": "dragons",
+     "prevalence": "rare",
+     "reach": "Colossal beasts capable of flight and elemental breath, now reduced to a single survivor.",
+     "rule_ids": [
+      "fading-magic",
+      "dragons-exists"
+     ]
+    },
+    {
+     "id": "dragon-bonding",
+     "kind": "dragon bonding",
+     "prevalence": "rare",
+     "reach": "A sacred psychic link that unites the minds of a human and a dragon.",
+     "rule_ids": [
+      "dragon-bond-nature",
+      "bond-scar",
+      "dragon-bonding-exists"
+     ]
+    },
+    {
+     "id": "magic",
+     "kind": "elemental magic",
+     "prevalence": "hidden",
+     "reach": "Ancient magic tied to the earth, now nearly forgotten by humanity.",
+     "rule_ids": [
+      "fading-magic",
+      "magic-exists"
+     ]
+    }
+   ],
+   "peoples": [
+    {
+     "id": "humans",
+     "name": "Humans",
+     "description": "",
+     "lifespan_years": 80,
+     "gifts": [],
+     "culture": "A fractured feudal society that has largely forgotten the age of magic and dragons.",
+     "relations": [],
+     "path": ""
+    }
+   ],
+   "creatures": [
+    {
+     "id": "dragon-species",
+     "name": "Dragon",
+     "description": "A massive, scaled beast of ancient power, capable of devastating breath attacks and majestic flight.",
+     "tier": 1,
+     "habitat": "High mountain peaks and ancient ruins",
+     "worth": "",
+     "can_be_tamed": false
+    }
+   ],
+   "nature": [
+    "Magic flows through underground leylines, pooling in ancient ruins where nature grows strangely vibrant."
+   ],
+   "physics": "fun_first",
+   "force": {
+    "tier1_joules": 10000.0,
+    "per_tier": 10.0
+   },
+   "ladders": [],
+   "calendar": {
+    "style": "day_count",
+    "time_of_day": "parts",
+    "epoch": null,
+    "start_second_of_day": 25200,
+    "months": [],
+    "start_year": 1,
+    "start_month": 1,
+    "start_day": 1,
+    "era": ""
+   },
+   "travel": {
+    "description": "Travel is slow, relying on horses, carriages, and sailing ships. News is carried by riders or carrier pigeons.",
+    "instant_messages": false
+   },
+   "medicine": {
+    "healing": "Traditional herbalism and rare, minor healing magic close to leylines.",
+    "resurrection": "none",
+    "resurrection_means": ""
+   },
+   "laws": [
+    {
+     "id": "imperial-ban",
+     "text": "The harboring, harboring of parts, or worship of dragons is strictly forbidden by imperial decree.",
+     "enforcer": "The Iron Vanguard",
+     "enforcer_faction_id": "iron-vanguard",
+     "zeal": "high",
+     "corruptible": false
+    }
+   ],
+   "norms": [
+    "fear-of-magic"
+   ],
+   "several_partners": false,
+   "unions": "held",
+   "rules": [
+    {
+     "id": "dragon-bond-nature",
+     "text": "A bonded dragon and rider share thoughts, emotions, and sensory perceptions across vast distances.",
+     "fixed": true,
+     "topic": "nature"
+    },
+    {
+     "id": "bond-scar",
+     "text": "If a bonded dragon or rider dies, the survivor's spirit is permanently and severely scarred.",
+     "fixed": true,
+     "topic": "nature"
+    },
+    {
+     "id": "fading-magic",
+     "text": "The magic sustaining dragons is tied to ancient sanctuaries, and staying away from them weakens their breath.",
+     "fixed": false,
+     "topic": "limits"
+    },
+    {
+     "id": "dragons-exists",
+     "text": "Dragons: real, and rare.",
+     "fixed": true,
+     "topic": "existence"
+    },
+    {
+     "id": "dragon-bonding-exists",
+     "text": "Dragon bonding: real, and rare.",
+     "fixed": true,
+     "topic": "existence"
+    },
+    {
+     "id": "magic-exists",
+     "text": "Elemental magic: real, and hidden from most people.",
+     "fixed": true,
+     "topic": "existence"
+    }
+   ],
+   "mysteries": [
+    {
+     "id": "the-great-dying",
+     "question": "What truly caused the sudden extinction of the other dragons a century ago?",
+     "answer": "An engineered alchemical blight, created by the Empire's founders to break the power of the old dragon riders.",
+     "clues": [
+      "An ancient, sealed laboratory hidden beneath Ironhold Keep.",
+      "Symptoms of a strange, black-veined corruption described in old texts.",
+      "Vesper's lingering fear of certain ancient imperial metal relics."
+     ],
+     "thread_id": "the-last-flight",
+     "solved": false
+    }
+   ]
+  },
+  "player_id": "player",
+  "characters": {
+   "player": {
+    "id": "player",
+    "name": "Kaelen",
+    "aliases": [],
+    "prominence": "key",
+    "description": "A young rider bearing the quiet weight of an extinct order, carrying a sharp gaze and a calm presence.",
+    "appearance": "Slender but athletic build, weather-beaten leather riding clothes, wind-tousled dark hair, and hands calloused from reins.",
+    "look_version": 1,
+    "age": 21,
+    "people_id": null,
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "dragons-roost",
+    "personal_offset_s": 0,
+    "memberships": [],
+    "sheet": {
+     "attributes": {
+      "strength": 3,
+      "speed": 4,
+      "toughness": 3,
+      "wits": 4,
+      "knowledge": 3,
+      "willpower": 5,
+      "charm": 3,
+      "nerve": 5,
+      "bearing": 4
+     },
+     "skills": [
+      {
+       "name": "Dragon Riding",
+       "level": "expert",
+       "notes": "Guiding a massive beast through turbulent winds and high-altitude combat."
+      },
+      {
+       "name": "Survival",
+       "level": "skilled",
+       "notes": "Finding food, shelter, and staying hidden in the wilderness."
+      },
+      {
+       "name": "Swordsmanship",
+       "level": "fair",
+       "notes": "Basic defense with a rider's blade."
+      }
+     ],
+     "traits": [
+      {
+       "name": "Dragon Bonded",
+       "kind": "gift",
+       "description": "Your soul is tethered to Vesper. You feel her pain, hear her thoughts, and can share her senses."
+      }
+     ],
+     "talents": [],
+     "powers": [
+      {
+       "id": "telepathic-bond",
+       "name": "Mind Share",
+       "description": "Communicate silently with Vesper and share her sight and hearing from afar.",
+       "strength": null,
+       "limits": [
+        "Requires concentration",
+        "Prolonged sensory sharing causes a mild headache."
+       ],
+       "costs": [],
+       "secret": false,
+       "time": null,
+       "settings": {},
+       "ready_at_personal_s": null
+      }
+     ],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "resilient",
+        "cautious",
+        "deeply loyal"
+       ],
+       "values": [],
+       "loves": [
+        "the freedom of high flight",
+        "the quiet of the mountains"
+       ],
+       "fears": [
+        "losing Vesper",
+        "being captured alive by the Vanguard"
+       ],
+       "wants": [],
+       "voice": ""
+      },
+      "attitudes": {}
+     },
+     "resources": {
+      "items": [
+       {
+        "id": "ancient-rider-s-blade",
+        "name": "Ancient Rider's Blade",
+        "kind": "weapon",
+        "description": "A sword forged from lightweight, sky-tempered steel, bearing the faded crest of the Dragon Riders.",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       },
+       {
+        "id": "reinforced-leather-saddle",
+        "name": "Reinforced Leather Saddle",
+        "kind": "gear",
+        "description": "A heavy leather saddle designed to lock a rider safely onto a dragon's back during flight.",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       }
+      ],
+      "money": 15,
+      "currency": "silver shards",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": [
+       {
+        "name": "Vesper",
+        "kind": "family",
+        "character_id": "vesper",
+        "note": "Your bonded dragon companion, closer to you than any human."
+       }
+      ]
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": 80,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   },
+   "vesper": {
+    "id": "vesper",
+    "name": "Vesper",
+    "aliases": [],
+    "prominence": "key",
+    "description": "The last living dragon. Her scales are the color of twilight, and her eyes hold the weight of a dying race.",
+    "appearance": "A slender yet massive dragon with iridescent purple-black scales, scarred wings, and deep golden eyes.",
+    "look_version": 1,
+    "age": 140,
+    "people_id": null,
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "dragons-roost",
+    "personal_offset_s": 0,
+    "memberships": [],
+    "sheet": {
+     "attributes": {
+      "strength": 3,
+      "speed": 3,
+      "toughness": 3,
+      "wits": 3,
+      "knowledge": 3,
+      "willpower": 3,
+      "charm": 3,
+      "nerve": 3,
+      "bearing": 3
+     },
+     "skills": [],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "proud",
+        "weary",
+        "protective"
+       ],
+       "values": [],
+       "loves": [
+        "the high winds",
+        "the quiet of the roost"
+       ],
+       "fears": [
+        "extinction",
+        "the sting of ballista bolts"
+       ],
+       "wants": [],
+       "voice": ""
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 95,
+        "fear": 0,
+        "trust": 95,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": true,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": 0,
+    "near_s": null,
+    "met_s": null
+   },
+   "commander-garrick": {
+    "id": "commander-garrick",
+    "name": "Commander Garrick",
+    "aliases": [],
+    "prominence": "key",
+    "description": "The ruthless leader of the local Iron Vanguard detachment, obsessed with earning imperial favor.",
+    "appearance": "A scarred veteran in polished iron plate armor, with short graying hair and cold grey eyes.",
+    "look_version": 1,
+    "age": 46,
+    "people_id": null,
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "ironhold-keep",
+    "personal_offset_s": 0,
+    "memberships": [],
+    "sheet": {
+     "attributes": {
+      "strength": 3,
+      "speed": 3,
+      "toughness": 3,
+      "wits": 3,
+      "knowledge": 3,
+      "willpower": 3,
+      "charm": 3,
+      "nerve": 3,
+      "bearing": 3
+     },
+     "skills": [],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "disciplined",
+        "stubborn",
+        "unforgiving"
+       ],
+       "values": [],
+       "loves": [],
+       "fears": [],
+       "wants": [
+        "To present the head of the last dragon to the Emperor."
+       ],
+       "voice": ""
+      },
+      "attitudes": {
+       "player": {
+        "affinity": -80,
+        "fear": 20,
+        "trust": -50,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": {
+     "goal": "Track down the dragon's lair using scout reports.",
+     "method": "Sending hunting parties into the northern peaks.",
+     "secret": "",
+     "clock_id": null
+    },
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   }
+  },
+  "factions": {
+   "iron-vanguard": {
+    "id": "iron-vanguard",
+    "name": "The Iron Vanguard",
+    "kind": "sect",
+    "description": "A militaristic order dedicated to purging the world of the last remnants of magic and ancient beasts.",
+    "parent_id": null,
+    "status": "intact",
+    "status_history": [],
+    "activity": "active",
+    "leader_ids": [],
+    "goal": "Locate and destroy the last surviving dragon to secure imperial dominance.",
+    "methods": "Scouring the wilderness, interrogating locals, and burning magical ruins.",
+    "strength": "A disciplined army equipped with heavy armor, siege weapons, and ballistas designed to bring down massive beasts.",
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "threat": 0,
+    "relations": {},
+    "survivors": [],
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "places": {
+   "dragons-roost": {
+    "id": "dragons-roost",
+    "name": "Dragon's Roost",
+    "kind": "wilds",
+    "description": "A ruined, wind-swept sanctuary hidden high among the razor-sharp cliffs of the northern peaks.",
+    "parent_id": null,
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "whispering-woods",
+      "travel_s": 21600,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [
+     "player"
+    ],
+    "judged": []
+   },
+   "whispering-woods": {
+    "id": "whispering-woods",
+    "name": "The Whispering Woods",
+    "kind": "wilds",
+    "description": "An ancient, dense forest stretching across the valley floor, shrouded in mist.",
+    "parent_id": null,
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "ironhold-keep",
+      "travel_s": 14400,
+      "mode": "by cart"
+     },
+     {
+      "to_id": "dragons-roost",
+      "travel_s": 21600,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "ironhold-keep": {
+    "id": "ironhold-keep",
+    "name": "Ironhold Keep",
+    "kind": "building",
+    "description": "The grim, dark stone fortress that serves as the regional seat of the Iron Vanguard.",
+    "parent_id": null,
+    "setting": "indoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "whispering-woods",
+      "travel_s": 14400,
+      "mode": "by cart"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   }
+  },
+  "deeds": {},
+  "rumors": {},
+  "bonds": {},
+  "lives": {},
+  "aged_s": null,
+  "changes": {},
+  "strife_s": {},
+  "facts": {
+   "fact-1": {
+    "id": "fact-1",
+    "text": "You are the last human who knows how to ride a dragon.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-2": {
+    "id": "fact-2",
+    "text": "Vesper is the absolute last of her kind.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-3": {
+    "id": "fact-3",
+    "text": "The Iron Vanguard will execute anyone found helping a dragon.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   }
+  },
+  "goals": {},
+  "leads": {},
+  "threads": {
+   "the-last-flight": {
+    "id": "the-last-flight",
+    "title": "The Last Flight",
+    "kind": "threat",
+    "stakes": "The survival of the dragon race and your own life.",
+    "involved_ids": [
+     "player",
+     "vesper",
+     "commander-garrick"
+    ],
+    "clock_id": "vanguard-search",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "status": "open",
+    "opened_turn": 0,
+    "last_active_turn": 0,
+    "taken_up_turn": null,
+    "closed_turn": null,
+    "arc": null,
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "clocks": {
+   "vanguard-search": {
+    "id": "vanguard-search",
+    "name": "The Vanguard's Hunt",
+    "steps": [
+     "Scouts report strange shadows over the Whispering Woods.",
+     "Iron Vanguard patrols begin blocking the mountain passes.",
+     "A Vanguard hunting party locates the path to Dragon's Roost.",
+     "Commander Garrick leads an assault force to slay the dragon."
+    ],
+    "filled": 0,
+    "advances_on": [],
+    "reverses_on": [],
+    "interval_s": 172800,
+    "next_step_s": 172800,
+    "owner_id": null,
+    "thread_id": "the-last-flight",
+    "status": "running",
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "pending_events": {
+   "event-1": {
+    "id": "event-1",
+    "kind": "world.clock_step",
+    "title": "The Vanguard's Hunt: Scouts report strange shadows over the Whispering Woods.",
+    "due_s": 172800,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": {
+     "kind": "clock",
+     "ref_id": "vanguard-search",
+     "text": ""
+    },
+    "payload": {
+     "clock_id": "vanguard-search"
+    },
+    "seed": "story=play%2Fx-rider/timeline=main/turn=1/world/schedule/event-1",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-2": {
+    "id": "event-2",
+    "kind": "world.old_age",
+    "title": "Your years run short",
+    "due_s": 1854460601,
+    "timeline_id": "main",
+    "needs_player": true,
+    "status": "pending",
+    "subject_ids": [
+     "player"
+    ],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "phase": "near",
+     "who": "player",
+     "span": 80,
+     "day_s": 1898809085
+    },
+    "seed": "story=play%2Fx-rider/timeline=main/turn=1/world/schedule/event-2",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-3": {
+    "id": "event-3",
+    "kind": "world.tick",
+    "title": "The world moves on",
+    "due_s": 86400,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "last_s": 0,
+     "stride_s": 86400
+    },
+    "seed": "story=play%2Fx-rider/timeline=main/turn=1/world/schedule/event-3",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   }
+  },
+  "transfers": [],
+  "time_effects": [],
+  "scene": {
+   "place_id": "dragons-roost",
+   "present_ids": [
+    "vesper"
+   ],
+   "positions": [
+    "Kaelen stands at the edge of the roost facing Vesper.",
+    "Vesper lies coiled on the ruined flagstones."
+   ],
+   "props": [],
+   "ended_on": "Vesper shifts her massive wings, her golden eyes watching you in silent expectation.",
+   "encounter": null
+  },
+  "director": {
+   "turns_without_stakes": 0,
+   "low_stakes_streak": 0,
+   "last_action_key": null,
+   "last_event_turn": null,
+   "last_event_size": null,
+   "last_event_s": {},
+   "last_small_s": null,
+   "recent_moments": [],
+   "recent_clock": [
+    0
+   ],
+   "frequency_drift": 0.0,
+   "recent_sources": [],
+   "auto_pictures": 1,
+   "picture_credit": 1.1,
+   "pictured": [
+    "portrait:player",
+    "portrait:player:v1"
+   ],
+   "fight": null,
+   "deck_draws": 0,
+   "road_stops": 0
+  },
+  "summary": "You are the last dragon rider, bound by mind and soul to Vesper, the last surviving dragon. High in the mountains, you must keep her hidden from the ruthless Iron Vanguard who seek to end your kind forever.",
+  "chapters": [],
+  "id_counters": {
+   "fact": 3,
+   "goal": 0,
+   "bond": 0,
+   "event": 3
+  },
+  "fallen": [],
+  "opening_due": false,
+  "misses_in_a_row": 0,
+  "openings": [],
+  "journey": null,
+  "untold": [
+   "person:commander-garrick"
+  ]
+ },
+ "scenes": [
+  {
+   "turn": 1,
+   "narration": "The wind howling across the razor-sharp crags of Dragon's Roost carries the chill of eternal snows. You stand at the edge of the ruined stone sanctuary, your leather riding clothes whipping against your legs as you gaze into the warm, golden eyes of Vesper. Her massive, twilight-colored form lies coiled on the cracked flagstones, her iridescent scales catching the early morning light like oil on water. Through the sacred mind-share of your bond, her silent thoughts drift into yours—a heavy, protective warmth tinged with the ancient sorrow of her dying race. Down in the valleys, the Iron Vanguard's scouts are hunting, their imperial ban drawing closer to this final peak with every passing day. Vesper lets out a low, rumbling breath that warms the freezing air, shifting her scarred wings as if urging you to make a choice before the smoke of the Vanguard's campfires rises too high above the tree line. The vast sky lies open before you, beautiful and treacherous.",
+   "player_action": null
+  }
+ ],
+ "choices": [
+  "Reach out and touch Vesper's scales to deepen your mind-share connection.",
+  "Check your leather saddle and gather your survival gear for departure.",
+  "Look down into the valleys below to search for Vanguard patrols."
+ ],
+ "cost_usd": 0.09077925,
+ "draft": {
+  "premise": "The last dragon rider, bonded to the only dragon still alive.",
+  "proposal": {
+   "world": {
+    "title": "The Last Flight",
+    "genre": "High Fantasy",
+    "tone": "melancholic wonder",
+    "era": "A medieval world of swords, stone keeps, and messenger birds.",
+    "extraordinary": [
+     {
+      "id": "dragons",
+      "kind": "dragons",
+      "prevalence": "rare",
+      "reach": "Colossal beasts capable of flight and elemental breath, now reduced to a single survivor."
+     },
+     {
+      "id": "dragon-bonding",
+      "kind": "dragon bonding",
+      "prevalence": "rare",
+      "reach": "A sacred psychic link that unites the minds of a human and a dragon."
+     },
+     {
+      "id": "magic",
+      "kind": "elemental magic",
+      "prevalence": "hidden",
+      "reach": "Ancient magic tied to the earth, now nearly forgotten by humanity."
+     }
+    ],
+    "rules": [
+     {
+      "id": "dragon-bond-nature",
+      "text": "A bonded dragon and rider share thoughts, emotions, and sensory perceptions across vast distances.",
+      "fixed": true,
+      "topic": "nature",
+      "about": [
+       "dragon-bonding"
+      ]
+     },
+     {
+      "id": "bond-scar",
+      "text": "If a bonded dragon or rider dies, the survivor's spirit is permanently and severely scarred.",
+      "fixed": true,
+      "topic": "nature",
+      "about": [
+       "dragon-bonding"
+      ]
+     },
+     {
+      "id": "fading-magic",
+      "text": "The magic sustaining dragons is tied to ancient sanctuaries, and staying away from them weakens their breath.",
+      "fixed": false,
+      "topic": "limits",
+      "about": [
+       "dragons",
+       "magic"
+      ]
+     }
+    ],
+    "dropped_rule_ids": [],
+    "peoples": [
+     {
+      "id": "humans",
+      "name": "Humans",
+      "description": "",
+      "lifespan_years": 80,
+      "gifts": [],
+      "culture": "A fractured feudal society that has largely forgotten the age of magic and dragons.",
+      "relations": [],
+      "path": ""
+     }
+    ],
+    "creatures": [
+     {
+      "id": "dragon-species",
+      "name": "Dragon",
+      "description": "A massive, scaled beast of ancient power, capable of devastating breath attacks and majestic flight.",
+      "rung": "",
+      "habitat": "High mountain peaks and ancient ruins",
+      "worth": "",
+      "can_be_tamed": false
+     }
+    ],
+    "nature": [
+     "Magic flows through underground leylines, pooling in ancient ruins where nature grows strangely vibrant."
+    ],
+    "ladders": [],
+    "calendar": {
+     "style": "day_count",
+     "clock_time": false,
+     "epoch": "",
+     "start_hour": 7,
+     "months": [],
+     "start_year": 1,
+     "start_month": 1,
+     "start_day": 1,
+     "era": ""
+    },
+    "travel": {
+     "description": "Travel is slow, relying on horses, carriages, and sailing ships. News is carried by riders or carrier pigeons.",
+     "instant_messages": false
+    },
+    "medicine": {
+     "healing": "Traditional herbalism and rare, minor healing magic close to leylines.",
+     "resurrection": "none",
+     "resurrection_means": ""
+    },
+    "laws": [
+     {
+      "id": "imperial-ban",
+      "text": "The harboring, harboring of parts, or worship of dragons is strictly forbidden by imperial decree.",
+      "enforcer": "The Iron Vanguard",
+      "enforcer_faction_id": "iron-vanguard",
+      "zeal": "high",
+      "corruptible": false
+     }
+    ],
+    "norms": [
+     "fear-of-magic"
+    ],
+    "several_partners": false,
+    "unions": "held",
+    "places": [
+     {
+      "id": "dragons-roost",
+      "name": "Dragon's Roost",
+      "kind": "wilds",
+      "description": "A ruined, wind-swept sanctuary hidden high among the razor-sharp cliffs of the northern peaks.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "whispering-woods",
+        "travel_hours": 6.0,
+        "mode": "on foot"
+       }
+      ]
+     },
+     {
+      "id": "whispering-woods",
+      "name": "The Whispering Woods",
+      "kind": "wilds",
+      "description": "An ancient, dense forest stretching across the valley floor, shrouded in mist.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "ironhold-keep",
+        "travel_hours": 4.0,
+        "mode": "by cart"
+       }
+      ]
+     },
+     {
+      "id": "ironhold-keep",
+      "name": "Ironhold Keep",
+      "kind": "building",
+      "description": "The grim, dark stone fortress that serves as the regional seat of the Iron Vanguard.",
+      "parent_id": "",
+      "setting": "indoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     }
+    ],
+    "factions": [
+     {
+      "id": "iron-vanguard",
+      "name": "The Iron Vanguard",
+      "kind": "sect",
+      "description": "A militaristic order dedicated to purging the world of the last remnants of magic and ancient beasts.",
+      "parent_id": "",
+      "leader_ids": [],
+      "goal": "Locate and destroy the last surviving dragon to secure imperial dominance.",
+      "methods": "Scouring the wilderness, interrogating locals, and burning magical ruins.",
+      "strength": "A disciplined army equipped with heavy armor, siege weapons, and ballistas designed to bring down massive beasts.",
+      "relations": [],
+      "secrets": [],
+      "known_to_player": true
+     }
+    ],
+    "npcs": [
+     {
+      "id": "vesper",
+      "name": "Vesper",
+      "aliases": [],
+      "description": "The last living dragon. Her scales are the color of twilight, and her eyes hold the weight of a dying race.",
+      "appearance": "A slender yet massive dragon with iridescent purple-black scales, scarred wings, and deep golden eyes.",
+      "age": 140,
+      "people_id": "",
+      "location_id": "dragons-roost",
+      "memberships": [],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "proud",
+        "weary",
+        "protective"
+       ],
+       "values": [],
+       "loves": [
+        "the high winds",
+        "the quiet of the roost"
+       ],
+       "fears": [
+        "extinction",
+        "the sting of ballista bolts"
+       ],
+       "wants": [],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 3,
+       "speed": 3,
+       "toughness": 3,
+       "wits": 3,
+       "knowledge": 3,
+       "willpower": 3,
+       "charm": 3,
+       "nerve": 3,
+       "bearing": 3
+      },
+      "skills": [],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 95,
+       "fear": 0,
+       "trust": 95,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": true,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "met"
+     },
+     {
+      "id": "commander-garrick",
+      "name": "Commander Garrick",
+      "aliases": [],
+      "description": "The ruthless leader of the local Iron Vanguard detachment, obsessed with earning imperial favor.",
+      "appearance": "A scarred veteran in polished iron plate armor, with short graying hair and cold grey eyes.",
+      "age": 46,
+      "people_id": "",
+      "location_id": "ironhold-keep",
+      "memberships": [],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "disciplined",
+        "stubborn",
+        "unforgiving"
+       ],
+       "values": [],
+       "loves": [],
+       "fears": [],
+       "wants": [
+        "To present the head of the last dragon to the Emperor."
+       ],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 3,
+       "speed": 3,
+       "toughness": 3,
+       "wits": 3,
+       "knowledge": 3,
+       "willpower": 3,
+       "charm": 3,
+       "nerve": 3,
+       "bearing": 3
+      },
+      "skills": [],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": -80,
+       "fear": 20,
+       "trust": -50,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": {
+       "goal": "Track down the dragon's lair using scout reports.",
+       "method": "Sending hunting parties into the northern peaks.",
+       "secret": "",
+       "clock_id": ""
+      },
+      "secrets": [],
+      "player_knows": "met"
+     }
+    ],
+    "clocks": [
+     {
+      "id": "vanguard-search",
+      "name": "The Vanguard's Hunt",
+      "steps": [
+       "Scouts report strange shadows over the Whispering Woods.",
+       "Iron Vanguard patrols begin blocking the mountain passes.",
+       "A Vanguard hunting party locates the path to Dragon's Roost.",
+       "Commander Garrick leads an assault force to slay the dragon."
+      ],
+      "step_every_hours": 48.0,
+      "owner_id": "",
+      "thread_id": "",
+      "known_to_player": true
+     }
+    ],
+    "threads": [
+     {
+      "id": "the-last-flight",
+      "title": "The Last Flight",
+      "kind": "threat",
+      "stakes": "The survival of the dragon race and your own life.",
+      "involved_ids": [
+       "player",
+       "vesper",
+       "commander-garrick"
+      ],
+      "clock_id": "vanguard-search",
+      "known_to_player": true
+     }
+    ],
+    "mysteries": [
+     {
+      "id": "the-great-dying",
+      "question": "What truly caused the sudden extinction of the other dragons a century ago?",
+      "answer": "An engineered alchemical blight, created by the Empire's founders to break the power of the old dragon riders.",
+      "clues": [
+       "An ancient, sealed laboratory hidden beneath Ironhold Keep.",
+       "Symptoms of a strange, black-veined corruption described in old texts.",
+       "Vesper's lingering fear of certain ancient imperial metal relics."
+      ],
+      "thread_id": "the-last-flight",
+      "known_to_player": true
+     }
+    ],
+    "known_facts": [
+     "You are the last human who knows how to ride a dragon.",
+     "Vesper is the absolute last of her kind.",
+     "The Iron Vanguard will execute anyone found helping a dragon."
+    ],
+    "opening": {
+     "place_id": "dragons-roost",
+     "present_ids": [
+      "vesper"
+     ],
+     "positions": [],
+     "props": [],
+     "situation": "You stand on the windswept edge of Dragon's Roost, looking into the warm golden eyes of Vesper, the last living dragon."
+    },
+    "summary": "You are the last dragon rider, bound by mind and soul to Vesper, the last surviving dragon. High in the mountains, you must keep her hidden from the ruthless Iron Vanguard who seek to end your kind forever."
+   },
+   "character": {
+    "name": "Kaelen",
+    "aliases": [],
+    "age": 21,
+    "lifespan_years": 80,
+    "people_id": "",
+    "description": "A young rider bearing the quiet weight of an extinct order, carrying a sharp gaze and a calm presence.",
+    "appearance": "Slender but athletic build, weather-beaten leather riding clothes, wind-tousled dark hair, and hands calloused from reins.",
+    "location_id": "",
+    "attributes": {
+     "strength": 3,
+     "speed": 4,
+     "toughness": 3,
+     "wits": 4,
+     "knowledge": 3,
+     "willpower": 5,
+     "charm": 3,
+     "nerve": 5,
+     "bearing": 4
+    },
+    "skills": [
+     {
+      "name": "Dragon Riding",
+      "level": "expert",
+      "notes": "Guiding a massive beast through turbulent winds and high-altitude combat."
+     },
+     {
+      "name": "Survival",
+      "level": "skilled",
+      "notes": "Finding food, shelter, and staying hidden in the wilderness."
+     },
+     {
+      "name": "Swordsmanship",
+      "level": "fair",
+      "notes": "Basic defense with a rider's blade."
+     }
+    ],
+    "traits": [
+     {
+      "name": "Dragon Bonded",
+      "kind": "gift",
+      "description": "Your soul is tethered to Vesper. You feel her pain, hear her thoughts, and can share her senses."
+     }
+    ],
+    "talents": [],
+    "powers": [
+     {
+      "id": "telepathic-bond",
+      "name": "Mind Share",
+      "description": "Communicate silently with Vesper and share her sight and hearing from afar.",
+      "kind_id": "dragon-bonding",
+      "gift": false,
+      "strength": null,
+      "limits": [
+       "Requires concentration",
+       "Prolonged sensory sharing causes a mild headache."
+      ],
+      "costs": [],
+      "secret": false,
+      "time": null
+     }
+    ],
+    "techniques": [],
+    "temperament": {
+     "traits": [
+      "resilient",
+      "cautious",
+      "deeply loyal"
+     ],
+     "values": [],
+     "loves": [
+      "the freedom of high flight",
+      "the quiet of the mountains"
+     ],
+     "fears": [
+      "losing Vesper",
+      "being captured alive by the Vanguard"
+     ],
+     "wants": [],
+     "voice": ""
+    },
+    "items": [
+     {
+      "name": "Ancient Rider's Blade",
+      "kind": "weapon",
+      "description": "A sword forged from lightweight, sky-tempered steel, bearing the faded crest of the Dragon Riders.",
+      "quantity": 1,
+      "carried": true
+     },
+     {
+      "name": "Reinforced Leather Saddle",
+      "kind": "gear",
+      "description": "A heavy leather saddle designed to lock a rider safely onto a dragon's back during flight.",
+      "quantity": 1,
+      "carried": true
+     }
+    ],
+    "money": 15,
+    "currency": "silver shards",
+    "title": "",
+    "rank": "",
+    "family_name": "",
+    "connections": [
+     {
+      "name": "Vesper",
+      "kind": "family",
+      "character_id": "vesper",
+      "note": "Your bonded dragon companion, closer to you than any human."
+     }
+    ],
+    "parent_ids": [],
+    "memberships": [],
+    "ladders": [],
+    "axes": {
+     "might": 1,
+     "influence": 1,
+     "wealth": 1,
+     "knowledge": 1,
+     "stealth": 1
+    },
+    "reserves": [],
+    "goals": [],
+    "backstory": [],
+    "hidden_past": []
+   }
+  },
+  "rating": "teen",
+  "premise_id": null,
+  "physics": "fun_first",
+  "gift": null,
+  "released_rules": [],
+  "language": "en",
+  "told": []
+ }
+}

@@ -1,0 +1,2243 @@
+{
+ "premise": "A beautiful courtesan and spy in the imperial capital. She can make almost anyone fall for her, and she uses it to steal secrets for the rebellion.",
+ "language": "en",
+ "rating": "mature",
+ "settings": {
+  "narration_length": "medium",
+  "tone": null,
+  "difficulty": "balanced",
+  "event_frequency": "normal",
+  "images": "key_moments",
+  "suggestions": true,
+  "language": "en",
+  "accent": null
+ },
+ "seed": "play/x-spy",
+ "state": {
+  "schema_version": 1,
+  "turn": 1,
+  "timeline_id": "main",
+  "world_s": 0,
+  "bible": {
+   "title": "The Gilded Web",
+   "genre": "Imperial Spy Drama",
+   "tone": "elegant, tense, seductive",
+   "era": "The Golden Age of the Great Dynasty: horse-drawn carriages, silk gowns, and steel daggers.",
+   "extraordinary": [
+    {
+     "id": "supernatural",
+     "kind": "magic or anything supernatural",
+     "prevalence": "none",
+     "reach": "",
+     "rule_ids": [
+      "no-magic"
+     ]
+    }
+   ],
+   "peoples": [
+    {
+     "id": "human",
+     "name": "Human",
+     "description": "",
+     "lifespan_years": 80,
+     "gifts": [],
+     "culture": "The people of the Empire value filial piety, social hierarchy, and artistic refinement.",
+     "relations": [],
+     "path": ""
+    }
+   ],
+   "creatures": [],
+   "nature": [],
+   "physics": "fun_first",
+   "force": {
+    "tier1_joules": 10000.0,
+    "per_tier": 10.0
+   },
+   "ladders": [],
+   "calendar": {
+    "style": "day_count",
+    "time_of_day": "parts",
+    "epoch": null,
+    "start_second_of_day": 72000,
+    "months": [],
+    "start_year": 1,
+    "start_month": 1,
+    "start_day": 1,
+    "era": ""
+   },
+   "travel": {
+    "description": "Messages are carried by swift riders or carrier pigeons. Nobles travel in ornate carriages pulled by horses.",
+    "instant_messages": false
+   },
+   "medicine": {
+    "healing": "Traditional herbalism, acupuncture, and cauterization are the limits of medicine.",
+    "resurrection": "none",
+    "resurrection_means": ""
+   },
+   "laws": [
+    {
+     "id": "espionage-ban",
+     "text": "Anyone caught passing imperial state secrets to the rebels or foreign powers shall be executed by a thousand cuts.",
+     "enforcer": "The Crimson Guard",
+     "enforcer_faction_id": "crimson-guard",
+     "zeal": "high",
+     "corruptible": false
+    }
+   ],
+   "norms": [
+    "Serving the Jade Throne is considered the highest duty, while supporting the rebellion is viewed as absolute chaos."
+   ],
+   "several_partners": false,
+   "unions": "held",
+   "rules": [
+    {
+     "id": "no-magic",
+     "text": "There are no magical spells, monsters, or supernatural powers in the empire; every victory relies on human wit and skill.",
+     "fixed": true,
+     "topic": "existence"
+    },
+    {
+     "id": "courtesan-status",
+     "text": "The high-class courtesans of the pleasure quarter are esteemed for their arts, but they are legally bound to their houses until bought out.",
+     "fixed": true,
+     "topic": "law"
+    },
+    {
+     "id": "treason-laws",
+     "text": "Treason and espionage against the Jade Throne are investigated by the ruthless Crimson Guard and carry the penalty of execution.",
+     "fixed": true,
+     "topic": "law"
+    }
+   ],
+   "mysteries": [
+    {
+     "id": "the-traitor",
+     "question": "Who is leaking information about rebel sympathizers to the Crimson Guard?",
+     "answer": "Madam Lin is secretly trading minor details about rebel contacts to buy safety for her own house.",
+     "clues": [
+      "A piece of embroidered silk from the House of Whispers was found inside a Crimson Guard guardhouse.",
+      "Madam Lin received a sudden, unexplained tax exemption from the Chancellor's office.",
+      "A handwritten ledger showing dates of rebel meetings cross-referenced with Madam Lin's personal diary."
+     ],
+     "thread_id": "the-traitor",
+     "solved": false
+    }
+   ]
+  },
+  "player_id": "player",
+  "characters": {
+   "player": {
+    "id": "player",
+    "name": "Mei-Ling",
+    "aliases": [
+     "The Lotus Flower",
+     "Star of the Pleasure District"
+    ],
+    "prominence": "key",
+    "description": "An incomparably beautiful courtesan whose graceful movements and gentle smiles hide the steel trap of a spy's mind.",
+    "appearance": "A young woman of delicate build, with long, flowing dark hair and deep, captivating eyes. She wears a flowing emerald silk gown embroidered with gold thread.",
+    "look_version": 1,
+    "age": 23,
+    "people_id": null,
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "house-of-whispers",
+    "personal_offset_s": 0,
+    "memberships": [
+     {
+      "faction_id": "lotus-rebellion",
+      "rank": "Operative",
+      "loyalty": 90
+     },
+     {
+      "faction_id": "whispering-guild",
+      "rank": "Star Courtesan",
+      "loyalty": 40
+     }
+    ],
+    "sheet": {
+     "attributes": {
+      "strength": 2,
+      "speed": 3,
+      "toughness": 2,
+      "wits": 5,
+      "knowledge": 4,
+      "willpower": 4,
+      "charm": 5,
+      "nerve": 5,
+      "bearing": 5
+     },
+     "skills": [
+      {
+       "name": "Seduction",
+       "level": "expert",
+       "notes": "She can captivate almost anyone, making them lower their guard."
+      },
+      {
+       "name": "Deception",
+       "level": "expert",
+       "notes": "Lying, posing, and maintaining dual identities."
+      },
+      {
+       "name": "Espionage",
+       "level": "skilled",
+       "notes": "Eavesdropping, searching rooms, and decyphering documents."
+      },
+      {
+       "name": "Elegance",
+       "level": "master",
+       "notes": "Performing traditional arts, dancing, and high-court etiquette."
+      }
+     ],
+     "traits": [
+      {
+       "name": "Alluring Grace",
+       "kind": "gift",
+       "description": "Her presence is so naturally disarming that most people struggle to suspect her of any malice."
+      },
+      {
+       "name": "Double Life",
+       "kind": "quirk",
+       "description": "Must constantly manage her obligations to Madam Lin while conducting dangerous rebel work."
+      }
+     ],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "clever",
+        "courageous",
+        "poised"
+       ],
+       "values": [
+        "freedom",
+        "subtlety"
+       ],
+       "loves": [
+        "the arts",
+        "quiet victories"
+       ],
+       "fears": [
+        "being exposed to the Crimson Guard"
+       ],
+       "wants": [
+        "to steal secrets for the rebellion"
+       ],
+       "voice": ""
+      },
+      "attitudes": {}
+     },
+     "resources": {
+      "items": [
+       {
+        "id": "sleeved-stiletto",
+        "name": "Sleeved Stiletto",
+        "kind": "weapon",
+        "description": "A thin, razor-sharp needle-dagger concealed perfectly within her wide silk sleeve.",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       },
+       {
+        "id": "vial-of-sweet-sleep",
+        "name": "Vial of Sweet Sleep",
+        "kind": "consumable",
+        "description": "A powerful, tasteless sleeping draught that can be slipped easily into an unsuspecting noble's drink.",
+        "quantity": 2,
+        "carried": true,
+        "history": ""
+       },
+       {
+        "id": "embroidered-lotus-silk",
+        "name": "Embroidered Lotus Silk",
+        "kind": "document",
+        "description": "A fine silk handkerchief bearing a subtle, disguised stitch pattern that proves her membership in the rebellion.",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       }
+      ],
+      "money": 150,
+      "currency": "silver taels",
+      "title": "Star Courtesan",
+      "rank": "First-Rank Artist",
+      "family_name": "",
+      "connections": [
+       {
+        "name": "Li Wei",
+        "kind": "ally",
+        "character_id": "li-wei",
+        "note": "Her handler in the capital, whom she trusts completely."
+       },
+       {
+        "name": "Madam Lin",
+        "kind": "family",
+        "character_id": "madam-lin",
+        "note": "Her employer and keeper, whose strict rules she must navigate."
+       }
+      ]
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": [
+      {
+       "text": "Orphaned at a young age, Mei-Ling was taken in by the House of Whispers and trained in the delicate arts of performance, conversation, and refinement.",
+       "turn": 0
+      },
+      {
+       "text": "As she grew, she witnessed the cruelty and corruption of the imperial court firsthand, leading her to secretly join the Lotus Rebellion as a high-placed informant.",
+       "turn": 0
+      }
+     ]
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": 80,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   },
+   "madam-lin": {
+    "id": "madam-lin",
+    "name": "Madam Lin",
+    "aliases": [],
+    "prominence": "key",
+    "description": "A sharp-eyed woman of impeccable posture, carrying a jade smoking pipe.",
+    "appearance": "An older woman dressed in dark purple silks, her grey hair styled in a tight, elegant bun.",
+    "look_version": 1,
+    "age": 48,
+    "people_id": null,
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "house-of-whispers",
+    "personal_offset_s": 0,
+    "memberships": [
+     {
+      "faction_id": "whispering-guild",
+      "rank": "Madam",
+      "loyalty": 100
+     }
+    ],
+    "sheet": {
+     "attributes": {
+      "strength": 2,
+      "speed": 3,
+      "toughness": 3,
+      "wits": 4,
+      "knowledge": 4,
+      "willpower": 4,
+      "charm": 3,
+      "nerve": 4,
+      "bearing": 4
+     },
+     "skills": [
+      {
+       "name": "Deception",
+       "level": "expert",
+       "notes": ""
+      },
+      {
+       "name": "Negotiation",
+       "level": "expert",
+       "notes": ""
+      }
+     ],
+     "traits": [
+      {
+       "name": "Informer",
+       "kind": "quirk",
+       "description": "She secretly sells minor rebellion secrets to buy safety for her courtesans."
+      }
+     ],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "cautious",
+        "greedy",
+        "observant"
+       ],
+       "values": [
+        "wealth",
+        "security"
+       ],
+       "loves": [],
+       "fears": [],
+       "wants": [
+        "to protect her establishment from imperial raids at any cost"
+       ],
+       "voice": "Polite, smooth, and laced with quiet steel."
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 30,
+        "fear": 10,
+        "trust": 40,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [
+     "She knows Mei-Ling is a rebel spy but keeps it quiet to use as leverage if the Guard ever arrests her."
+    ],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   },
+   "general-fong": {
+    "id": "general-fong",
+    "name": "General Fong",
+    "aliases": [],
+    "prominence": "key",
+    "description": "The terrifying commander of the Crimson Guard, famous for his ruthless efficiency.",
+    "appearance": "A tall man with cold, deep-set eyes, wearing a dark red imperial guard tunic and a long steel sword.",
+    "look_version": 1,
+    "age": 42,
+    "people_id": null,
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "house-of-whispers",
+    "personal_offset_s": 0,
+    "memberships": [
+     {
+      "faction_id": "crimson-guard",
+      "rank": "Commander",
+      "loyalty": 95
+     }
+    ],
+    "sheet": {
+     "attributes": {
+      "strength": 4,
+      "speed": 4,
+      "toughness": 4,
+      "wits": 4,
+      "knowledge": 3,
+      "willpower": 5,
+      "charm": 2,
+      "nerve": 5,
+      "bearing": 4
+     },
+     "skills": [
+      {
+       "name": "Intimidation",
+       "level": "master",
+       "notes": ""
+      },
+      {
+       "name": "Swordsmanship",
+       "level": "expert",
+       "notes": ""
+      },
+      {
+       "name": "Investigation",
+       "level": "expert",
+       "notes": ""
+      }
+     ],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "ruthless",
+        "obsessive",
+        "analytical"
+       ],
+       "values": [
+        "order",
+        "duty"
+       ],
+       "loves": [],
+       "fears": [],
+       "wants": [
+        "to catch the rebel spy operating in the capital"
+       ],
+       "voice": "Low, gravelly, and deliberate."
+      },
+      "attitudes": {
+       "player": {
+        "affinity": -10,
+        "fear": 0,
+        "trust": -20,
+        "apparent_affinity": 20,
+        "grudges": [],
+        "attraction": 40,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [
+     "He has secretly fallen in love with Mei-Ling, which clouds his investigative judgment regarding her."
+    ],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": 0,
+    "near_s": null,
+    "met_s": null
+   },
+   "li-wei": {
+    "id": "li-wei",
+    "name": "Li Wei",
+    "aliases": [],
+    "prominence": "key",
+    "description": "Your main contact in the rebellion, disguised as a silk merchant.",
+    "appearance": "A handsome young man with a warm smile, wearing simple linen robes and carrying a leather satchel.",
+    "look_version": 1,
+    "age": 26,
+    "people_id": null,
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "rebel-cellar",
+    "personal_offset_s": 0,
+    "memberships": [
+     {
+      "faction_id": "lotus-rebellion",
+      "rank": "Cell Leader",
+      "loyalty": 90
+     }
+    ],
+    "sheet": {
+     "attributes": {
+      "strength": 3,
+      "speed": 4,
+      "toughness": 3,
+      "wits": 3,
+      "knowledge": 3,
+      "willpower": 4,
+      "charm": 4,
+      "nerve": 4,
+      "bearing": 3
+     },
+     "skills": [
+      {
+       "name": "Deception",
+       "level": "skilled",
+       "notes": ""
+      },
+      {
+       "name": "Stealth",
+       "level": "skilled",
+       "notes": ""
+      }
+     ],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "idealistic",
+        "passionate",
+        "loyal"
+       ],
+       "values": [
+        "freedom",
+        "equality"
+       ],
+       "loves": [],
+       "fears": [],
+       "wants": [
+        "to overthrow the Emperor and build a free society"
+       ],
+       "voice": "Earnest, soft, and intense."
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 70,
+        "fear": 0,
+        "trust": 80,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 60,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [
+     "He is prepared to sacrifice his own life to protect Mei-Ling from the Crimson Guard."
+    ],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   },
+   "chancellor-zhao": {
+    "id": "chancellor-zhao",
+    "name": "Chancellor Zhao",
+    "aliases": [],
+    "prominence": "key",
+    "description": "The corrupt, aging advisor to the Emperor, obsessed with maintaining his power.",
+    "appearance": "A thin, elderly man wearing lavish, heavy golden silk court robes and expensive jade rings.",
+    "look_version": 1,
+    "age": 65,
+    "people_id": null,
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "imperial-palace",
+    "personal_offset_s": 0,
+    "memberships": [
+     {
+      "faction_id": "imperial-court",
+      "rank": "Grand Chancellor",
+      "loyalty": 80
+     }
+    ],
+    "sheet": {
+     "attributes": {
+      "strength": 1,
+      "speed": 2,
+      "toughness": 2,
+      "wits": 4,
+      "knowledge": 5,
+      "willpower": 3,
+      "charm": 2,
+      "nerve": 3,
+      "bearing": 4
+     },
+     "skills": [
+      {
+       "name": "Negotiation",
+       "level": "master",
+       "notes": ""
+      },
+      {
+       "name": "Etiquette",
+       "level": "expert",
+       "notes": ""
+      }
+     ],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "paranoid",
+        "greedy",
+        "arrogant"
+       ],
+       "values": [
+        "power",
+        "status"
+       ],
+       "loves": [],
+       "fears": [],
+       "wants": [
+        "to eliminate any potential rivals in the imperial court"
+       ],
+       "voice": "High-pitched, condescending, and slow."
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 0,
+        "fear": 0,
+        "trust": 0,
+        "apparent_affinity": 10,
+        "grudges": [],
+        "attraction": 30,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [
+     "He is embezzling imperial tax funds meant for border defenses and hiding the ledgers in his palace study."
+    ],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   }
+  },
+  "factions": {
+   "imperial-court": {
+    "id": "imperial-court",
+    "name": "The Jade Throne",
+    "kind": "court",
+    "description": "The ruling imperial dynasty, ancient and rigid, demanding absolute loyalty from all subjects.",
+    "parent_id": null,
+    "status": "intact",
+    "status_history": [],
+    "activity": "active",
+    "leader_ids": [
+     "chancellor-zhao"
+    ],
+    "goal": "Exterminate the Lotus Rebellion and maintain absolute control.",
+    "methods": "Mass arrests, heavy taxes, and public executions to crush dissent.",
+    "strength": "Tens of thousands of imperial soldiers and a network of elite executioners.",
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "threat": 0,
+    "relations": {},
+    "survivors": [],
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ]
+   },
+   "crimson-guard": {
+    "id": "crimson-guard",
+    "name": "The Crimson Guard",
+    "kind": "sect",
+    "description": "The dreaded secret police of the Emperor, wearing blood-red armor and trained in interrogation and assassination.",
+    "parent_id": "imperial-court",
+    "status": "intact",
+    "status_history": [],
+    "activity": "active",
+    "leader_ids": [
+     "general-fong"
+    ],
+    "goal": "Uncover and destroy the rebel networks in the capital.",
+    "methods": "Torture, surveillance, and sudden night raids on suspected rebel safehouses.",
+    "strength": "A highly trained, well-armed force of five hundred inquisitors.",
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "threat": 0,
+    "relations": {},
+    "survivors": [],
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ]
+   },
+   "lotus-rebellion": {
+    "id": "lotus-rebellion",
+    "name": "The Lotus Rebellion",
+    "kind": "sect",
+    "description": "A clandestine organization of freedom fighters, corrupt officials, and oppressed peasants aiming to overthrow the dynasty.",
+    "parent_id": null,
+    "status": "intact",
+    "status_history": [],
+    "activity": "active",
+    "leader_ids": [
+     "li-wei"
+    ],
+    "goal": "Infiltrate the Jade Palace and secure defense blueprints for an upcoming assault.",
+    "methods": "Subversion, guerrilla warfare, and espionage using double agents.",
+    "strength": "A scattered network of cells with limited arms but extensive civilian support.",
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "threat": 0,
+    "relations": {},
+    "survivors": [],
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ]
+   },
+   "whispering-guild": {
+    "id": "whispering-guild",
+    "name": "The Whispering Guild",
+    "kind": "crew",
+    "description": "The high-end courtesans, musicians, and servants of the House of Whispers.",
+    "parent_id": null,
+    "status": "intact",
+    "status_history": [],
+    "activity": "active",
+    "leader_ids": [
+     "madam-lin"
+    ],
+    "goal": "Amass wealth and political leverage by offering luxurious distractions to high-ranking nobles.",
+    "methods": "Providing impeccable entertainment while gathering blackmail material on clients.",
+    "strength": "High-level connections across the entire imperial bureaucracy.",
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "threat": 0,
+    "relations": {},
+    "survivors": [],
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "places": {
+   "capital": {
+    "id": "capital",
+    "name": "The Imperial Capital",
+    "kind": "city",
+    "description": "The jewel of the dynasty, a walled metropolis of silk-draped plazas, teeming pleasure districts, and imposing fortress walls.",
+    "parent_id": null,
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": "imperial-court",
+    "mood": "",
+    "stability": 70,
+    "routes": [],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "house-of-whispers": {
+    "id": "house-of-whispers",
+    "name": "House of Whispers",
+    "kind": "building",
+    "description": "An opulent, three-story establishment in the pleasure quarter, filled with paper lanterns, sweet incense, and private parlor rooms.",
+    "parent_id": "capital",
+    "setting": "indoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": "whispering-guild",
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "imperial-palace",
+      "travel_s": 3600,
+      "mode": "by carriage"
+     },
+     {
+      "to_id": "rebel-cellar",
+      "travel_s": 5400,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [
+     "player"
+    ],
+    "judged": []
+   },
+   "imperial-palace": {
+    "id": "imperial-palace",
+    "name": "The Jade Palace",
+    "kind": "building",
+    "description": "The massive seat of the Emperor, guarded by towering stone walls and heavily armed Crimson Guard patrols.",
+    "parent_id": "capital",
+    "setting": "indoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": "imperial-court",
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "house-of-whispers",
+      "travel_s": 3600,
+      "mode": "by carriage"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "rebel-cellar": {
+    "id": "rebel-cellar",
+    "name": "The Hidden Cellar",
+    "kind": "room",
+    "description": "A damp, secret basement beneath a tea warehouse in the city slums, used as a meeting point for the rebellion.",
+    "parent_id": "capital",
+    "setting": "underground",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": "lotus-rebellion",
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "house-of-whispers",
+      "travel_s": 5400,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   }
+  },
+  "deeds": {},
+  "rumors": {},
+  "bonds": {},
+  "lives": {},
+  "aged_s": null,
+  "changes": {},
+  "strife_s": {},
+  "facts": {
+   "fact-1": {
+    "id": "fact-1",
+    "text": "The Jade Throne executes anyone connected to the Lotus Rebellion.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-2": {
+    "id": "fact-2",
+    "text": "Madam Lin expects her courtesans to focus entirely on entertaining high-paying noble clients.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-3": {
+    "id": "fact-3",
+    "text": "General Fong is deeply suspicious of the House of Whispers, believing it to be a hotbed of espionage.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   }
+  },
+  "goals": {
+   "goal-1": {
+    "id": "goal-1",
+    "text": "Steal secrets for the rebellion",
+    "status": "active",
+    "set_turn": 0,
+    "set_s": null,
+    "lead_id": null,
+    "closed_turn": null,
+    "closed_s": null,
+    "merged_into": null,
+    "progress": "",
+    "moved_turn": null
+   }
+  },
+  "leads": {},
+  "threads": {
+   "the-traitor": {
+    "id": "the-traitor",
+    "title": "Who is leaking information about rebel sympathizers to the Crimson Guard?",
+    "kind": "mystery",
+    "stakes": "",
+    "involved_ids": [
+     "player"
+    ],
+    "clock_id": null,
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "status": "open",
+    "opened_turn": 0,
+    "last_active_turn": 0,
+    "taken_up_turn": null,
+    "closed_turn": null,
+    "arc": null,
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "clocks": {
+   "the-purge": {
+    "id": "the-purge",
+    "name": "The Crimson Guard's Raid",
+    "steps": [
+     "The Crimson Guard arrests low-level rebel sympathizers in the pleasure quarter.",
+     "General Fong tortures prisoners to locate the rebellion's main safehouse.",
+     "The Guard surrounds the slums, locking down all exits from the capital.",
+     "General Fong leads a full assault on the Hidden Cellar."
+    ],
+    "filled": 0,
+    "advances_on": [],
+    "reverses_on": [],
+    "interval_s": 64800,
+    "next_step_s": 64800,
+    "owner_id": "general-fong",
+    "thread_id": null,
+    "status": "running",
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "pending_events": {
+   "event-1": {
+    "id": "event-1",
+    "kind": "world.clock_step",
+    "title": "The Crimson Guard's Raid: The Crimson Guard arrests low-level rebel sympathizers in the pleasure quarter.",
+    "due_s": 64800,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [
+     "general-fong"
+    ],
+    "place_id": null,
+    "origin": {
+     "kind": "clock",
+     "ref_id": "the-purge",
+     "text": ""
+    },
+    "payload": {
+     "clock_id": "the-purge"
+    },
+    "seed": "story=play%2Fx-spy/timeline=main/turn=1/world/schedule/event-1",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-2": {
+    "id": "event-2",
+    "kind": "world.old_age",
+    "title": "Your years run short",
+    "due_s": 1646952085,
+    "timeline_id": "main",
+    "needs_player": true,
+    "status": "pending",
+    "subject_ids": [
+     "player"
+    ],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "phase": "near",
+     "who": "player",
+     "span": 80,
+     "day_s": 1699613259
+    },
+    "seed": "story=play%2Fx-spy/timeline=main/turn=1/world/schedule/event-2",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-3": {
+    "id": "event-3",
+    "kind": "world.tick",
+    "title": "The world moves on",
+    "due_s": 86400,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "last_s": 0,
+     "stride_s": 86400
+    },
+    "seed": "story=play%2Fx-spy/timeline=main/turn=1/world/schedule/event-3",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   }
+  },
+  "transfers": [],
+  "time_effects": [],
+  "scene": {
+   "place_id": "house-of-whispers",
+   "present_ids": [
+    "player",
+    "general-fong"
+   ],
+   "positions": [
+    "sitting on a silk-cushioned divan opposite the player",
+    "General Fong sits opposite the player, leaning forward"
+   ],
+   "props": [
+    "two cups of spiced plum wine",
+    "a jade chess set between them"
+   ],
+   "ended_on": "General Fong leans forward over the jade chess set, his eyes locked on yours as he waits for your response.",
+   "encounter": null
+  },
+  "director": {
+   "turns_without_stakes": 0,
+   "low_stakes_streak": 0,
+   "last_action_key": null,
+   "last_event_turn": null,
+   "last_event_size": null,
+   "last_event_s": {},
+   "last_small_s": null,
+   "recent_moments": [],
+   "recent_clock": [
+    0
+   ],
+   "frequency_drift": 0.0,
+   "recent_sources": [],
+   "auto_pictures": 1,
+   "picture_credit": 1.1,
+   "pictured": [
+    "portrait:player",
+    "portrait:player:v1"
+   ],
+   "fight": null,
+   "deck_draws": 0,
+   "road_stops": 0
+  },
+  "summary": "Mei-Ling, a beautiful courtesan and rebel spy, must use her unparalleled charm to extract imperial secrets within the dangerous capital. Under the watchful, suspicious eye of General Fong, she must work quickly to secure defense blueprints before her rebel allies are wiped out.",
+  "chapters": [],
+  "id_counters": {
+   "fact": 3,
+   "goal": 1,
+   "bond": 0,
+   "event": 3
+  },
+  "fallen": [],
+  "opening_due": false,
+  "misses_in_a_row": 0,
+  "openings": [],
+  "journey": null,
+  "untold": [
+   "person:chancellor-zhao",
+   "person:li-wei",
+   "person:madam-lin",
+   "thread:the-traitor"
+  ]
+ },
+ "scenes": [
+  {
+   "turn": 1,
+   "narration": "The air in the private salon is thick with the sweet, heavy scent of burning jasmine and the unspoken threat of the Jade Throne. Across the low lacquer table, General Fong slowly swirls his cup of spiced plum wine. The dark red of his Crimson Guard tunic stands out sharply against your delicate silk-cushioned divans, a reminder of the executioner's blade that awaits any soul foolish enough to defy the emperor.\n\nBetween you lies an unfinished game of weiqi, the jade stones gleaming under the warm glow of paper lanterns. Fong's cold, analytical eyes never leave your face. He is a man who hunts rebels for sport, yet tonight, he lingers in your quarters, his posture poised between professional suspicion and the quiet pull of your presence.\n\n\"They say the Lotus Flower can bloom even in the coldest winter, Mei-Ling,\" he says, his gravelly voice dropping to a low, deliberate purr. He sets his cup down with a soft click, his hand resting near the hilt of his steel sword. \"But I wonder... does it draw its strength from the capital's soil, or from the dark waters of rebellion?\"\n\nHe leans forward, waiting for your reply. Every breath in the silent room is a gamble.",
+   "player_action": null
+  }
+ ],
+ "choices": [
+  "Smile disarmingly and pour him more wine to deflect his suspicion.",
+  "Play a white jade stone and answer him with a poetic riddle.",
+  "Gently touch his hand, using your allure to ease his guard."
+ ],
+ "cost_usd": 0.1310655,
+ "draft": {
+  "premise": "A beautiful courtesan and spy in the imperial capital. She can make almost anyone fall for her, and she uses it to steal secrets for the rebellion.",
+  "proposal": {
+   "world": {
+    "title": "The Gilded Web",
+    "genre": "Imperial Spy Drama",
+    "tone": "elegant, tense, seductive",
+    "era": "The Golden Age of the Great Dynasty: horse-drawn carriages, silk gowns, and steel daggers.",
+    "extraordinary": [
+     {
+      "id": "supernatural",
+      "kind": "magic or anything supernatural",
+      "prevalence": "none",
+      "reach": ""
+     }
+    ],
+    "rules": [
+     {
+      "id": "no-magic",
+      "text": "There are no magical spells, monsters, or supernatural powers in the empire; every victory relies on human wit and skill.",
+      "fixed": true,
+      "topic": "existence",
+      "about": [
+       "supernatural"
+      ]
+     },
+     {
+      "id": "courtesan-status",
+      "text": "The high-class courtesans of the pleasure quarter are esteemed for their arts, but they are legally bound to their houses until bought out.",
+      "fixed": true,
+      "topic": "law",
+      "about": []
+     },
+     {
+      "id": "treason-laws",
+      "text": "Treason and espionage against the Jade Throne are investigated by the ruthless Crimson Guard and carry the penalty of execution.",
+      "fixed": true,
+      "topic": "law",
+      "about": []
+     }
+    ],
+    "dropped_rule_ids": [],
+    "peoples": [
+     {
+      "id": "human",
+      "name": "Human",
+      "description": "",
+      "lifespan_years": 80,
+      "gifts": [],
+      "culture": "The people of the Empire value filial piety, social hierarchy, and artistic refinement.",
+      "relations": [],
+      "path": ""
+     }
+    ],
+    "creatures": [],
+    "nature": [],
+    "ladders": [],
+    "calendar": {
+     "style": "day_count",
+     "clock_time": false,
+     "epoch": "",
+     "start_hour": 20,
+     "months": [],
+     "start_year": 1,
+     "start_month": 1,
+     "start_day": 1,
+     "era": ""
+    },
+    "travel": {
+     "description": "Messages are carried by swift riders or carrier pigeons. Nobles travel in ornate carriages pulled by horses.",
+     "instant_messages": false
+    },
+    "medicine": {
+     "healing": "Traditional herbalism, acupuncture, and cauterization are the limits of medicine.",
+     "resurrection": "none",
+     "resurrection_means": ""
+    },
+    "laws": [
+     {
+      "id": "espionage-ban",
+      "text": "Anyone caught passing imperial state secrets to the rebels or foreign powers shall be executed by a thousand cuts.",
+      "enforcer": "The Crimson Guard",
+      "enforcer_faction_id": "crimson-guard",
+      "zeal": "high",
+      "corruptible": false
+     }
+    ],
+    "norms": [
+     "Serving the Jade Throne is considered the highest duty, while supporting the rebellion is viewed as absolute chaos."
+    ],
+    "several_partners": false,
+    "unions": "held",
+    "places": [
+     {
+      "id": "capital",
+      "name": "The Imperial Capital",
+      "kind": "city",
+      "description": "The jewel of the dynasty, a walled metropolis of silk-draped plazas, teeming pleasure districts, and imposing fortress walls.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "imperial-court",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "house-of-whispers",
+      "name": "House of Whispers",
+      "kind": "building",
+      "description": "An opulent, three-story establishment in the pleasure quarter, filled with paper lanterns, sweet incense, and private parlor rooms.",
+      "parent_id": "capital",
+      "setting": "indoors",
+      "controller_id": "whispering-guild",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "imperial-palace",
+        "travel_hours": 1.0,
+        "mode": "by carriage"
+       },
+       {
+        "to_id": "rebel-cellar",
+        "travel_hours": 1.5,
+        "mode": "on foot"
+       }
+      ]
+     },
+     {
+      "id": "imperial-palace",
+      "name": "The Jade Palace",
+      "kind": "building",
+      "description": "The massive seat of the Emperor, guarded by towering stone walls and heavily armed Crimson Guard patrols.",
+      "parent_id": "capital",
+      "setting": "indoors",
+      "controller_id": "imperial-court",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "rebel-cellar",
+      "name": "The Hidden Cellar",
+      "kind": "room",
+      "description": "A damp, secret basement beneath a tea warehouse in the city slums, used as a meeting point for the rebellion.",
+      "parent_id": "capital",
+      "setting": "underground",
+      "controller_id": "lotus-rebellion",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     }
+    ],
+    "factions": [
+     {
+      "id": "imperial-court",
+      "name": "The Jade Throne",
+      "kind": "court",
+      "description": "The ruling imperial dynasty, ancient and rigid, demanding absolute loyalty from all subjects.",
+      "parent_id": "",
+      "leader_ids": [
+       "chancellor-zhao"
+      ],
+      "goal": "Exterminate the Lotus Rebellion and maintain absolute control.",
+      "methods": "Mass arrests, heavy taxes, and public executions to crush dissent.",
+      "strength": "Tens of thousands of imperial soldiers and a network of elite executioners.",
+      "relations": [],
+      "secrets": [],
+      "known_to_player": true
+     },
+     {
+      "id": "crimson-guard",
+      "name": "The Crimson Guard",
+      "kind": "sect",
+      "description": "The dreaded secret police of the Emperor, wearing blood-red armor and trained in interrogation and assassination.",
+      "parent_id": "imperial-court",
+      "leader_ids": [
+       "general-fong"
+      ],
+      "goal": "Uncover and destroy the rebel networks in the capital.",
+      "methods": "Torture, surveillance, and sudden night raids on suspected rebel safehouses.",
+      "strength": "A highly trained, well-armed force of five hundred inquisitors.",
+      "relations": [],
+      "secrets": [],
+      "known_to_player": true
+     },
+     {
+      "id": "lotus-rebellion",
+      "name": "The Lotus Rebellion",
+      "kind": "sect",
+      "description": "A clandestine organization of freedom fighters, corrupt officials, and oppressed peasants aiming to overthrow the dynasty.",
+      "parent_id": "",
+      "leader_ids": [
+       "li-wei"
+      ],
+      "goal": "Infiltrate the Jade Palace and secure defense blueprints for an upcoming assault.",
+      "methods": "Subversion, guerrilla warfare, and espionage using double agents.",
+      "strength": "A scattered network of cells with limited arms but extensive civilian support.",
+      "relations": [],
+      "secrets": [],
+      "known_to_player": true
+     },
+     {
+      "id": "whispering-guild",
+      "name": "The Whispering Guild",
+      "kind": "crew",
+      "description": "The high-end courtesans, musicians, and servants of the House of Whispers.",
+      "parent_id": "",
+      "leader_ids": [
+       "madam-lin"
+      ],
+      "goal": "Amass wealth and political leverage by offering luxurious distractions to high-ranking nobles.",
+      "methods": "Providing impeccable entertainment while gathering blackmail material on clients.",
+      "strength": "High-level connections across the entire imperial bureaucracy.",
+      "relations": [],
+      "secrets": [],
+      "known_to_player": true
+     }
+    ],
+    "npcs": [
+     {
+      "id": "madam-lin",
+      "name": "Madam Lin",
+      "aliases": [],
+      "description": "A sharp-eyed woman of impeccable posture, carrying a jade smoking pipe.",
+      "appearance": "An older woman dressed in dark purple silks, her grey hair styled in a tight, elegant bun.",
+      "age": 48,
+      "people_id": "",
+      "location_id": "house-of-whispers",
+      "memberships": [
+       {
+        "faction_id": "whispering-guild",
+        "rank": "Madam",
+        "loyalty": 100
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "cautious",
+        "greedy",
+        "observant"
+       ],
+       "values": [
+        "wealth",
+        "security"
+       ],
+       "loves": [],
+       "fears": [],
+       "wants": [
+        "to protect her establishment from imperial raids at any cost"
+       ],
+       "voice": "Polite, smooth, and laced with quiet steel."
+      },
+      "attributes": {
+       "strength": 2,
+       "speed": 3,
+       "toughness": 3,
+       "wits": 4,
+       "knowledge": 4,
+       "willpower": 4,
+       "charm": 3,
+       "nerve": 4,
+       "bearing": 4
+      },
+      "skills": [
+       {
+        "name": "Deception",
+        "level": "expert",
+        "notes": ""
+       },
+       {
+        "name": "Negotiation",
+        "level": "expert",
+        "notes": ""
+       }
+      ],
+      "traits": [
+       {
+        "name": "Informer",
+        "kind": "quirk",
+        "description": "She secretly sells minor rebellion secrets to buy safety for her courtesans."
+       }
+      ],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 30,
+       "fear": 10,
+       "trust": 40,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [
+       "She knows Mei-Ling is a rebel spy but keeps it quiet to use as leverage if the Guard ever arrests her."
+      ],
+      "player_knows": "met"
+     },
+     {
+      "id": "general-fong",
+      "name": "General Fong",
+      "aliases": [],
+      "description": "The terrifying commander of the Crimson Guard, famous for his ruthless efficiency.",
+      "appearance": "A tall man with cold, deep-set eyes, wearing a dark red imperial guard tunic and a long steel sword.",
+      "age": 42,
+      "people_id": "",
+      "location_id": "house-of-whispers",
+      "memberships": [
+       {
+        "faction_id": "crimson-guard",
+        "rank": "Commander",
+        "loyalty": 95
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "ruthless",
+        "obsessive",
+        "analytical"
+       ],
+       "values": [
+        "order",
+        "duty"
+       ],
+       "loves": [],
+       "fears": [],
+       "wants": [
+        "to catch the rebel spy operating in the capital"
+       ],
+       "voice": "Low, gravelly, and deliberate."
+      },
+      "attributes": {
+       "strength": 4,
+       "speed": 4,
+       "toughness": 4,
+       "wits": 4,
+       "knowledge": 3,
+       "willpower": 5,
+       "charm": 2,
+       "nerve": 5,
+       "bearing": 4
+      },
+      "skills": [
+       {
+        "name": "Intimidation",
+        "level": "master",
+        "notes": ""
+       },
+       {
+        "name": "Swordsmanship",
+        "level": "expert",
+        "notes": ""
+       },
+       {
+        "name": "Investigation",
+        "level": "expert",
+        "notes": ""
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": -10,
+       "fear": 0,
+       "trust": -20,
+       "shown_affinity": 20,
+       "attraction": 40
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [
+       "He has secretly fallen in love with Mei-Ling, which clouds his investigative judgment regarding her."
+      ],
+      "player_knows": "met"
+     },
+     {
+      "id": "li-wei",
+      "name": "Li Wei",
+      "aliases": [],
+      "description": "Your main contact in the rebellion, disguised as a silk merchant.",
+      "appearance": "A handsome young man with a warm smile, wearing simple linen robes and carrying a leather satchel.",
+      "age": 26,
+      "people_id": "",
+      "location_id": "rebel-cellar",
+      "memberships": [
+       {
+        "faction_id": "lotus-rebellion",
+        "rank": "Cell Leader",
+        "loyalty": 90
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "idealistic",
+        "passionate",
+        "loyal"
+       ],
+       "values": [
+        "freedom",
+        "equality"
+       ],
+       "loves": [],
+       "fears": [],
+       "wants": [
+        "to overthrow the Emperor and build a free society"
+       ],
+       "voice": "Earnest, soft, and intense."
+      },
+      "attributes": {
+       "strength": 3,
+       "speed": 4,
+       "toughness": 3,
+       "wits": 3,
+       "knowledge": 3,
+       "willpower": 4,
+       "charm": 4,
+       "nerve": 4,
+       "bearing": 3
+      },
+      "skills": [
+       {
+        "name": "Deception",
+        "level": "skilled",
+        "notes": ""
+       },
+       {
+        "name": "Stealth",
+        "level": "skilled",
+        "notes": ""
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 70,
+       "fear": 0,
+       "trust": 80,
+       "shown_affinity": null,
+       "attraction": 60
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [
+       "He is prepared to sacrifice his own life to protect Mei-Ling from the Crimson Guard."
+      ],
+      "player_knows": "met"
+     },
+     {
+      "id": "chancellor-zhao",
+      "name": "Chancellor Zhao",
+      "aliases": [],
+      "description": "The corrupt, aging advisor to the Emperor, obsessed with maintaining his power.",
+      "appearance": "A thin, elderly man wearing lavish, heavy golden silk court robes and expensive jade rings.",
+      "age": 65,
+      "people_id": "",
+      "location_id": "imperial-palace",
+      "memberships": [
+       {
+        "faction_id": "imperial-court",
+        "rank": "Grand Chancellor",
+        "loyalty": 80
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "paranoid",
+        "greedy",
+        "arrogant"
+       ],
+       "values": [
+        "power",
+        "status"
+       ],
+       "loves": [],
+       "fears": [],
+       "wants": [
+        "to eliminate any potential rivals in the imperial court"
+       ],
+       "voice": "High-pitched, condescending, and slow."
+      },
+      "attributes": {
+       "strength": 1,
+       "speed": 2,
+       "toughness": 2,
+       "wits": 4,
+       "knowledge": 5,
+       "willpower": 3,
+       "charm": 2,
+       "nerve": 3,
+       "bearing": 4
+      },
+      "skills": [
+       {
+        "name": "Negotiation",
+        "level": "master",
+        "notes": ""
+       },
+       {
+        "name": "Etiquette",
+        "level": "expert",
+        "notes": ""
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 0,
+       "fear": 0,
+       "trust": 0,
+       "shown_affinity": 10,
+       "attraction": 30
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [
+       "He is embezzling imperial tax funds meant for border defenses and hiding the ledgers in his palace study."
+      ],
+      "player_knows": "heard_of"
+     }
+    ],
+    "clocks": [
+     {
+      "id": "the-purge",
+      "name": "The Crimson Guard's Raid",
+      "steps": [
+       "The Crimson Guard arrests low-level rebel sympathizers in the pleasure quarter.",
+       "General Fong tortures prisoners to locate the rebellion's main safehouse.",
+       "The Guard surrounds the slums, locking down all exits from the capital.",
+       "General Fong leads a full assault on the Hidden Cellar."
+      ],
+      "step_every_hours": 18.0,
+      "owner_id": "general-fong",
+      "thread_id": "rebel-survival",
+      "known_to_player": true
+     }
+    ],
+    "threads": [],
+    "mysteries": [
+     {
+      "id": "the-traitor",
+      "question": "Who is leaking information about rebel sympathizers to the Crimson Guard?",
+      "answer": "Madam Lin is secretly trading minor details about rebel contacts to buy safety for her own house.",
+      "clues": [
+       "A piece of embroidered silk from the House of Whispers was found inside a Crimson Guard guardhouse.",
+       "Madam Lin received a sudden, unexplained tax exemption from the Chancellor's office.",
+       "A handwritten ledger showing dates of rebel meetings cross-referenced with Madam Lin's personal diary."
+      ],
+      "thread_id": "rebel-survival",
+      "known_to_player": true
+     }
+    ],
+    "known_facts": [
+     "The Jade Throne executes anyone connected to the Lotus Rebellion.",
+     "Madam Lin expects her courtesans to focus entirely on entertaining high-paying noble clients.",
+     "General Fong is deeply suspicious of the House of Whispers, believing it to be a hotbed of espionage."
+    ],
+    "opening": {
+     "place_id": "house-of-whispers",
+     "present_ids": [
+      "general-fong"
+     ],
+     "positions": [
+      "sitting on a silk-cushioned divan opposite the player"
+     ],
+     "props": [
+      "two cups of spiced plum wine",
+      "a jade chess set between them"
+     ],
+     "situation": "General Fong sits across from you in your private salon, slowly swirling a cup of plum wine as he watches you with intense, questioning eyes."
+    },
+    "summary": "Mei-Ling, a beautiful courtesan and rebel spy, must use her unparalleled charm to extract imperial secrets within the dangerous capital. Under the watchful, suspicious eye of General Fong, she must work quickly to secure defense blueprints before her rebel allies are wiped out."
+   },
+   "character": {
+    "name": "Mei-Ling",
+    "aliases": [
+     "The Lotus Flower",
+     "Star of the Pleasure District"
+    ],
+    "age": 23,
+    "lifespan_years": 80,
+    "people_id": "",
+    "description": "An incomparably beautiful courtesan whose graceful movements and gentle smiles hide the steel trap of a spy's mind.",
+    "appearance": "A young woman of delicate build, with long, flowing dark hair and deep, captivating eyes. She wears a flowing emerald silk gown embroidered with gold thread.",
+    "location_id": "house-of-whispers",
+    "attributes": {
+     "strength": 2,
+     "speed": 3,
+     "toughness": 2,
+     "wits": 5,
+     "knowledge": 4,
+     "willpower": 4,
+     "charm": 5,
+     "nerve": 5,
+     "bearing": 5
+    },
+    "skills": [
+     {
+      "name": "Seduction",
+      "level": "expert",
+      "notes": "She can captivate almost anyone, making them lower their guard."
+     },
+     {
+      "name": "Deception",
+      "level": "expert",
+      "notes": "Lying, posing, and maintaining dual identities."
+     },
+     {
+      "name": "Espionage",
+      "level": "skilled",
+      "notes": "Eavesdropping, searching rooms, and decyphering documents."
+     },
+     {
+      "name": "Elegance",
+      "level": "master",
+      "notes": "Performing traditional arts, dancing, and high-court etiquette."
+     }
+    ],
+    "traits": [
+     {
+      "name": "Alluring Grace",
+      "kind": "gift",
+      "description": "Her presence is so naturally disarming that most people struggle to suspect her of any malice."
+     },
+     {
+      "name": "Double Life",
+      "kind": "quirk",
+      "description": "Must constantly manage her obligations to Madam Lin while conducting dangerous rebel work."
+     }
+    ],
+    "talents": [],
+    "powers": [],
+    "techniques": [],
+    "temperament": {
+     "traits": [
+      "clever",
+      "courageous",
+      "poised"
+     ],
+     "values": [
+      "freedom",
+      "subtlety"
+     ],
+     "loves": [
+      "the arts",
+      "quiet victories"
+     ],
+     "fears": [
+      "being exposed to the Crimson Guard"
+     ],
+     "wants": [
+      "to steal secrets for the rebellion"
+     ],
+     "voice": ""
+    },
+    "items": [
+     {
+      "name": "Sleeved Stiletto",
+      "kind": "weapon",
+      "description": "A thin, razor-sharp needle-dagger concealed perfectly within her wide silk sleeve.",
+      "quantity": 1,
+      "carried": true
+     },
+     {
+      "name": "Vial of Sweet Sleep",
+      "kind": "consumable",
+      "description": "A powerful, tasteless sleeping draught that can be slipped easily into an unsuspecting noble's drink.",
+      "quantity": 2,
+      "carried": true
+     },
+     {
+      "name": "Embroidered Lotus Silk",
+      "kind": "document",
+      "description": "A fine silk handkerchief bearing a subtle, disguised stitch pattern that proves her membership in the rebellion.",
+      "quantity": 1,
+      "carried": true
+     }
+    ],
+    "money": 150,
+    "currency": "silver taels",
+    "title": "Star Courtesan",
+    "rank": "First-Rank Artist",
+    "family_name": "",
+    "connections": [
+     {
+      "name": "Li Wei",
+      "kind": "ally",
+      "character_id": "li-wei",
+      "note": "Her handler in the capital, whom she trusts completely."
+     },
+     {
+      "name": "Madam Lin",
+      "kind": "family",
+      "character_id": "madam-lin",
+      "note": "Her employer and keeper, whose strict rules she must navigate."
+     }
+    ],
+    "parent_ids": [],
+    "memberships": [
+     {
+      "faction_id": "lotus-rebellion",
+      "rank": "Operative",
+      "loyalty": 90
+     },
+     {
+      "faction_id": "whispering-guild",
+      "rank": "Star Courtesan",
+      "loyalty": 40
+     }
+    ],
+    "ladders": [],
+    "axes": {
+     "might": 1,
+     "influence": 1,
+     "wealth": 1,
+     "knowledge": 1,
+     "stealth": 1
+    },
+    "reserves": [],
+    "goals": [
+     "Steal secrets for the rebellion"
+    ],
+    "backstory": [
+     "Orphaned at a young age, Mei-Ling was taken in by the House of Whispers and trained in the delicate arts of performance, conversation, and refinement.",
+     "As she grew, she witnessed the cruelty and corruption of the imperial court firsthand, leading her to secretly join the Lotus Rebellion as a high-placed informant."
+    ],
+    "hidden_past": []
+   }
+  },
+  "rating": "mature",
+  "premise_id": null,
+  "physics": "fun_first",
+  "gift": null,
+  "released_rules": [],
+  "language": "en",
+  "told": []
+ }
+}

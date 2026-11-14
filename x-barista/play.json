@@ -1,0 +1,1644 @@
+{
+ "premise": "I'm a 28-year-old barista in Seattle. My grandmother just died and left me her old bookstore, and I think it's haunted.",
+ "language": "en",
+ "rating": "teen",
+ "settings": {
+  "narration_length": "medium",
+  "tone": null,
+  "difficulty": "balanced",
+  "event_frequency": "normal",
+  "images": "key_moments",
+  "suggestions": true,
+  "language": "en",
+  "accent": null
+ },
+ "seed": "play/x-barista",
+ "state": {
+  "schema_version": 1,
+  "turn": 1,
+  "timeline_id": "main",
+  "world_s": 0,
+  "bible": {
+   "title": "The Seattle Book Spectre",
+   "genre": "urban fantasy mystery",
+   "tone": "mysterious and cozy",
+   "era": "Modern-day Seattle: smartphones, rain-slicked streets, and espresso machines.",
+   "extraordinary": [
+    {
+     "id": "ghosts",
+     "kind": "ghosts and spirits",
+     "prevalence": "hidden",
+     "reach": "The spirits of the departed can linger in places or objects of immense sentimental value, occasionally influencing the physical world.",
+     "rule_ids": [
+      "ghostly-anchors",
+      "spirit-interaction",
+      "physical-influence",
+      "ghosts-exists"
+     ]
+    }
+   ],
+   "peoples": [
+    {
+     "id": "humans",
+     "name": "Humans",
+     "description": "",
+     "lifespan_years": 80,
+     "gifts": [],
+     "culture": "Modern Pacific Northwest culture: coffee-obsessed, tech-driven, and highly independent.",
+     "relations": [],
+     "path": ""
+    }
+   ],
+   "creatures": [],
+   "nature": [],
+   "physics": "fun_first",
+   "force": {
+    "tier1_joules": 10000.0,
+    "per_tier": 10.0
+   },
+   "ladders": [],
+   "calendar": {
+    "style": "gregorian",
+    "time_of_day": "clock",
+    "epoch": "2024-10-15T09:00",
+    "start_second_of_day": 32400,
+    "months": [],
+    "start_year": 1,
+    "start_month": 1,
+    "start_day": 1,
+    "era": ""
+   },
+   "travel": {
+    "description": "City buses, light rail, and rideshare apps make navigating Seattle simple.",
+    "instant_messages": true
+   },
+   "medicine": {
+    "healing": "Modern hospitals, clinics, and herbal remedies.",
+    "resurrection": "none",
+    "resurrection_means": ""
+   },
+   "laws": [
+    {
+     "id": "civil-law",
+     "text": "Property ownership, inheritance taxes, and business licenses are strictly regulated by Washington State law.",
+     "enforcer": "Seattle Municipal Court and local tax authorities",
+     "enforcer_faction_id": null,
+     "zeal": "medium",
+     "corruptible": false
+    }
+   ],
+   "norms": [
+    "skepticism"
+   ],
+   "several_partners": false,
+   "unions": "easy",
+   "rules": [
+    {
+     "id": "ghostly-anchors",
+     "text": "Ghosts are bound to physical anchors, such as old buildings or beloved belongings, and cannot wander far from them.",
+     "fixed": true,
+     "topic": "nature"
+    },
+    {
+     "id": "spirit-interaction",
+     "text": "Most living people cannot perceive spirits unless they possess a rare sensitivity or the spirit expends immense energy to manifest.",
+     "fixed": false,
+     "topic": "nature"
+    },
+    {
+     "id": "physical-influence",
+     "text": "A spirit's ability to manipulate objects or electronics is limited by their emotional state and the strength of their anchor.",
+     "fixed": false,
+     "topic": "limits"
+    },
+    {
+     "id": "ghosts-exists",
+     "text": "Ghosts and spirits: real, and hidden from most people.",
+     "fixed": true,
+     "topic": "existence"
+    }
+   ],
+   "mysteries": [
+    {
+     "id": "why-haunted",
+     "question": "Is the bookstore actually haunted, and what does the spirit want?",
+     "answer": "Yes, it is haunted by your late grandmother, Evelyn. She is unable to pass on because she hid a highly valuable local historical document (an early pioneer logbook) in the shop, which could secure its financial future and expose Uncle Arthur's illegal pre-sale agreements.",
+     "clues": [
+      "The scent of lavender and freshly brewed tea appearing in closed rooms.",
+      "A dusty, heavy encyclopedia volume consistently sliding off the shelf to reveal a hollowed-out compartment.",
+      "An old ledger detailing historical land records with several pages missing.",
+      "Uncle Arthur's nervous avoidance of searching the bookstore's basement."
+     ],
+     "thread_id": "bookstore-mystery",
+     "solved": false
+    }
+   ]
+  },
+  "player_id": "player",
+  "characters": {
+   "player": {
+    "id": "player",
+    "name": "Robin Vance",
+    "aliases": [],
+    "prominence": "key",
+    "description": "An observant and quick-witted former barista, wearing comfortable flannel and smelling faintly of coffee grounds.",
+    "appearance": "Average height, practical dark hair, thoughtful eyes, wearing a comfortable oversized sweater, jeans, and sturdy boots.",
+    "look_version": 1,
+    "age": 28,
+    "people_id": "humans",
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "eldritch-books",
+    "personal_offset_s": 0,
+    "memberships": [],
+    "sheet": {
+     "attributes": {
+      "strength": 3,
+      "speed": 3,
+      "toughness": 3,
+      "wits": 4,
+      "knowledge": 3,
+      "willpower": 4,
+      "charm": 4,
+      "nerve": 3,
+      "bearing": 3
+     },
+     "skills": [
+      {
+       "name": "Coffee brewing",
+       "level": "expert",
+       "notes": "Years of working as a barista have made you a master of the espresso machine."
+      },
+      {
+       "name": "Customer service",
+       "level": "skilled",
+       "notes": "Good at reading people, managing difficult customers, and diffusing tension."
+      },
+      {
+       "name": "Observation",
+       "level": "skilled",
+       "notes": "You have a sharp eye for small details in your environment."
+      }
+     ],
+     "traits": [
+      {
+       "name": "Grief-stricken",
+       "kind": "flaw",
+       "description": "Still mourning the loss of your beloved grandmother, making discussions about her property emotionally difficult."
+      }
+     ],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "observant",
+        "sarcastic",
+        "determined"
+       ],
+       "values": [
+        "independence",
+        "family heritage"
+       ],
+       "loves": [
+        "perfectly pulled espresso shots",
+        "the smell of old books"
+       ],
+       "fears": [
+        "financial ruin",
+        "failing your grandmother's memory"
+       ],
+       "wants": [],
+       "voice": "Casual, slightly defensive but warm, prone to dry humor when stressed."
+      },
+      "attitudes": {}
+     },
+     "resources": {
+      "items": [
+       {
+        "id": "brass-store-key",
+        "name": "Brass Store Key",
+        "kind": "gear",
+        "description": "The heavy, ornate key to Eldritch & Elder Books.",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       },
+       {
+        "id": "smart-phone",
+        "name": "Smart phone",
+        "kind": "gear",
+        "description": "An aging phone with a cracked screen protector, loaded with unanswered texts from your uncle.",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       }
+      ],
+      "money": 1200,
+      "currency": "dollars",
+      "title": "Bookstore Owner",
+      "rank": "Owner",
+      "family_name": "Vance",
+      "connections": [
+       {
+        "name": "Uncle Arthur",
+        "kind": "family",
+        "character_id": "arthur",
+        "note": "Your greedy uncle who is pressuring you to sign away the shop."
+       }
+      ]
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 2,
+      "wealth": 1,
+      "knowledge": 3,
+      "stealth": 2
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": [
+      {
+       "text": "You have spent the last few years working shifts at Siren's Grind, a local Seattle coffee shop, trying to figure out what you want from life.",
+       "turn": 0
+      },
+      {
+       "text": "Your grandmother Evelyn was your favorite relative, a quirky woman who filled your childhood with stories and let you hide in her shop's corners.",
+       "turn": 0
+      },
+      {
+       "text": "Her sudden passing left you with a massive responsibility you feel entirely unprepared for, but you're unwilling to let her legacy be demolished without a fight.",
+       "turn": 0
+      }
+     ]
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": 80,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   },
+   "evelyn": {
+    "id": "evelyn",
+    "name": "Evelyn Vance",
+    "aliases": [
+     "Grandma Evelyn",
+     "The Bookshop Ghost"
+    ],
+    "prominence": "key",
+    "description": "A lingering, semi-transparent presence that smells faintly of lavender and vanilla tea. She appears confused but protective of her shop.",
+    "appearance": "An elderly woman in a hand-knit cardigan and spectacles, her form wavering like steam.",
+    "look_version": 1,
+    "age": 82,
+    "people_id": "humans",
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "eldritch-books",
+    "personal_offset_s": 0,
+    "memberships": [],
+    "sheet": {
+     "attributes": {
+      "strength": 1,
+      "speed": 3,
+      "toughness": 2,
+      "wits": 4,
+      "knowledge": 5,
+      "willpower": 4,
+      "charm": 3,
+      "nerve": 4,
+      "bearing": 4
+     },
+     "skills": [
+      {
+       "name": "Literary appraisal",
+       "level": "master",
+       "notes": "She knew the value of every single page in her store."
+      }
+     ],
+     "traits": [
+      {
+       "name": "Ethereal presence",
+       "kind": "gift",
+       "description": "Can glide through walls and manipulate small physical items when emotionally charged."
+      }
+     ],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "stubborn",
+        "knowledgeable",
+        "protective"
+       ],
+       "values": [
+        "preservation of history",
+        "family"
+       ],
+       "loves": [
+        "first edition classics",
+        "rainy afternoons"
+       ],
+       "fears": [
+        "the demolition of her shop"
+       ],
+       "wants": [
+        "To prevent the bookshop from being sold to developers."
+       ],
+       "voice": "A soft, echoing whisper that sounds like rustling pages."
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 85,
+        "fear": 0,
+        "trust": 90,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 2,
+      "wealth": 1,
+      "knowledge": 4,
+      "stealth": 5
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [
+     "She hid a highly valuable 19th-century logbook detailing early Seattle land deeds inside a hollowed-out encyclopedia."
+    ],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": true,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   },
+   "arthur": {
+    "id": "arthur",
+    "name": "Arthur Vance",
+    "aliases": [
+     "Uncle Arthur"
+    ],
+    "prominence": "key",
+    "description": "Your slick, anxious uncle who wears cheap suits and constantly checks his watch. He is eager to get the bookstore off his hands.",
+    "appearance": "Balding, mid-fifties, sharp eyes, dressed in an ill-fitting corporate suit.",
+    "look_version": 1,
+    "age": 54,
+    "people_id": "humans",
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "eldritch-books",
+    "personal_offset_s": 0,
+    "memberships": [
+     {
+      "faction_id": "vance-family",
+      "rank": "family head",
+      "loyalty": 40
+     }
+    ],
+    "sheet": {
+     "attributes": {
+      "strength": 3,
+      "speed": 3,
+      "toughness": 3,
+      "wits": 3,
+      "knowledge": 3,
+      "willpower": 3,
+      "charm": 3,
+      "nerve": 2,
+      "bearing": 3
+     },
+     "skills": [
+      {
+       "name": "Salesmanship",
+       "level": "skilled",
+       "notes": "Excellent at convincing people to take bad deals."
+      }
+     ],
+     "traits": [
+      {
+       "name": "Anxious sweat",
+       "kind": "flaw",
+       "description": "Becomes visibly agitated and sweaty when cornered with difficult questions."
+      }
+     ],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "greedy",
+        "impatient",
+        "defensive"
+       ],
+       "values": [
+        "financial security",
+        "appearances"
+       ],
+       "loves": [
+        "quick profits",
+        "expensive dinners"
+       ],
+       "fears": [
+        "bankruptcy",
+        "reputational ruin"
+       ],
+       "wants": [
+        "To force you to sign the papers to sell Eldritch & Elder Books."
+       ],
+       "voice": "Fast-talking and slightly nasal, always trying to sound reasonable."
+      },
+      "attitudes": {
+       "player": {
+        "affinity": -10,
+        "fear": 0,
+        "trust": -20,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 2,
+      "influence": 3,
+      "wealth": 2,
+      "knowledge": 2,
+      "stealth": 3
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": {
+     "goal": "Force the sale of the bookstore to a high-rise developer named Greystone Holdings.",
+     "method": "Using outstanding inheritance tax as leverage to convince you that keeping the shop is financially impossible.",
+     "secret": "He has already accepted a quiet deposit under the table from the developer.",
+     "clock_id": "estate-tax"
+    },
+    "secrets": [
+     "He owes over fifty thousand dollars to a private loan shark."
+    ],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": 0,
+    "near_s": null,
+    "met_s": null
+   }
+  },
+  "factions": {
+   "vance-family": {
+    "id": "vance-family",
+    "name": "The Vance Family Heirs",
+    "kind": "family",
+    "description": "Your fragmented family, currently bickering over the small remaining assets of your late grandmother.",
+    "parent_id": null,
+    "status": "intact",
+    "status_history": [],
+    "activity": "active",
+    "leader_ids": [
+     "arthur"
+    ],
+    "goal": "To liquidate the bookstore and divide the cash among the surviving heirs.",
+    "methods": "Legal pressure, family guilt, and leveraging unpaid property taxes.",
+    "strength": "High legal leverage through probate court.",
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "threat": 0,
+    "relations": {},
+    "survivors": [],
+    "secrets": [
+     "Uncle Arthur is deep in debt to a local private lender and needs his share of the sale immediately."
+    ],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "places": {
+   "seattle": {
+    "id": "seattle",
+    "name": "Seattle",
+    "kind": "city",
+    "description": "The emerald city, famous for its constant drizzle, tech giants, and vibrant coffee scene.",
+    "parent_id": null,
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "eldritch-books": {
+    "id": "eldritch-books",
+    "name": "Eldritch & Elder Books",
+    "kind": "building",
+    "description": "A dusty, multi-story bookstore crammed with towering shelves of vintage paperbacks, smelling of old paper, lavender, and damp wood.",
+    "parent_id": "seattle",
+    "setting": "indoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "sirens-grind",
+      "travel_s": 1800,
+      "mode": "on foot"
+     },
+     {
+      "to_id": "apartment",
+      "travel_s": 900,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [
+     "player"
+    ],
+    "judged": []
+   },
+   "sirens-grind": {
+    "id": "sirens-grind",
+    "name": "Siren's Grind",
+    "kind": "building",
+    "description": "A bustling modern espresso bar where the espresso machines hiss endlessly and the air is thick with roasted coffee beans.",
+    "parent_id": "seattle",
+    "setting": "indoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "apartment",
+      "travel_s": 1080,
+      "mode": "on foot"
+     },
+     {
+      "to_id": "eldritch-books",
+      "travel_s": 1800,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "apartment": {
+    "id": "apartment",
+    "name": "Your Apartment",
+    "kind": "room",
+    "description": "A tiny, rented studio apartment with a view of a brick wall and a fire escape.",
+    "parent_id": "seattle",
+    "setting": "indoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "eldritch-books",
+      "travel_s": 900,
+      "mode": "on foot"
+     },
+     {
+      "to_id": "sirens-grind",
+      "travel_s": 1080,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   }
+  },
+  "deeds": {},
+  "rumors": {},
+  "bonds": {},
+  "lives": {},
+  "aged_s": null,
+  "changes": {},
+  "strife_s": {},
+  "facts": {
+   "fact-1": {
+    "id": "fact-1",
+    "text": "Your grandmother Evelyn Vance recently passed away, leaving you Eldritch & Elder Books in her will.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-2": {
+    "id": "fact-2",
+    "text": "The bookstore has significant unpaid tax debts that your family wants to settle by selling the building.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-3": {
+    "id": "fact-3",
+    "text": "Strange, unexplainable cold spots and shifting objects have started occurring in the shop since you took the keys.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   }
+  },
+  "goals": {},
+  "leads": {},
+  "threads": {
+   "bookstore-mystery": {
+    "id": "bookstore-mystery",
+    "title": "The Secret of Eldritch & Elder Books",
+    "kind": "mystery",
+    "stakes": "The truth about your grandmother's past and the hidden value within the shop.",
+    "involved_ids": [
+     "evelyn"
+    ],
+    "clock_id": null,
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "status": "open",
+    "opened_turn": 0,
+    "last_active_turn": 0,
+    "taken_up_turn": null,
+    "closed_turn": null,
+    "arc": null,
+    "known_by": [
+     "player"
+    ]
+   },
+   "uncles-scheme": {
+    "id": "uncles-scheme",
+    "title": "Uncle Arthur's Buyout",
+    "kind": "threat",
+    "stakes": "Losing the bookstore to developers before you can solve its mystery.",
+    "involved_ids": [
+     "arthur"
+    ],
+    "clock_id": "estate-tax",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "status": "open",
+    "opened_turn": 0,
+    "last_active_turn": 0,
+    "taken_up_turn": null,
+    "closed_turn": null,
+    "arc": null,
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "clocks": {
+   "estate-tax": {
+    "id": "estate-tax",
+    "name": "The Foreclosure Clock",
+    "steps": [
+     "The probate attorney issues a final warning about outstanding inheritance tax fees.",
+     "Uncle Arthur files a petition in court to force a partition sale of the shop.",
+     "City tax collectors threaten to place a tax lien on Eldritch & Elder Books.",
+     "The court orders the bookstore to be auctioned off to the highest bidder."
+    ],
+    "filled": 0,
+    "advances_on": [],
+    "reverses_on": [],
+    "interval_s": 302400,
+    "next_step_s": 302400,
+    "owner_id": "arthur",
+    "thread_id": "uncles-scheme",
+    "status": "running",
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "pending_events": {
+   "event-1": {
+    "id": "event-1",
+    "kind": "world.clock_step",
+    "title": "The Foreclosure Clock: The probate attorney issues a final warning about outstanding inheritance tax fees.",
+    "due_s": 302400,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [
+     "arthur"
+    ],
+    "place_id": null,
+    "origin": {
+     "kind": "clock",
+     "ref_id": "estate-tax",
+     "text": ""
+    },
+    "payload": {
+     "clock_id": "estate-tax"
+    },
+    "seed": "story=play%2Fx-barista/timeline=main/turn=1/world/schedule/event-1",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-2": {
+    "id": "event-2",
+    "kind": "world.old_age",
+    "title": "Your years run short",
+    "due_s": 1651751513,
+    "timeline_id": "main",
+    "needs_player": true,
+    "status": "pending",
+    "subject_ids": [
+     "player"
+    ],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "phase": "near",
+     "who": "player",
+     "span": 80,
+     "day_s": 1678528989
+    },
+    "seed": "story=play%2Fx-barista/timeline=main/turn=1/world/schedule/event-2",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-3": {
+    "id": "event-3",
+    "kind": "world.tick",
+    "title": "The world moves on",
+    "due_s": 86400,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "last_s": 0,
+     "stride_s": 86400
+    },
+    "seed": "story=play%2Fx-barista/timeline=main/turn=1/world/schedule/event-3",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   }
+  },
+  "transfers": [],
+  "time_effects": [],
+  "scene": {
+   "place_id": "eldritch-books",
+   "present_ids": [
+    "player",
+    "arthur"
+   ],
+   "positions": [
+    "Robin Vance stands by the fallen book in the central aisle.",
+    "Arthur Vance stands near the front entrance by the counter."
+   ],
+   "props": [
+    "A heavy brass shop key",
+    "A dusty stack of leather-bound novels",
+    "A freshly printed tax warning letter",
+    "A fallen vintage book"
+   ],
+   "ended_on": "Arthur sets his wet umbrella in the stand and watches you, waiting for your reply.",
+   "encounter": null
+  },
+  "director": {
+   "turns_without_stakes": 0,
+   "low_stakes_streak": 0,
+   "last_action_key": null,
+   "last_event_turn": null,
+   "last_event_size": null,
+   "last_event_s": {},
+   "last_small_s": null,
+   "recent_moments": [],
+   "recent_clock": [
+    0
+   ],
+   "frequency_drift": 0.0,
+   "recent_sources": [],
+   "auto_pictures": 1,
+   "picture_credit": 1.1,
+   "pictured": [
+    "portrait:player",
+    "portrait:player:v1"
+   ],
+   "fight": null,
+   "deck_draws": 0,
+   "road_stops": 0
+  },
+  "summary": "You have inherited your late grandmother Evelyn Vance's bookstore, Eldritch & Elder Books, along with its heavy outstanding inheritance taxes. While exploring the quiet shop, a book mysteriously falls from a shelf, and your greedy Uncle Arthur arrives to pressure you into selling the property to developers.",
+  "chapters": [],
+  "id_counters": {
+   "fact": 3,
+   "goal": 0,
+   "bond": 0,
+   "event": 3
+  },
+  "fallen": [],
+  "opening_due": false,
+  "misses_in_a_row": 0,
+  "openings": [],
+  "journey": null,
+  "untold": [
+   "thread:bookstore-mystery"
+  ]
+ },
+ "scenes": [
+  {
+   "turn": 1,
+   "narration": "The vintage book lies open at your feet, its yellowed pages trembling slightly in the draft. You stand in the quiet, dusty aisles of Eldritch & Elder Books, the heavy brass key pressing cold against your palm. The morning light filters through the rain-slicked front window, illuminating millions of dust motes dancing over towering stacks of leather-bound novels. From the back corner, near your grandmother's favorite reading chair, the faint, comforting scent of lavender and vanilla tea drifts past you, followed by a sudden, localized chill that makes you shiver.\n\nBefore you can kneel to retrieve the fallen volume, the shop's brass bell chiming at the door shatters the silence. Your uncle, Arthur Vance, steps inside out of the Seattle drizzle, shaking out a wet umbrella. His cheap corporate suit looks damp, his eyes darting immediately to the freshly printed tax warning letter resting on the mahogany counter. He rubs his palms together and sighs, his nasal voice already filling the room with practiced concern. \"Robin, thank goodness you're here. We really need to talk about the outstanding inheritance tax before the developers' offer expires.\"",
+   "player_action": null
+  }
+ ],
+ "choices": [
+  "Defend the shop and refuse Uncle Arthur's buyout offer.",
+  "Ask Arthur how he expects to pay off Grandma's tax debts.",
+  "Ignore Arthur and pick up the fallen book to examine it."
+ ],
+ "cost_usd": 0.1220655,
+ "draft": {
+  "premise": "I'm a 28-year-old barista in Seattle. My grandmother just died and left me her old bookstore, and I think it's haunted.",
+  "proposal": {
+   "world": {
+    "title": "The Seattle Book Spectre",
+    "genre": "urban fantasy mystery",
+    "tone": "mysterious and cozy",
+    "era": "Modern-day Seattle: smartphones, rain-slicked streets, and espresso machines.",
+    "extraordinary": [
+     {
+      "id": "ghosts",
+      "kind": "ghosts and spirits",
+      "prevalence": "hidden",
+      "reach": "The spirits of the departed can linger in places or objects of immense sentimental value, occasionally influencing the physical world."
+     }
+    ],
+    "rules": [
+     {
+      "id": "ghostly-anchors",
+      "text": "Ghosts are bound to physical anchors, such as old buildings or beloved belongings, and cannot wander far from them.",
+      "fixed": true,
+      "topic": "nature",
+      "about": [
+       "ghosts"
+      ]
+     },
+     {
+      "id": "spirit-interaction",
+      "text": "Most living people cannot perceive spirits unless they possess a rare sensitivity or the spirit expends immense energy to manifest.",
+      "fixed": false,
+      "topic": "nature",
+      "about": [
+       "ghosts"
+      ]
+     },
+     {
+      "id": "physical-influence",
+      "text": "A spirit's ability to manipulate objects or electronics is limited by their emotional state and the strength of their anchor.",
+      "fixed": false,
+      "topic": "limits",
+      "about": [
+       "ghosts"
+      ]
+     }
+    ],
+    "dropped_rule_ids": [],
+    "peoples": [
+     {
+      "id": "humans",
+      "name": "Humans",
+      "description": "",
+      "lifespan_years": 80,
+      "gifts": [],
+      "culture": "Modern Pacific Northwest culture: coffee-obsessed, tech-driven, and highly independent.",
+      "relations": [],
+      "path": ""
+     }
+    ],
+    "creatures": [],
+    "nature": [],
+    "ladders": [],
+    "calendar": {
+     "style": "gregorian",
+     "clock_time": true,
+     "epoch": "2024-10-15T09:00",
+     "start_hour": 9,
+     "months": [],
+     "start_year": 2024,
+     "start_month": 10,
+     "start_day": 15,
+     "era": ""
+    },
+    "travel": {
+     "description": "City buses, light rail, and rideshare apps make navigating Seattle simple.",
+     "instant_messages": true
+    },
+    "medicine": {
+     "healing": "Modern hospitals, clinics, and herbal remedies.",
+     "resurrection": "none",
+     "resurrection_means": ""
+    },
+    "laws": [
+     {
+      "id": "civil-law",
+      "text": "Property ownership, inheritance taxes, and business licenses are strictly regulated by Washington State law.",
+      "enforcer": "Seattle Municipal Court and local tax authorities",
+      "enforcer_faction_id": "",
+      "zeal": "medium",
+      "corruptible": false
+     }
+    ],
+    "norms": [
+     "skepticism"
+    ],
+    "several_partners": false,
+    "unions": "easy",
+    "places": [
+     {
+      "id": "seattle",
+      "name": "Seattle",
+      "kind": "city",
+      "description": "The emerald city, famous for its constant drizzle, tech giants, and vibrant coffee scene.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "eldritch-books",
+      "name": "Eldritch & Elder Books",
+      "kind": "building",
+      "description": "A dusty, multi-story bookstore crammed with towering shelves of vintage paperbacks, smelling of old paper, lavender, and damp wood.",
+      "parent_id": "seattle",
+      "setting": "indoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "sirens-grind",
+        "travel_hours": 0.5,
+        "mode": "on foot"
+       },
+       {
+        "to_id": "apartment",
+        "travel_hours": 0.25,
+        "mode": "on foot"
+       }
+      ]
+     },
+     {
+      "id": "sirens-grind",
+      "name": "Siren's Grind",
+      "kind": "building",
+      "description": "A bustling modern espresso bar where the espresso machines hiss endlessly and the air is thick with roasted coffee beans.",
+      "parent_id": "seattle",
+      "setting": "indoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "apartment",
+        "travel_hours": 0.3,
+        "mode": "on foot"
+       }
+      ]
+     },
+     {
+      "id": "apartment",
+      "name": "Your Apartment",
+      "kind": "room",
+      "description": "A tiny, rented studio apartment with a view of a brick wall and a fire escape.",
+      "parent_id": "seattle",
+      "setting": "indoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     }
+    ],
+    "factions": [
+     {
+      "id": "vance-family",
+      "name": "The Vance Family Heirs",
+      "kind": "family",
+      "description": "Your fragmented family, currently bickering over the small remaining assets of your late grandmother.",
+      "parent_id": "",
+      "leader_ids": [
+       "arthur"
+      ],
+      "goal": "To liquidate the bookstore and divide the cash among the surviving heirs.",
+      "methods": "Legal pressure, family guilt, and leveraging unpaid property taxes.",
+      "strength": "High legal leverage through probate court.",
+      "relations": [],
+      "secrets": [
+       "Uncle Arthur is deep in debt to a local private lender and needs his share of the sale immediately."
+      ],
+      "known_to_player": true
+     }
+    ],
+    "npcs": [
+     {
+      "id": "evelyn",
+      "name": "Evelyn Vance",
+      "aliases": [
+       "Grandma Evelyn",
+       "The Bookshop Ghost"
+      ],
+      "description": "A lingering, semi-transparent presence that smells faintly of lavender and vanilla tea. She appears confused but protective of her shop.",
+      "appearance": "An elderly woman in a hand-knit cardigan and spectacles, her form wavering like steam.",
+      "age": 82,
+      "people_id": "humans",
+      "location_id": "eldritch-books",
+      "memberships": [],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "stubborn",
+        "knowledgeable",
+        "protective"
+       ],
+       "values": [
+        "preservation of history",
+        "family"
+       ],
+       "loves": [
+        "first edition classics",
+        "rainy afternoons"
+       ],
+       "fears": [
+        "the demolition of her shop"
+       ],
+       "wants": [
+        "To prevent the bookshop from being sold to developers."
+       ],
+       "voice": "A soft, echoing whisper that sounds like rustling pages."
+      },
+      "attributes": {
+       "strength": 1,
+       "speed": 3,
+       "toughness": 2,
+       "wits": 4,
+       "knowledge": 5,
+       "willpower": 4,
+       "charm": 3,
+       "nerve": 4,
+       "bearing": 4
+      },
+      "skills": [
+       {
+        "name": "Literary appraisal",
+        "level": "master",
+        "notes": "She knew the value of every single page in her store."
+       }
+      ],
+      "traits": [
+       {
+        "name": "Ethereal presence",
+        "kind": "gift",
+        "description": "Can glide through walls and manipulate small physical items when emotionally charged."
+       }
+      ],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 2,
+       "wealth": 1,
+       "knowledge": 4,
+       "stealth": 5
+      },
+      "attitude_to_player": {
+       "affinity": 85,
+       "fear": 0,
+       "trust": 90,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": true,
+      "agenda": null,
+      "secrets": [
+       "She hid a highly valuable 19th-century logbook detailing early Seattle land deeds inside a hollowed-out encyclopedia."
+      ],
+      "player_knows": "heard_of"
+     },
+     {
+      "id": "arthur",
+      "name": "Arthur Vance",
+      "aliases": [
+       "Uncle Arthur"
+      ],
+      "description": "Your slick, anxious uncle who wears cheap suits and constantly checks his watch. He is eager to get the bookstore off his hands.",
+      "appearance": "Balding, mid-fifties, sharp eyes, dressed in an ill-fitting corporate suit.",
+      "age": 54,
+      "people_id": "humans",
+      "location_id": "seattle",
+      "memberships": [
+       {
+        "faction_id": "vance-family",
+        "rank": "family head",
+        "loyalty": 40
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "greedy",
+        "impatient",
+        "defensive"
+       ],
+       "values": [
+        "financial security",
+        "appearances"
+       ],
+       "loves": [
+        "quick profits",
+        "expensive dinners"
+       ],
+       "fears": [
+        "bankruptcy",
+        "reputational ruin"
+       ],
+       "wants": [
+        "To force you to sign the papers to sell Eldritch & Elder Books."
+       ],
+       "voice": "Fast-talking and slightly nasal, always trying to sound reasonable."
+      },
+      "attributes": {
+       "strength": 3,
+       "speed": 3,
+       "toughness": 3,
+       "wits": 3,
+       "knowledge": 3,
+       "willpower": 3,
+       "charm": 3,
+       "nerve": 2,
+       "bearing": 3
+      },
+      "skills": [
+       {
+        "name": "Salesmanship",
+        "level": "skilled",
+        "notes": "Excellent at convincing people to take bad deals."
+       }
+      ],
+      "traits": [
+       {
+        "name": "Anxious sweat",
+        "kind": "flaw",
+        "description": "Becomes visibly agitated and sweaty when cornered with difficult questions."
+       }
+      ],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 2,
+       "influence": 3,
+       "wealth": 2,
+       "knowledge": 2,
+       "stealth": 3
+      },
+      "attitude_to_player": {
+       "affinity": -10,
+       "fear": 0,
+       "trust": -20,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": {
+       "goal": "Force the sale of the bookstore to a high-rise developer named Greystone Holdings.",
+       "method": "Using outstanding inheritance tax as leverage to convince you that keeping the shop is financially impossible.",
+       "secret": "He has already accepted a quiet deposit under the table from the developer.",
+       "clock_id": "estate-tax"
+      },
+      "secrets": [
+       "He owes over fifty thousand dollars to a private loan shark."
+      ],
+      "player_knows": "met"
+     }
+    ],
+    "clocks": [
+     {
+      "id": "estate-tax",
+      "name": "The Foreclosure Clock",
+      "steps": [
+       "The probate attorney issues a final warning about outstanding inheritance tax fees.",
+       "Uncle Arthur files a petition in court to force a partition sale of the shop.",
+       "City tax collectors threaten to place a tax lien on Eldritch & Elder Books.",
+       "The court orders the bookstore to be auctioned off to the highest bidder."
+      ],
+      "step_every_hours": 84.0,
+      "owner_id": "arthur",
+      "thread_id": "uncles-scheme",
+      "known_to_player": true
+     }
+    ],
+    "threads": [
+     {
+      "id": "bookstore-mystery",
+      "title": "The Secret of Eldritch & Elder Books",
+      "kind": "mystery",
+      "stakes": "The truth about your grandmother's past and the hidden value within the shop.",
+      "involved_ids": [
+       "evelyn"
+      ],
+      "clock_id": "",
+      "known_to_player": true
+     },
+     {
+      "id": "uncles-scheme",
+      "title": "Uncle Arthur's Buyout",
+      "kind": "threat",
+      "stakes": "Losing the bookstore to developers before you can solve its mystery.",
+      "involved_ids": [
+       "arthur"
+      ],
+      "clock_id": "estate-tax",
+      "known_to_player": true
+     }
+    ],
+    "mysteries": [
+     {
+      "id": "why-haunted",
+      "question": "Is the bookstore actually haunted, and what does the spirit want?",
+      "answer": "Yes, it is haunted by your late grandmother, Evelyn. She is unable to pass on because she hid a highly valuable local historical document (an early pioneer logbook) in the shop, which could secure its financial future and expose Uncle Arthur's illegal pre-sale agreements.",
+      "clues": [
+       "The scent of lavender and freshly brewed tea appearing in closed rooms.",
+       "A dusty, heavy encyclopedia volume consistently sliding off the shelf to reveal a hollowed-out compartment.",
+       "An old ledger detailing historical land records with several pages missing.",
+       "Uncle Arthur's nervous avoidance of searching the bookstore's basement."
+      ],
+      "thread_id": "bookstore-mystery",
+      "known_to_player": true
+     }
+    ],
+    "known_facts": [
+     "Your grandmother Evelyn Vance recently passed away, leaving you Eldritch & Elder Books in her will.",
+     "The bookstore has significant unpaid tax debts that your family wants to settle by selling the building.",
+     "Strange, unexplainable cold spots and shifting objects have started occurring in the shop since you took the keys."
+    ],
+    "opening": {
+     "place_id": "eldritch-books",
+     "present_ids": [],
+     "positions": [],
+     "props": [
+      "A heavy brass shop key",
+      "A dusty stack of leather-bound novels",
+      "A freshly printed tax warning letter"
+     ],
+     "situation": "You stand alone in the quiet, dusty aisles of Eldritch & Elder Books, clutching the brass key your grandmother left you, when a vintage novel suddenly slips from a high shelf and flutters open at your feet."
+    },
+    "summary": "Having inherited your late grandmother's historic Seattle bookstore, you find yourself struggling to keep it afloat amid family greed and tax deadlines. To make matters stranger, the old building seems to have a mind of its own, hinting at secrets left behind by its previous owner."
+   },
+   "character": {
+    "name": "Robin Vance",
+    "aliases": [],
+    "age": 28,
+    "lifespan_years": 80,
+    "people_id": "humans",
+    "description": "An observant and quick-witted former barista, wearing comfortable flannel and smelling faintly of coffee grounds.",
+    "appearance": "Average height, practical dark hair, thoughtful eyes, wearing a comfortable oversized sweater, jeans, and sturdy boots.",
+    "location_id": "eldritch-books",
+    "attributes": {
+     "strength": 3,
+     "speed": 3,
+     "toughness": 3,
+     "wits": 4,
+     "knowledge": 3,
+     "willpower": 4,
+     "charm": 4,
+     "nerve": 3,
+     "bearing": 3
+    },
+    "skills": [
+     {
+      "name": "Coffee brewing",
+      "level": "expert",
+      "notes": "Years of working as a barista have made you a master of the espresso machine."
+     },
+     {
+      "name": "Customer service",
+      "level": "skilled",
+      "notes": "Good at reading people, managing difficult customers, and diffusing tension."
+     },
+     {
+      "name": "Observation",
+      "level": "skilled",
+      "notes": "You have a sharp eye for small details in your environment."
+     }
+    ],
+    "traits": [
+     {
+      "name": "Grief-stricken",
+      "kind": "flaw",
+      "description": "Still mourning the loss of your beloved grandmother, making discussions about her property emotionally difficult."
+     }
+    ],
+    "talents": [],
+    "powers": [],
+    "techniques": [],
+    "temperament": {
+     "traits": [
+      "observant",
+      "sarcastic",
+      "determined"
+     ],
+     "values": [
+      "independence",
+      "family heritage"
+     ],
+     "loves": [
+      "perfectly pulled espresso shots",
+      "the smell of old books"
+     ],
+     "fears": [
+      "financial ruin",
+      "failing your grandmother's memory"
+     ],
+     "wants": [],
+     "voice": "Casual, slightly defensive but warm, prone to dry humor when stressed."
+    },
+    "items": [
+     {
+      "name": "Brass Store Key",
+      "kind": "gear",
+      "description": "The heavy, ornate key to Eldritch & Elder Books.",
+      "quantity": 1,
+      "carried": true
+     },
+     {
+      "name": "Smart phone",
+      "kind": "gear",
+      "description": "An aging phone with a cracked screen protector, loaded with unanswered texts from your uncle.",
+      "quantity": 1,
+      "carried": true
+     }
+    ],
+    "money": 1200,
+    "currency": "dollars",
+    "title": "Bookstore Owner",
+    "rank": "Owner",
+    "family_name": "Vance",
+    "connections": [
+     {
+      "name": "Uncle Arthur",
+      "kind": "family",
+      "character_id": "arthur",
+      "note": "Your greedy uncle who is pressuring you to sign away the shop."
+     }
+    ],
+    "parent_ids": [],
+    "memberships": [],
+    "ladders": [],
+    "axes": {
+     "might": 1,
+     "influence": 2,
+     "wealth": 1,
+     "knowledge": 3,
+     "stealth": 2
+    },
+    "reserves": [],
+    "goals": [],
+    "backstory": [
+     "You have spent the last few years working shifts at Siren's Grind, a local Seattle coffee shop, trying to figure out what you want from life.",
+     "Your grandmother Evelyn was your favorite relative, a quirky woman who filled your childhood with stories and let you hide in her shop's corners.",
+     "Her sudden passing left you with a massive responsibility you feel entirely unprepared for, but you're unwilling to let her legacy be demolished without a fight."
+    ],
+    "hidden_past": []
+   }
+  },
+  "rating": "teen",
+  "premise_id": null,
+  "physics": "fun_first",
+  "gift": null,
+  "released_rules": [],
+  "language": "en",
+  "told": []
+ }
+}

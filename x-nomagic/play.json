@@ -1,0 +1,2192 @@
+{
+ "premise": "Everyone in this world is born with magic. I'm the only one ever born without any. But magic doesn't work on me either.",
+ "language": "en",
+ "rating": "teen",
+ "settings": {
+  "narration_length": "medium",
+  "tone": null,
+  "difficulty": "balanced",
+  "event_frequency": "normal",
+  "images": "key_moments",
+  "suggestions": true,
+  "language": "en",
+  "accent": null
+ },
+ "seed": "play/x-nomagic",
+ "state": {
+  "schema_version": 1,
+  "turn": 1,
+  "timeline_id": "main",
+  "world_s": 0,
+  "bible": {
+   "title": "The Null Spark",
+   "genre": "defiant fantasy",
+   "tone": "resolute and mysterious",
+   "era": "A high-medieval world powered entirely by elemental magical technology.",
+   "extraordinary": [
+    {
+     "id": "magic",
+     "kind": "Spark Magic",
+     "prevalence": "common",
+     "reach": "Every human is born with an internal Spark that allows them to manifest magical energy, power machinery, and cast elemental spells.",
+     "rule_ids": [
+      "spark-birthright",
+      "void-anomaly",
+      "channeling-mediums"
+     ]
+    }
+   ],
+   "peoples": [
+    {
+     "id": "human",
+     "name": "Human",
+     "description": "",
+     "lifespan_years": 80,
+     "gifts": [
+      "Spark magic channeling"
+     ],
+     "culture": "A highly stratified society where one's worth is measured entirely by the brilliance and tier of their magical Spark.",
+     "relations": [],
+     "path": ""
+    }
+   ],
+   "creatures": [
+    {
+     "id": "mana-wisp",
+     "name": "Mana Wisp",
+     "description": "Small, floating creatures of pure magic that feed on ambient spiritual energy.",
+     "tier": 1,
+     "habitat": "Ancient ruins and dense forests",
+     "worth": "Can be refined into basic magic fuel crystals.",
+     "can_be_tamed": false
+    }
+   ],
+   "nature": [],
+   "physics": "fun_first",
+   "force": {
+    "tier1_joules": 10000.0,
+    "per_tier": 10.0
+   },
+   "ladders": [
+    {
+     "id": "spark-tiers",
+     "name": "Spark Tiers",
+     "axis": "might",
+     "rungs": [
+      {
+       "name": "Flicker",
+       "tier": 2,
+       "description": "Capable of minor utility magic, like lighting a candle or cleaning garments.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 0,
+       "added_s": null
+      },
+      {
+       "name": "Flame",
+       "tier": 4,
+       "description": "Standard magic tier, able to conjure elemental blasts and defend oneself.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 0,
+       "added_s": null
+      },
+      {
+       "name": "Blaze",
+       "tier": 6,
+       "description": "Powerful spellcasters who lead military units or hold elite academic positions.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 0,
+       "added_s": null
+      },
+      {
+       "name": "Inferno",
+       "tier": 8,
+       "description": "The peak of human capability, able to level fortresses or alter weather patterns.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 0,
+       "added_s": null
+      },
+      {
+       "name": "Sun",
+       "tier": 10,
+       "description": "The legendary tier of the founders, spoken of only in myths.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 0,
+       "added_s": null
+      }
+     ],
+     "standing_follows": true,
+     "sensing": true,
+     "rung_levels": 1,
+     "shrugs_off": 3,
+     "known_to_all": 4
+    }
+   ],
+   "calendar": {
+    "style": "day_count",
+    "time_of_day": "parts",
+    "epoch": null,
+    "start_second_of_day": 28800,
+    "months": [],
+    "start_year": 1,
+    "start_month": 1,
+    "start_day": 1,
+    "era": ""
+   },
+   "travel": {
+    "description": "Travel is conducted on foot, by horse, or via high-tier magic-propelled carriages for the wealthy.",
+    "instant_messages": false
+   },
+   "medicine": {
+    "healing": "Minor wounds can be mended using light and life-aspect Spark magic.",
+    "resurrection": "none",
+    "resurrection_means": ""
+   },
+   "laws": [
+    {
+     "id": "conclave-purity-act",
+     "text": "Every citizen must register their Spark tier at the Arcane Conclave upon reaching their eighteenth year; those who fail to manifest a Spark are deemed cursed.",
+     "enforcer": "Conclave Sentinels",
+     "enforcer_faction_id": null,
+     "zeal": "high",
+     "corruptible": false
+    }
+   ],
+   "norms": [],
+   "several_partners": false,
+   "unions": "held",
+   "rules": [
+    {
+     "id": "spark-birthright",
+     "text": "Every child is born with a glowing magical Spark that dictates their potential and social standing.",
+     "fixed": true,
+     "topic": "existence"
+    },
+    {
+     "id": "void-anomaly",
+     "text": "The complete absence of a Spark makes a person completely invisible to and unaffected by direct magical spells.",
+     "fixed": true,
+     "topic": "nature"
+    },
+    {
+     "id": "channeling-mediums",
+     "text": "Magical spells require a conduit of personal energy to find purchase; they cannot cling to pure void.",
+     "fixed": false,
+     "topic": "limits"
+    }
+   ],
+   "mysteries": [
+    {
+     "id": "why-no-magic",
+     "question": "Why do I have no magic, yet spells slide off me completely?",
+     "answer": "You were born during the rare Void Alignment celestial event, which completely sealed your biological mana channels, replacing them with a 'Void Shell' that naturally absorbs and neutralizes any active magical fields.",
+     "clues": [
+      "An old astronomical log in the Spellspire detailing a total solar eclipse on the exact hour of your birth.",
+      "The way the ward-lanterns flicker and die whenever you stand directly beneath them for too long.",
+      "An ancient text mentioning the 'Children of the Null Void' who once stood impervious to the gods' magic."
+     ],
+     "thread_id": "mystery-of-the-void",
+     "solved": false
+    }
+   ]
+  },
+  "player_id": "player",
+  "characters": {
+   "player": {
+    "id": "player",
+    "name": "Julian",
+    "aliases": [
+     "The Null",
+     "The Sparkless"
+    ],
+    "prominence": "key",
+    "description": "A focused, athletic youth whose quiet, intense gaze shows the grit of someone who has had to survive through physical strength alone.",
+    "appearance": "Strong, lean build honed by years of physical training; short, unruly dark hair; sharp gray eyes. Wearing a simple, patched gray tunic, leather trousers, and sturdy leather boots.",
+    "look_version": 1,
+    "age": 18,
+    "people_id": null,
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "player-home",
+    "personal_offset_s": 0,
+    "memberships": [],
+    "sheet": {
+     "attributes": {
+      "strength": 4,
+      "speed": 4,
+      "toughness": 4,
+      "wits": 4,
+      "knowledge": 3,
+      "willpower": 5,
+      "charm": 3,
+      "nerve": 5,
+      "bearing": 3
+     },
+     "skills": [
+      {
+       "name": "Close Combat",
+       "level": "skilled",
+       "notes": "Trained by Elder Karl in direct physical swordplay and hand-to-hand fighting."
+      },
+      {
+       "name": "Athletics",
+       "level": "expert",
+       "notes": "Excellent running, climbing, and physical endurance built up to compensate for lack of magic."
+      },
+      {
+       "name": "Stealth",
+       "level": "skilled",
+       "notes": "Slinking through the shadows of the capital to avoid Sentinel patrols."
+      },
+      {
+       "name": "Magic Lore",
+       "level": "novice",
+       "notes": "Basic knowledge of spells, gestures, and elemental signs studied to anticipate mage attacks."
+      }
+     ],
+     "traits": [
+      {
+       "name": "Sparkless Void",
+       "kind": "flaw",
+       "description": "You possess zero magical mana. You cannot cast spells, activate magical machinery, or use magical items."
+      },
+      {
+       "name": "Immovable Mind",
+       "kind": "gift",
+       "description": "Years of being an outcast have forged an unbreakable willpower; you are highly resistant to intimidation and mental stress."
+      }
+     ],
+     "talents": [],
+     "powers": [
+      {
+       "id": "void-shell",
+       "name": "Void Immunity",
+       "description": "Active magic spells cast directly at your body lose cohesion and harmlessly disperse into nothingness upon contact.",
+       "strength": "overpowered",
+       "limits": [
+        "Does not protect you from physical side-effects of magic, such as a magically-thrown boulder, collapsing structures, or natural fire ignited by a spell."
+       ],
+       "costs": [],
+       "secret": false,
+       "time": null,
+       "settings": {},
+       "ready_at_personal_s": null
+      }
+     ],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "determined",
+        "observant",
+        "guarded"
+       ],
+       "values": [
+        "survival",
+        "self-reliance"
+       ],
+       "loves": [
+        "the quiet of the woods",
+        "mastering a physical technique"
+       ],
+       "fears": [
+        "being helpless",
+        "losing the few people who accept them"
+       ],
+       "wants": [],
+       "voice": "Direct, calm, and sparing with words."
+      },
+      "attitudes": {}
+     },
+     "resources": {
+      "items": [
+       {
+        "id": "sturdy-iron-dagger",
+        "name": "Sturdy Iron Dagger",
+        "kind": "weapon",
+        "description": "A well-balanced, non-magical dagger crafted from simple cold iron.",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       },
+       {
+        "id": "worn-leather-bracers",
+        "name": "Worn Leather Bracers",
+        "kind": "armour",
+        "description": "Scuffed leather guards that provide basic physical protection for your forearms.",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       }
+      ],
+      "money": 15,
+      "currency": "silver shards",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": [
+       {
+        "name": "Elder Karl",
+        "kind": "family",
+        "character_id": "elder-karl",
+        "note": "Your gruff mentor who taught you how to fight without relying on a Spark."
+       }
+      ]
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [
+      {
+       "ladder_id": "spark-tiers",
+       "rung": 0,
+       "heard_s": 0,
+       "known_s": 0,
+       "known_from": "elder-karl"
+      },
+      {
+       "ladder_id": "spark-tiers",
+       "rung": 2,
+       "heard_s": 0,
+       "known_s": 0,
+       "known_from": "aria-valerius"
+      },
+      {
+       "ladder_id": "spark-tiers",
+       "rung": 3,
+       "heard_s": 0,
+       "known_s": 0,
+       "known_from": "grand-mage-valerius"
+      }
+     ],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": 80,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   },
+   "grand-mage-valerius": {
+    "id": "grand-mage-valerius",
+    "name": "Grand Mage Valerius",
+    "aliases": [],
+    "prominence": "key",
+    "description": "An imposing, white-robed elder whose eyes crackle with raw, destructive elemental energy.",
+    "appearance": "Sharp facial features, long silver hair tied back with golden rings, and flawless silk robes.",
+    "look_version": 1,
+    "age": 72,
+    "people_id": null,
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "spellspire-academy",
+    "personal_offset_s": 0,
+    "memberships": [
+     {
+      "faction_id": "arcane-conclave",
+      "rank": "Grand Mage",
+      "loyalty": 100
+     }
+    ],
+    "sheet": {
+     "attributes": {
+      "strength": 2,
+      "speed": 3,
+      "toughness": 3,
+      "wits": 5,
+      "knowledge": 5,
+      "willpower": 5,
+      "charm": 4,
+      "nerve": 4,
+      "bearing": 5
+     },
+     "skills": [
+      {
+       "name": "Destruction Magic",
+       "level": "master",
+       "notes": ""
+      },
+      {
+       "name": "Politics",
+       "level": "expert",
+       "notes": ""
+      }
+     ],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "arrogant",
+        "disciplined",
+        "merciless"
+       ],
+       "values": [
+        "magical purity",
+        "order"
+       ],
+       "loves": [
+        "absolute compliance"
+       ],
+       "fears": [
+        "loss of magical dominance"
+       ],
+       "wants": [
+        "To purge the kingdom of low-mana strains."
+       ],
+       "voice": "Cold, booming, and entirely devoid of warmth."
+      },
+      "attitudes": {
+       "player": {
+        "affinity": -80,
+        "fear": 0,
+        "trust": -50,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 8,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [
+      {
+       "ladder_id": "spark-tiers",
+       "rung": 3,
+       "stage": "peak",
+       "shown_rung": null,
+       "yearly_s": null
+      }
+     ],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": {
+     "goal": "Exile Julian to the deadly Whispering Woods as a public example of casting out 'impure blood'.",
+     "method": "Using the upcoming public Evaluation Ceremony to humiliate them.",
+     "secret": "",
+     "clock_id": "the-evaluation"
+    },
+    "secrets": [
+     "He knows that Julian is not cursed, but rather possesses an incredibly rare void-birth anomaly that threatens the Conclave's entire magical system of control."
+    ],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   },
+   "aria-valerius": {
+    "id": "aria-valerius",
+    "name": "Aria Valerius",
+    "aliases": [],
+    "prominence": "key",
+    "description": "A brilliant young prodigy of the Spellspire who hides her gentle, curious nature behind her family's crest.",
+    "appearance": "slender build, emerald green eyes, dark brown hair in a simple braid, wearing a blue academy uniform.",
+    "look_version": 1,
+    "age": 19,
+    "people_id": null,
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "spellspire-academy",
+    "personal_offset_s": 0,
+    "memberships": [
+     {
+      "faction_id": "arcane-conclave",
+      "rank": "High Scholar",
+      "loyalty": 60
+     }
+    ],
+    "sheet": {
+     "attributes": {
+      "strength": 2,
+      "speed": 3,
+      "toughness": 2,
+      "wits": 4,
+      "knowledge": 5,
+      "willpower": 4,
+      "charm": 4,
+      "nerve": 3,
+      "bearing": 4
+     },
+     "skills": [
+      {
+       "name": "Abjuration Magic",
+       "level": "expert",
+       "notes": ""
+      },
+      {
+       "name": "History",
+       "level": "expert",
+       "notes": ""
+      }
+     ],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "curious",
+        "compassionate",
+        "resolute"
+       ],
+       "values": [
+        "truth",
+        "individual worth"
+       ],
+       "loves": [
+        "uncovering ancient lore"
+       ],
+       "fears": [
+        "her father's wrath",
+        "unjust cruelty"
+       ],
+       "wants": [
+        "To understand why some are born without magic."
+       ],
+       "voice": "Soft, intellectual, and cautious."
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 20,
+        "fear": 10,
+        "trust": 10,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 6,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [
+      {
+       "ladder_id": "spark-tiers",
+       "rung": 2,
+       "stage": "early",
+       "shown_rung": null,
+       "yearly_s": null
+      }
+     ],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": {
+     "goal": "Find a way to smuggle Julian out of the city before the Conclave Sentinels execute them.",
+     "method": "Using her access to the Spellspire's restricted library to find blindspots in the city wards.",
+     "secret": "",
+     "clock_id": null
+    },
+    "secrets": [
+     "She secretly despises her father's cruel policies and has been leaking minor intel to the Unbound."
+    ],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [
+     "grand-mage-valerius"
+    ],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   },
+   "elder-karl": {
+    "id": "elder-karl",
+    "name": "Elder Karl",
+    "aliases": [],
+    "prominence": "key",
+    "description": "A rugged, one-eyed veteran who lives in the slums, having long ago abandoned his weak magical Spark for the way of the blade.",
+    "appearance": "Broad-shouldered, scarred face, gray stubble, wearing worn leather armor and a faded gray cloak.",
+    "look_version": 1,
+    "age": 62,
+    "people_id": null,
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "player-home",
+    "personal_offset_s": 0,
+    "memberships": [],
+    "sheet": {
+     "attributes": {
+      "strength": 4,
+      "speed": 3,
+      "toughness": 4,
+      "wits": 4,
+      "knowledge": 2,
+      "willpower": 4,
+      "charm": 2,
+      "nerve": 5,
+      "bearing": 3
+     },
+     "skills": [
+      {
+       "name": "Close Combat",
+       "level": "master",
+       "notes": ""
+      },
+      {
+       "name": "Streetwise",
+       "level": "expert",
+       "notes": ""
+      }
+     ],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "gruff",
+        "protective",
+        "pragmatic"
+       ],
+       "values": [
+        "physical grit",
+        "loyalty"
+       ],
+       "loves": [
+        "a strong drink",
+        "honing his sword"
+       ],
+       "fears": [
+        "failing the people he protects"
+       ],
+       "wants": [
+        "To ensure Julian survives the upcoming purge."
+       ],
+       "voice": "Raspy, deep, and laced with dry humor."
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 60,
+        "fear": 0,
+        "trust": 80,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 2,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [
+      {
+       "ladder_id": "spark-tiers",
+       "rung": 0,
+       "stage": "peak",
+       "shown_rung": null,
+       "yearly_s": null
+      }
+     ],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [
+     "He was once a captain in the Conclave Sentinels but deserted after being ordered to execute magicless infants."
+    ],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": 0,
+    "near_s": null,
+    "met_s": null
+   }
+  },
+  "factions": {
+   "arcane-conclave": {
+    "id": "arcane-conclave",
+    "name": "The Arcane Conclave",
+    "kind": "court",
+    "description": "The ruling council of high-tier mages who govern Solaria with an iron fist, obsessed with magical purity.",
+    "parent_id": null,
+    "status": "intact",
+    "status_history": [],
+    "activity": "active",
+    "leader_ids": [
+     "grand-mage-valerius"
+    ],
+    "goal": "Exile or neutralize all low-magic anomalies to preserve the kingdom's magical output.",
+    "methods": "Harsh public evaluations, sentinel patrols, and magical tracking.",
+    "strength": "Dozens of high-level Blaze and Inferno mages, backed by the Royal Guard.",
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "threat": 0,
+    "relations": {},
+    "survivors": [],
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ]
+   },
+   "the-unbound": {
+    "id": "the-unbound",
+    "name": "The Unbound",
+    "kind": "sect",
+    "description": "A clandestine resistance movement composed of Flicker-tier mages fighting for equal rights.",
+    "parent_id": null,
+    "status": "intact",
+    "status_history": [],
+    "activity": "active",
+    "leader_ids": [],
+    "goal": "To sabotage the evaluation stones and force the Conclave to recognize low-tier mages as equals.",
+    "methods": "Guerrilla tactics, propaganda, and physical sabotage.",
+    "strength": "A large network of desperate undercity citizens.",
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "threat": 0,
+    "relations": {},
+    "survivors": [],
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "places": {
+   "solaria-kingdom": {
+    "id": "solaria-kingdom",
+    "name": "Kingdom of Solaria",
+    "kind": "region",
+    "description": "A vast, sun-drenched realm powered entirely by the elemental energy of its citizens' Sparks.",
+    "parent_id": null,
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "capital-city": {
+    "id": "capital-city",
+    "name": "Oakhaven Capital",
+    "kind": "city",
+    "description": "The shimmering white-stone capital where magical lanterns glow day and night.",
+    "parent_id": "solaria-kingdom",
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "whispering-woods",
+      "travel_s": 10800,
+      "mode": "on foot"
+     },
+     {
+      "to_id": "outcast-slums",
+      "travel_s": 1800,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "outcast-slums": {
+    "id": "outcast-slums",
+    "name": "The Ash Wastes",
+    "kind": "village",
+    "description": "A dark, soot-covered slum at the edge of the capital where the lowest-tier mages reside.",
+    "parent_id": "capital-city",
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "capital-city",
+      "travel_s": 1800,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "player-home": {
+    "id": "player-home",
+    "name": "The Shabby Cellar",
+    "kind": "room",
+    "description": "A damp, underground room filled with training dummies and hand-copied texts on physical martial arts.",
+    "parent_id": "outcast-slums",
+    "setting": "underground",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [
+     "player"
+    ],
+    "judged": []
+   },
+   "spellspire-academy": {
+    "id": "spellspire-academy",
+    "name": "The Spellspire Academy",
+    "kind": "building",
+    "description": "The grand glass-and-marble tower where the elite of Solaria train their Sparks.",
+    "parent_id": "capital-city",
+    "setting": "indoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "whispering-woods": {
+    "id": "whispering-woods",
+    "name": "The Whispering Woods",
+    "kind": "wilds",
+    "description": "A dense, primal forest teeming with wild magical energy and hostile beasts.",
+    "parent_id": "solaria-kingdom",
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "capital-city",
+      "travel_s": 10800,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   }
+  },
+  "deeds": {},
+  "rumors": {},
+  "bonds": {},
+  "lives": {},
+  "aged_s": null,
+  "changes": {},
+  "strife_s": {},
+  "facts": {
+   "fact-1": {
+    "id": "fact-1",
+    "text": "In Solaria, your Spark is your life; those without one are treated as sub-human outcasts.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-2": {
+    "id": "fact-2",
+    "text": "The Conclave uses massive white-stone crystals to track the magical signatures of everyone in the city.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-3": {
+    "id": "fact-3",
+    "text": "Direct offensive spells cast at you simply vanish with a quiet hiss, leaving you totally unharmed.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   }
+  },
+  "goals": {},
+  "leads": {},
+  "threads": {
+   "avoid-exile": {
+    "id": "avoid-exile",
+    "title": "Escaping the Purge",
+    "kind": "threat",
+    "stakes": "If you cannot bypass or escape the Spark Evaluation, you will be publicly branded as cursed and cast out into the deadly Whispering Woods.",
+    "involved_ids": [
+     "player",
+     "grand-mage-valerius",
+     "elder-karl"
+    ],
+    "clock_id": "the-evaluation",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "status": "open",
+    "opened_turn": 0,
+    "last_active_turn": 0,
+    "taken_up_turn": null,
+    "closed_turn": null,
+    "arc": null,
+    "known_by": [
+     "player"
+    ]
+   },
+   "mystery-of-the-void": {
+    "id": "mystery-of-the-void",
+    "title": "The Secrets of the Void Shell",
+    "kind": "mystery",
+    "stakes": "Uncovering why magic slides off you could unlock a power that topples the very foundations of the Conclave.",
+    "involved_ids": [
+     "player",
+     "aria-valerius"
+    ],
+    "clock_id": null,
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "status": "open",
+    "opened_turn": 0,
+    "last_active_turn": 0,
+    "taken_up_turn": null,
+    "closed_turn": null,
+    "arc": null,
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "clocks": {
+   "the-evaluation": {
+    "id": "the-evaluation",
+    "name": "The Arcane Evaluation Ceremony",
+    "steps": [
+     "The Sentinel patrols in the Ash Wastes increase as registration registers lock.",
+     "Conclave examiners assemble the young citizens at the town square gates.",
+     "The grand evaluation stone is brought forth, and all must touch it to prove their Spark or face exile."
+    ],
+    "filled": 0,
+    "advances_on": [],
+    "reverses_on": [],
+    "interval_s": 86400,
+    "next_step_s": 86400,
+    "owner_id": null,
+    "thread_id": "avoid-exile",
+    "status": "running",
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "pending_events": {
+   "event-1": {
+    "id": "event-1",
+    "kind": "world.clock_step",
+    "title": "The Arcane Evaluation Ceremony: The Sentinel patrols in the Ash Wastes increase as registration registers lock.",
+    "due_s": 86400,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": {
+     "kind": "clock",
+     "ref_id": "the-evaluation",
+     "text": ""
+    },
+    "payload": {
+     "clock_id": "the-evaluation"
+    },
+    "seed": "story=play%2Fx-nomagic/timeline=main/turn=1/world/schedule/event-1",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-2": {
+    "id": "event-2",
+    "kind": "world.old_age",
+    "title": "Your years run short",
+    "due_s": 1888237432,
+    "timeline_id": "main",
+    "needs_player": true,
+    "status": "pending",
+    "subject_ids": [
+     "player"
+    ],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "phase": "near",
+     "who": "player",
+     "span": 80,
+     "day_s": 1961431435
+    },
+    "seed": "story=play%2Fx-nomagic/timeline=main/turn=1/world/schedule/event-2",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-3": {
+    "id": "event-3",
+    "kind": "world.tick",
+    "title": "The world moves on",
+    "due_s": 86400,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "last_s": 0,
+     "stride_s": 86400
+    },
+    "seed": "story=play%2Fx-nomagic/timeline=main/turn=1/world/schedule/event-3",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   }
+  },
+  "transfers": [],
+  "time_effects": [],
+  "scene": {
+   "place_id": "player-home",
+   "present_ids": [
+    "player",
+    "elder-karl"
+   ],
+   "positions": [
+    "Julian sitting on a wooden crate",
+    "Elder Karl leaning against a sword-rack"
+   ],
+   "props": [
+    "blunt training sword",
+    "sturdy-iron-dagger"
+   ],
+   "ended_on": "Karl watches you silently, waiting to see if you will take up the practice sword or speak your plan.",
+   "encounter": null
+  },
+  "director": {
+   "turns_without_stakes": 0,
+   "low_stakes_streak": 0,
+   "last_action_key": null,
+   "last_event_turn": null,
+   "last_event_size": null,
+   "last_event_s": {},
+   "last_small_s": null,
+   "recent_moments": [],
+   "recent_clock": [
+    0
+   ],
+   "frequency_drift": 0.0,
+   "recent_sources": [],
+   "auto_pictures": 1,
+   "picture_credit": 1.1,
+   "pictured": [
+    "portrait:player",
+    "portrait:player:v1"
+   ],
+   "fight": null,
+   "deck_draws": 0,
+   "road_stops": 0
+  },
+  "summary": "You are the only person in Solaria born without a magical Spark, making you a target for immediate exile. However, you possess a hidden anomaly: magic doesn't work on you either, a secret you must use to survive the upcoming Conclave evaluation.",
+  "chapters": [],
+  "id_counters": {
+   "fact": 3,
+   "goal": 0,
+   "bond": 0,
+   "event": 3
+  },
+  "fallen": [],
+  "opening_due": false,
+  "misses_in_a_row": 0,
+  "openings": [],
+  "journey": null,
+  "untold": [
+   "person:aria-valerius",
+   "person:grand-mage-valerius",
+   "thread:avoid-exile"
+  ]
+ },
+ "scenes": [
+  {
+   "turn": 1,
+   "narration": "The low, brassy blare of the Conclave Sentinels' horn vibrates through the damp stone of your cellar floor. You sit on a rough wooden crate, your fingers tracing the hilt of your iron dagger, while Elder Karl leans heavily against the weapon rack across from you. His single eye fixes on you from beneath shaggy brows, dark with a gravity that makes the chilly morning air feel even colder.\n\n\"Three days, Julian,\" Karl rasps, his deep voice scraping against the walls. \"Three days before the white-stone crystals at the Spellspire catalog every single Spark in this city. When your name is called, you won't have a flicker to show them. They will brand you. Unless you are already gone—or unless you can fool their testing stones.\"\n\nHe reaches down, picks up a blunt wooden training sword, and tosses it at your feet. The wood clatters against the dirt floor, stopping right beside your boots. He is offering you one last chance to hone your reflexes, but the weight of your choices already looms larger than any blade.",
+   "player_action": null
+  }
+ ],
+ "choices": [
+  "\"I need to test my Void Shell against real magic first.\"",
+  "Pick up the wooden sword and challenge Karl to a bout.",
+  "Slink out into the Ash Wastes to scout Sentinel patrol routes."
+ ],
+ "cost_usd": 0.129633,
+ "draft": {
+  "premise": "Everyone in this world is born with magic. I'm the only one ever born without any. But magic doesn't work on me either.",
+  "proposal": {
+   "world": {
+    "title": "The Null Spark",
+    "genre": "defiant fantasy",
+    "tone": "resolute and mysterious",
+    "era": "A high-medieval world powered entirely by elemental magical technology.",
+    "extraordinary": [
+     {
+      "id": "magic",
+      "kind": "Spark Magic",
+      "prevalence": "common",
+      "reach": "Every human is born with an internal Spark that allows them to manifest magical energy, power machinery, and cast elemental spells."
+     }
+    ],
+    "rules": [
+     {
+      "id": "spark-birthright",
+      "text": "Every child is born with a glowing magical Spark that dictates their potential and social standing.",
+      "fixed": true,
+      "topic": "existence",
+      "about": [
+       "magic"
+      ]
+     },
+     {
+      "id": "void-anomaly",
+      "text": "The complete absence of a Spark makes a person completely invisible to and unaffected by direct magical spells.",
+      "fixed": true,
+      "topic": "nature",
+      "about": [
+       "magic"
+      ]
+     },
+     {
+      "id": "channeling-mediums",
+      "text": "Magical spells require a conduit of personal energy to find purchase; they cannot cling to pure void.",
+      "fixed": false,
+      "topic": "limits",
+      "about": [
+       "magic"
+      ]
+     }
+    ],
+    "dropped_rule_ids": [],
+    "peoples": [
+     {
+      "id": "human",
+      "name": "Human",
+      "description": "",
+      "lifespan_years": 80,
+      "gifts": [
+       "Spark magic channeling"
+      ],
+      "culture": "A highly stratified society where one's worth is measured entirely by the brilliance and tier of their magical Spark.",
+      "relations": [],
+      "path": ""
+     }
+    ],
+    "creatures": [
+     {
+      "id": "mana-wisp",
+      "name": "Mana Wisp",
+      "description": "Small, floating creatures of pure magic that feed on ambient spiritual energy.",
+      "rung": "",
+      "habitat": "Ancient ruins and dense forests",
+      "worth": "Can be refined into basic magic fuel crystals.",
+      "can_be_tamed": false
+     }
+    ],
+    "nature": [],
+    "ladders": [
+     {
+      "id": "spark-tiers",
+      "name": "Spark Tiers",
+      "axis": "might",
+      "rungs": [
+       {
+        "name": "Flicker",
+        "description": "Capable of minor utility magic, like lighting a candle or cleaning garments.",
+        "lifespan_years": null
+       },
+       {
+        "name": "Flame",
+        "description": "Standard magic tier, able to conjure elemental blasts and defend oneself.",
+        "lifespan_years": null
+       },
+       {
+        "name": "Blaze",
+        "description": "Powerful spellcasters who lead military units or hold elite academic positions.",
+        "lifespan_years": null
+       },
+       {
+        "name": "Inferno",
+        "description": "The peak of human capability, able to level fortresses or alter weather patterns.",
+        "lifespan_years": null
+       },
+       {
+        "name": "Sun",
+        "description": "The legendary tier of the founders, spoken of only in myths.",
+        "lifespan_years": null
+       }
+      ],
+      "known_to_all": 4,
+      "sensing": true,
+      "standing_follows": true,
+      "lengthens_life": false
+     }
+    ],
+    "calendar": {
+     "style": "day_count",
+     "clock_time": false,
+     "epoch": "",
+     "start_hour": 8,
+     "months": [],
+     "start_year": 412,
+     "start_month": 1,
+     "start_day": 1,
+     "era": ""
+    },
+    "travel": {
+     "description": "Travel is conducted on foot, by horse, or via high-tier magic-propelled carriages for the wealthy.",
+     "instant_messages": false
+    },
+    "medicine": {
+     "healing": "Minor wounds can be mended using light and life-aspect Spark magic.",
+     "resurrection": "none",
+     "resurrection_means": ""
+    },
+    "laws": [
+     {
+      "id": "conclave-purity-act",
+      "text": "Every citizen must register their Spark tier at the Arcane Conclave upon reaching their eighteenth year; those who fail to manifest a Spark are deemed cursed.",
+      "enforcer": "Conclave Sentinels",
+      "enforcer_faction_id": "",
+      "zeal": "high",
+      "corruptible": false
+     }
+    ],
+    "norms": [],
+    "several_partners": false,
+    "unions": "held",
+    "places": [
+     {
+      "id": "solaria-kingdom",
+      "name": "Kingdom of Solaria",
+      "kind": "region",
+      "description": "A vast, sun-drenched realm powered entirely by the elemental energy of its citizens' Sparks.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "capital-city",
+      "name": "Oakhaven Capital",
+      "kind": "city",
+      "description": "The shimmering white-stone capital where magical lanterns glow day and night.",
+      "parent_id": "solaria-kingdom",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "whispering-woods",
+        "travel_hours": 3.0,
+        "mode": "on foot"
+       }
+      ]
+     },
+     {
+      "id": "outcast-slums",
+      "name": "The Ash Wastes",
+      "kind": "village",
+      "description": "A dark, soot-covered slum at the edge of the capital where the lowest-tier mages reside.",
+      "parent_id": "capital-city",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "capital-city",
+        "travel_hours": 0.5,
+        "mode": "on foot"
+       }
+      ]
+     },
+     {
+      "id": "player-home",
+      "name": "The Shabby Cellar",
+      "kind": "room",
+      "description": "A damp, underground room filled with training dummies and hand-copied texts on physical martial arts.",
+      "parent_id": "outcast-slums",
+      "setting": "underground",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "spellspire-academy",
+      "name": "The Spellspire Academy",
+      "kind": "building",
+      "description": "The grand glass-and-marble tower where the elite of Solaria train their Sparks.",
+      "parent_id": "capital-city",
+      "setting": "indoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "whispering-woods",
+      "name": "The Whispering Woods",
+      "kind": "wilds",
+      "description": "A dense, primal forest teeming with wild magical energy and hostile beasts.",
+      "parent_id": "solaria-kingdom",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     }
+    ],
+    "factions": [
+     {
+      "id": "arcane-conclave",
+      "name": "The Arcane Conclave",
+      "kind": "court",
+      "description": "The ruling council of high-tier mages who govern Solaria with an iron fist, obsessed with magical purity.",
+      "parent_id": "",
+      "leader_ids": [
+       "grand-mage-valerius"
+      ],
+      "goal": "Exile or neutralize all low-magic anomalies to preserve the kingdom's magical output.",
+      "methods": "Harsh public evaluations, sentinel patrols, and magical tracking.",
+      "strength": "Dozens of high-level Blaze and Inferno mages, backed by the Royal Guard.",
+      "relations": [],
+      "secrets": [],
+      "known_to_player": true
+     },
+     {
+      "id": "the-unbound",
+      "name": "The Unbound",
+      "kind": "sect",
+      "description": "A clandestine resistance movement composed of Flicker-tier mages fighting for equal rights.",
+      "parent_id": "",
+      "leader_ids": [],
+      "goal": "To sabotage the evaluation stones and force the Conclave to recognize low-tier mages as equals.",
+      "methods": "Guerrilla tactics, propaganda, and physical sabotage.",
+      "strength": "A large network of desperate undercity citizens.",
+      "relations": [],
+      "secrets": [],
+      "known_to_player": true
+     }
+    ],
+    "npcs": [
+     {
+      "id": "grand-mage-valerius",
+      "name": "Grand Mage Valerius",
+      "aliases": [],
+      "description": "An imposing, white-robed elder whose eyes crackle with raw, destructive elemental energy.",
+      "appearance": "Sharp facial features, long silver hair tied back with golden rings, and flawless silk robes.",
+      "age": 72,
+      "people_id": "",
+      "location_id": "spellspire-academy",
+      "memberships": [
+       {
+        "faction_id": "arcane-conclave",
+        "rank": "Grand Mage",
+        "loyalty": 100
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "arrogant",
+        "disciplined",
+        "merciless"
+       ],
+       "values": [
+        "magical purity",
+        "order"
+       ],
+       "loves": [
+        "absolute compliance"
+       ],
+       "fears": [
+        "loss of magical dominance"
+       ],
+       "wants": [
+        "To purge the kingdom of low-mana strains."
+       ],
+       "voice": "Cold, booming, and entirely devoid of warmth."
+      },
+      "attributes": {
+       "strength": 2,
+       "speed": 3,
+       "toughness": 3,
+       "wits": 5,
+       "knowledge": 5,
+       "willpower": 5,
+       "charm": 4,
+       "nerve": 4,
+       "bearing": 5
+      },
+      "skills": [
+       {
+        "name": "Destruction Magic",
+        "level": "master",
+        "notes": ""
+       },
+       {
+        "name": "Politics",
+        "level": "expert",
+        "notes": ""
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [
+       {
+        "ladder_id": "spark-tiers",
+        "rung": "Inferno",
+        "stage": "peak"
+       }
+      ],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": -80,
+       "fear": 0,
+       "trust": -50,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": {
+       "goal": "Exile Julian to the deadly Whispering Woods as a public example of casting out 'impure blood'.",
+       "method": "Using the upcoming public Evaluation Ceremony to humiliate them.",
+       "secret": "",
+       "clock_id": "the-evaluation"
+      },
+      "secrets": [
+       "He knows that Julian is not cursed, but rather possesses an incredibly rare void-birth anomaly that threatens the Conclave's entire magical system of control."
+      ],
+      "player_knows": "met"
+     },
+     {
+      "id": "aria-valerius",
+      "name": "Aria Valerius",
+      "aliases": [],
+      "description": "A brilliant young prodigy of the Spellspire who hides her gentle, curious nature behind her family's crest.",
+      "appearance": "slender build, emerald green eyes, dark brown hair in a simple braid, wearing a blue academy uniform.",
+      "age": 19,
+      "people_id": "",
+      "location_id": "spellspire-academy",
+      "memberships": [
+       {
+        "faction_id": "arcane-conclave",
+        "rank": "High Scholar",
+        "loyalty": 60
+       }
+      ],
+      "parent_ids": [
+       "grand-mage-valerius"
+      ],
+      "temperament": {
+       "traits": [
+        "curious",
+        "compassionate",
+        "resolute"
+       ],
+       "values": [
+        "truth",
+        "individual worth"
+       ],
+       "loves": [
+        "uncovering ancient lore"
+       ],
+       "fears": [
+        "her father's wrath",
+        "unjust cruelty"
+       ],
+       "wants": [
+        "To understand why some are born without magic."
+       ],
+       "voice": "Soft, intellectual, and cautious."
+      },
+      "attributes": {
+       "strength": 2,
+       "speed": 3,
+       "toughness": 2,
+       "wits": 4,
+       "knowledge": 5,
+       "willpower": 4,
+       "charm": 4,
+       "nerve": 3,
+       "bearing": 4
+      },
+      "skills": [
+       {
+        "name": "Abjuration Magic",
+        "level": "expert",
+        "notes": ""
+       },
+       {
+        "name": "History",
+        "level": "expert",
+        "notes": ""
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [
+       {
+        "ladder_id": "spark-tiers",
+        "rung": "Blaze",
+        "stage": "early"
+       }
+      ],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 20,
+       "fear": 10,
+       "trust": 10,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": {
+       "goal": "Find a way to smuggle Julian out of the city before the Conclave Sentinels execute them.",
+       "method": "Using her access to the Spellspire's restricted library to find blindspots in the city wards.",
+       "secret": "",
+       "clock_id": ""
+      },
+      "secrets": [
+       "She secretly despises her father's cruel policies and has been leaking minor intel to the Unbound."
+      ],
+      "player_knows": "met"
+     },
+     {
+      "id": "elder-karl",
+      "name": "Elder Karl",
+      "aliases": [],
+      "description": "A rugged, one-eyed veteran who lives in the slums, having long ago abandoned his weak magical Spark for the way of the blade.",
+      "appearance": "Broad-shouldered, scarred face, gray stubble, wearing worn leather armor and a faded gray cloak.",
+      "age": 62,
+      "people_id": "",
+      "location_id": "outcast-slums",
+      "memberships": [],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "gruff",
+        "protective",
+        "pragmatic"
+       ],
+       "values": [
+        "physical grit",
+        "loyalty"
+       ],
+       "loves": [
+        "a strong drink",
+        "honing his sword"
+       ],
+       "fears": [
+        "failing the people he protects"
+       ],
+       "wants": [
+        "To ensure Julian survives the upcoming purge."
+       ],
+       "voice": "Raspy, deep, and laced with dry humor."
+      },
+      "attributes": {
+       "strength": 4,
+       "speed": 3,
+       "toughness": 4,
+       "wits": 4,
+       "knowledge": 2,
+       "willpower": 4,
+       "charm": 2,
+       "nerve": 5,
+       "bearing": 3
+      },
+      "skills": [
+       {
+        "name": "Close Combat",
+        "level": "master",
+        "notes": ""
+       },
+       {
+        "name": "Streetwise",
+        "level": "expert",
+        "notes": ""
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [
+       {
+        "ladder_id": "spark-tiers",
+        "rung": "Flicker",
+        "stage": "peak"
+       }
+      ],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 60,
+       "fear": 0,
+       "trust": 80,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [
+       "He was once a captain in the Conclave Sentinels but deserted after being ordered to execute magicless infants."
+      ],
+      "player_knows": "met"
+     }
+    ],
+    "clocks": [
+     {
+      "id": "the-evaluation",
+      "name": "The Arcane Evaluation Ceremony",
+      "steps": [
+       "The Sentinel patrols in the Ash Wastes increase as registration registers lock.",
+       "Conclave examiners assemble the young citizens at the town square gates.",
+       "The grand evaluation stone is brought forth, and all must touch it to prove their Spark or face exile."
+      ],
+      "step_every_hours": 24.0,
+      "owner_id": "",
+      "thread_id": "",
+      "known_to_player": true
+     }
+    ],
+    "threads": [
+     {
+      "id": "avoid-exile",
+      "title": "Escaping the Purge",
+      "kind": "threat",
+      "stakes": "If you cannot bypass or escape the Spark Evaluation, you will be publicly branded as cursed and cast out into the deadly Whispering Woods.",
+      "involved_ids": [
+       "player",
+       "grand-mage-valerius",
+       "elder-karl"
+      ],
+      "clock_id": "the-evaluation",
+      "known_to_player": true
+     },
+     {
+      "id": "mystery-of-the-void",
+      "title": "The Secrets of the Void Shell",
+      "kind": "mystery",
+      "stakes": "Uncovering why magic slides off you could unlock a power that topples the very foundations of the Conclave.",
+      "involved_ids": [
+       "player",
+       "aria-valerius"
+      ],
+      "clock_id": "",
+      "known_to_player": true
+     }
+    ],
+    "mysteries": [
+     {
+      "id": "why-no-magic",
+      "question": "Why do I have no magic, yet spells slide off me completely?",
+      "answer": "You were born during the rare Void Alignment celestial event, which completely sealed your biological mana channels, replacing them with a 'Void Shell' that naturally absorbs and neutralizes any active magical fields.",
+      "clues": [
+       "An old astronomical log in the Spellspire detailing a total solar eclipse on the exact hour of your birth.",
+       "The way the ward-lanterns flicker and die whenever you stand directly beneath them for too long.",
+       "An ancient text mentioning the 'Children of the Null Void' who once stood impervious to the gods' magic."
+      ],
+      "thread_id": "mystery-of-the-void",
+      "known_to_player": true
+     }
+    ],
+    "known_facts": [
+     "In Solaria, your Spark is your life; those without one are treated as sub-human outcasts.",
+     "The Conclave uses massive white-stone crystals to track the magical signatures of everyone in the city.",
+     "Direct offensive spells cast at you simply vanish with a quiet hiss, leaving you totally unharmed."
+    ],
+    "opening": {
+     "place_id": "player-home",
+     "present_ids": [
+      "elder-karl"
+     ],
+     "positions": [
+      "sitting on a wooden crate",
+      "leaning against a sword-rack"
+     ],
+     "props": [
+      "blunt training sword",
+      "chipped mug of tea"
+     ],
+     "situation": "Elder Karl crosses his scarred arms and looks at you grimly as the distant horns of the Conclave Sentinels echo through the cellar walls, signaling that the final three days before your mandatory Spark Evaluation have begun."
+    },
+    "summary": "You are the only person in Solaria born without a magical Spark, making you a target for immediate exile. However, you possess a hidden anomaly: magic doesn't work on you either, a secret you must use to survive the upcoming Conclave evaluation."
+   },
+   "character": {
+    "name": "Julian",
+    "aliases": [
+     "The Null",
+     "The Sparkless"
+    ],
+    "age": 18,
+    "lifespan_years": 80,
+    "people_id": "",
+    "description": "A focused, athletic youth whose quiet, intense gaze shows the grit of someone who has had to survive through physical strength alone.",
+    "appearance": "Strong, lean build honed by years of physical training; short, unruly dark hair; sharp gray eyes. Wearing a simple, patched gray tunic, leather trousers, and sturdy leather boots.",
+    "location_id": "player-home",
+    "attributes": {
+     "strength": 4,
+     "speed": 4,
+     "toughness": 4,
+     "wits": 4,
+     "knowledge": 3,
+     "willpower": 5,
+     "charm": 3,
+     "nerve": 5,
+     "bearing": 3
+    },
+    "skills": [
+     {
+      "name": "Close Combat",
+      "level": "skilled",
+      "notes": "Trained by Elder Karl in direct physical swordplay and hand-to-hand fighting."
+     },
+     {
+      "name": "Athletics",
+      "level": "expert",
+      "notes": "Excellent running, climbing, and physical endurance built up to compensate for lack of magic."
+     },
+     {
+      "name": "Stealth",
+      "level": "skilled",
+      "notes": "Slinking through the shadows of the capital to avoid Sentinel patrols."
+     },
+     {
+      "name": "Magic Lore",
+      "level": "novice",
+      "notes": "Basic knowledge of spells, gestures, and elemental signs studied to anticipate mage attacks."
+     }
+    ],
+    "traits": [
+     {
+      "name": "Sparkless Void",
+      "kind": "flaw",
+      "description": "You possess zero magical mana. You cannot cast spells, activate magical machinery, or use magical items."
+     },
+     {
+      "name": "Immovable Mind",
+      "kind": "gift",
+      "description": "Years of being an outcast have forged an unbreakable willpower; you are highly resistant to intimidation and mental stress."
+     }
+    ],
+    "talents": [],
+    "powers": [
+     {
+      "id": "void-shell",
+      "name": "Void Immunity",
+      "description": "Active magic spells cast directly at your body lose cohesion and harmlessly disperse into nothingness upon contact.",
+      "kind_id": "magic",
+      "gift": true,
+      "strength": "overpowered",
+      "limits": [
+       "Does not protect you from physical side-effects of magic, such as a magically-thrown boulder, collapsing structures, or natural fire ignited by a spell."
+      ],
+      "costs": [],
+      "secret": false,
+      "time": null
+     }
+    ],
+    "techniques": [],
+    "temperament": {
+     "traits": [
+      "determined",
+      "observant",
+      "guarded"
+     ],
+     "values": [
+      "survival",
+      "self-reliance"
+     ],
+     "loves": [
+      "the quiet of the woods",
+      "mastering a physical technique"
+     ],
+     "fears": [
+      "being helpless",
+      "losing the few people who accept them"
+     ],
+     "wants": [
+      "To survive the Conclave's purge and uncover the truth of their body's immunity."
+     ],
+     "voice": "Direct, calm, and sparing with words."
+    },
+    "items": [
+     {
+      "name": "Sturdy Iron Dagger",
+      "kind": "weapon",
+      "description": "A well-balanced, non-magical dagger crafted from simple cold iron.",
+      "quantity": 1,
+      "carried": true
+     },
+     {
+      "name": "Worn Leather Bracers",
+      "kind": "armour",
+      "description": "Scuffed leather guards that provide basic physical protection for your forearms.",
+      "quantity": 1,
+      "carried": true
+     }
+    ],
+    "money": 15,
+    "currency": "silver shards",
+    "title": "",
+    "rank": "",
+    "family_name": "",
+    "connections": [
+     {
+      "name": "Elder Karl",
+      "kind": "family",
+      "character_id": "elder-karl",
+      "note": "Your gruff mentor who taught you how to fight without relying on a Spark."
+     }
+    ],
+    "parent_ids": [],
+    "memberships": [],
+    "ladders": [],
+    "axes": {
+     "might": 1,
+     "influence": 1,
+     "wealth": 1,
+     "knowledge": 1,
+     "stealth": 1
+    },
+    "reserves": [],
+    "goals": [],
+    "backstory": [],
+    "hidden_past": []
+   }
+  },
+  "rating": "teen",
+  "premise_id": null,
+  "physics": "fun_first",
+  "gift": null,
+  "released_rules": [],
+  "language": "en",
+  "told": []
+ }
+}

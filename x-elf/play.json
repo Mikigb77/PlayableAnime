@@ -1,0 +1,1871 @@
+{
+ "premise": "A 300-year-old elf ranger, still young for her kind, guarding a forest that humans have started to cut down.",
+ "language": "en",
+ "rating": "teen",
+ "settings": {
+  "narration_length": "medium",
+  "tone": null,
+  "difficulty": "balanced",
+  "event_frequency": "normal",
+  "images": "key_moments",
+  "suggestions": true,
+  "language": "en",
+  "accent": null
+ },
+ "seed": "play/x-elf",
+ "state": {
+  "schema_version": 1,
+  "turn": 1,
+  "timeline_id": "main",
+  "world_s": 0,
+  "bible": {
+   "title": "The Verge of the Green",
+   "genre": "High Fantasy",
+   "tone": "solemn",
+   "era": "A medieval-era fantasy world of iron axes, hand-carved bows, and wooden wagons",
+   "extraordinary": [
+    {
+     "id": "magic",
+     "kind": "druidic nature magic",
+     "prevalence": "rare",
+     "reach": "allowing practitioners to speak with flora, blend into shadows, and encourage rapid plant growth.",
+     "rule_ids": [
+      "magic-limits",
+      "magic-exists"
+     ]
+    },
+    {
+     "id": "elves",
+     "kind": "elven biology",
+     "prevalence": "rare",
+     "reach": "granting lifespans of several thousand years and highly acute physical senses.",
+     "rule_ids": [
+      "elven-lifespan",
+      "elves-exists"
+     ]
+    }
+   ],
+   "peoples": [
+    {
+     "id": "elves",
+     "name": "Elves",
+     "description": "An ancient, isolationist people deeply bonded with the deep forests.",
+     "lifespan_years": 2000,
+     "gifts": [
+      "Night vision",
+      "Uncanny balance"
+     ],
+     "culture": "A slow-moving, artistic culture focused on preservation and harmony with nature.",
+     "relations": [
+      "Tense stand-off with expanding human settlements that encroach upon ancient boundaries."
+     ],
+     "path": ""
+    },
+    {
+     "id": "humans",
+     "name": "Humans",
+     "description": "Ambitious, short-lived, and rapidly expanding settlers.",
+     "lifespan_years": 80,
+     "gifts": [],
+     "culture": "Industrious and pragmatic, valuing resource gathering, agriculture, and construction.",
+     "relations": [
+      "View the elven forest as an untapped source of valuable lumber and farmland."
+     ],
+     "path": ""
+    }
+   ],
+   "creatures": [
+    {
+     "id": "forest-stalker",
+     "name": "Forest Stalker",
+     "description": "Great dark-furred wolves that protect the deeper heart of Aethelwood.",
+     "tier": 1,
+     "habitat": "Deep forest canopy and dark hollows",
+     "worth": "Valuable pelt and protective fangs",
+     "can_be_tamed": true
+    }
+   ],
+   "nature": [
+    "The oldest trees in Aethelwood whisper warnings to those who know how to listen.",
+    "The soil here is rich and quick to reclaim abandoned stone structures."
+   ],
+   "physics": "fun_first",
+   "force": {
+    "tier1_joules": 10000.0,
+    "per_tier": 10.0
+   },
+   "ladders": [],
+   "calendar": {
+    "style": "day_count",
+    "time_of_day": "parts",
+    "epoch": null,
+    "start_second_of_day": 21600,
+    "months": [],
+    "start_year": 1,
+    "start_month": 1,
+    "start_day": 1,
+    "era": ""
+   },
+   "travel": {
+    "description": "Travel is slow, conducted entirely on foot, on horseback, or via wooden lumber carts.",
+    "instant_messages": false
+   },
+   "medicine": {
+    "healing": "Herbal elixirs, poultices, and minor elven restorative salves.",
+    "resurrection": "none",
+    "resurrection_means": ""
+   },
+   "laws": [
+    {
+     "id": "human-charter",
+     "text": "The High Reach charter permits the logging of any 'unclaimed wild woodland' for local development.",
+     "enforcer": "Bailiff of High Reach",
+     "enforcer_faction_id": "high-reach-settlers",
+     "zeal": "high",
+     "corruptible": true
+    },
+    {
+     "id": "ranger-code",
+     "text": "The ancient code of the wardens forbids the cutting of ironwood trees and dictates death to those who desecrate the sacred groves.",
+     "enforcer": "Wood-Wardens",
+     "enforcer_faction_id": "wood-wardens",
+     "zeal": "high",
+     "corruptible": false
+    }
+   ],
+   "norms": [],
+   "several_partners": false,
+   "unions": "for_life",
+   "rules": [
+    {
+     "id": "elven-lifespan",
+     "text": "Elves live for thousands of years, maturing slowly and remaining physically youthful for centuries.",
+     "fixed": true,
+     "topic": "peoples"
+    },
+    {
+     "id": "forest-sentience",
+     "text": "The ancient forest of Aethelwood is semi-sentient and bleeds amber sap when harmed.",
+     "fixed": false,
+     "topic": "nature"
+    },
+    {
+     "id": "magic-limits",
+     "text": "Nature magic can accelerate growth and soothe beasts, but it cannot conjure matter from nothing.",
+     "fixed": true,
+     "topic": "limits"
+    },
+    {
+     "id": "magic-exists",
+     "text": "Druidic nature magic: real, and rare.",
+     "fixed": true,
+     "topic": "existence"
+    },
+    {
+     "id": "elves-exists",
+     "text": "Elven biology: real, and rare.",
+     "fixed": true,
+     "topic": "existence"
+    }
+   ],
+   "mysteries": [
+    {
+     "id": "the-barons-order",
+     "question": "Why is the logging syndicate suddenly so desperate to claim Aethelwood's ironwood?",
+     "answer": "The local human Baron has secretly contracted with a foreign navy to supply exceptionally tough ironwood timber for a secret fleet of warships, hoping to win royal favor.",
+     "clues": [
+      "Shipping crates in the loggers' camp are marked with a foreign military crest.",
+      "A hidden ledger in Graves' tent shows massive, desperate debts owed to external merchants.",
+      "A captured human scout mentions that the Baron's own emissaries are arriving soon to inspect the timber quality."
+     ],
+     "thread_id": "save-the-grove",
+     "solved": false
+    }
+   ]
+  },
+  "player_id": "player",
+  "characters": {
+   "player": {
+    "id": "player",
+    "name": "Sylris",
+    "aliases": [
+     "The Whispering Arrow",
+     "Sentry of the Green"
+    ],
+    "prominence": "key",
+    "description": "A vigilant elven ranger with a quiet, watchful grace.",
+    "appearance": "Slender, athletic build, long silver-gold hair braided tight, wearing green-and-brown leather armor that blends perfectly into the forest canopy, carrying a recurve bow.",
+    "look_version": 1,
+    "age": 300,
+    "people_id": "elves",
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "high-canopy",
+    "personal_offset_s": 0,
+    "memberships": [
+     {
+      "faction_id": "wood-wardens",
+      "rank": "Warden Sentry",
+      "loyalty": 90
+     }
+    ],
+    "sheet": {
+     "attributes": {
+      "strength": 3,
+      "speed": 5,
+      "toughness": 3,
+      "wits": 4,
+      "knowledge": 3,
+      "willpower": 4,
+      "charm": 3,
+      "nerve": 5,
+      "bearing": 4
+     },
+     "skills": [
+      {
+       "name": "Archery",
+       "level": "expert",
+       "notes": ""
+      },
+      {
+       "name": "Stealth",
+       "level": "expert",
+       "notes": ""
+      },
+      {
+       "name": "Forest Survival",
+       "level": "skilled",
+       "notes": ""
+      },
+      {
+       "name": "Tracking",
+       "level": "skilled",
+       "notes": ""
+      }
+     ],
+     "traits": [
+      {
+       "name": "Elven Senses",
+       "kind": "gift",
+       "description": "Allows you to see clearly in starlight and hear the softest brush of leaves a mile away."
+      }
+     ],
+     "talents": [],
+     "powers": [
+      {
+       "id": "forest-walk",
+       "name": "Forest Walk",
+       "description": "Move through dense undergrowth and moss without leaving any physical trace or making a single sound.",
+       "strength": null,
+       "limits": [
+        "Does not function on paved human roads or stone surfaces."
+       ],
+       "costs": [],
+       "secret": false,
+       "time": null,
+       "settings": {},
+       "ready_at_personal_s": null
+      },
+      {
+       "id": "woodland-speak",
+       "name": "Woodland Speak",
+       "description": "Sense the collective mood, pain, or distress of nearby plants and trees.",
+       "strength": null,
+       "limits": [
+        "Requires a moment of silent, physical contact with a living trunk or vine."
+       ],
+       "costs": [],
+       "secret": false,
+       "time": null,
+       "settings": {},
+       "ready_at_personal_s": null
+      }
+     ],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "cautious",
+        "protective",
+        "patient"
+       ],
+       "values": [
+        "harmony",
+        "duty"
+       ],
+       "loves": [
+        "the quiet canopy of the deep woods"
+       ],
+       "fears": [
+        "the scent of burnt wood",
+        "the dynamic destruction wrought by humans"
+       ],
+       "wants": [],
+       "voice": ""
+      },
+      "attitudes": {}
+     },
+     "resources": {
+      "items": [
+       {
+        "id": "elven-recurve-bow",
+        "name": "Elven Recurve Bow",
+        "kind": "weapon",
+        "description": "A beautifully balanced bow carved from flexible ash wood.",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       },
+       {
+        "id": "quiver-of-fletched-arrows",
+        "name": "Quiver of Fletched Arrows",
+        "kind": "gear",
+        "description": "A leather quiver holding twenty sharp, iron-tipped arrows.",
+        "quantity": 20,
+        "carried": true,
+        "history": ""
+       },
+       {
+        "id": "hunting-knife",
+        "name": "Hunting Knife",
+        "kind": "weapon",
+        "description": "A sharp, simple knife used for skinning or self-defense.",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       },
+       {
+        "id": "camo-cloak",
+        "name": "Camo Cloak",
+        "kind": "gear",
+        "description": "A hooded cloak patterned in shades of autumn moss.",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       }
+      ],
+      "money": 0,
+      "currency": "silver shards",
+      "title": "Warden Ranger",
+      "rank": "Sentry",
+      "family_name": "",
+      "connections": [
+       {
+        "name": "Captain Eldrin",
+        "kind": "trusts_them",
+        "character_id": "eldrin",
+        "note": "Your commanding officer, who has charged you with watching the western border."
+       }
+      ]
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 2,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 2,
+      "stealth": 4
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": [
+      {
+       "text": "You have spent three hundred years wandering the quiet paths of Aethelwood, still considered young among your slow-maturing kind.",
+       "turn": 0
+      },
+      {
+       "text": "The sudden arrival of iron axes and greedy human settlements on the border has disrupted the ancient peace, forcing you to take up your bow in defense of the trees.",
+       "turn": 0
+      }
+     ]
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": 2000,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   },
+   "eldrin": {
+    "id": "eldrin",
+    "name": "Captain Eldrin",
+    "aliases": [],
+    "prominence": "key",
+    "description": "An ancient elven ranger with centuries of experience, bearing a scarred face and an uncompromising resolve.",
+    "appearance": "Tall, lean, with silver-grey hair braided with dry oak leaves, wearing dark moss-green armor and carrying a massive black bow.",
+    "look_version": 1,
+    "age": 1200,
+    "people_id": "elves",
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "ranger-outpost",
+    "personal_offset_s": 0,
+    "memberships": [
+     {
+      "faction_id": "wood-wardens",
+      "rank": "Captain",
+      "loyalty": 100
+     }
+    ],
+    "sheet": {
+     "attributes": {
+      "strength": 4,
+      "speed": 4,
+      "toughness": 4,
+      "wits": 4,
+      "knowledge": 5,
+      "willpower": 5,
+      "charm": 3,
+      "nerve": 5,
+      "bearing": 5
+     },
+     "skills": [
+      {
+       "name": "Archery",
+       "level": "master",
+       "notes": ""
+      },
+      {
+       "name": "Stealth",
+       "level": "master",
+       "notes": ""
+      }
+     ],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "cautious",
+        "stoic",
+        "protective"
+       ],
+       "values": [
+        "tradition",
+        "nature",
+        "duty"
+       ],
+       "loves": [
+        "the deep silence of the untouched woods"
+       ],
+       "fears": [
+        "the total extinction of his kind's sacred spaces"
+       ],
+       "wants": [
+        "To drive the humans entirely out of Aethelwood."
+       ],
+       "voice": ""
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 0,
+        "fear": 0,
+        "trust": 0,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   },
+   "overseer-graves": {
+    "id": "overseer-graves",
+    "name": "Overseer Graves",
+    "aliases": [],
+    "prominence": "key",
+    "description": "An ambitious human supervisor who views Aethelwood as nothing more than logs waiting to be sold.",
+    "appearance": "Stout, muscular, with short-cropped black hair and a sunburnt neck, wearing stained leather garments and carrying an iron-headed handaxe.",
+    "look_version": 1,
+    "age": 42,
+    "people_id": "humans",
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "loggers-camp",
+    "personal_offset_s": 0,
+    "memberships": [
+     {
+      "faction_id": "high-reach-settlers",
+      "rank": "Overseer",
+      "loyalty": 85
+     }
+    ],
+    "sheet": {
+     "attributes": {
+      "strength": 4,
+      "speed": 3,
+      "toughness": 4,
+      "wits": 3,
+      "knowledge": 2,
+      "willpower": 4,
+      "charm": 2,
+      "nerve": 4,
+      "bearing": 3
+     },
+     "skills": [
+      {
+       "name": "Intimidation",
+       "level": "skilled",
+       "notes": ""
+      },
+      {
+       "name": "Axes",
+       "level": "skilled",
+       "notes": ""
+      }
+     ],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "ruthless",
+        "pragmatic",
+        "greedy"
+       ],
+       "values": [
+        "wealth",
+        "progress"
+       ],
+       "loves": [
+        "the sound of coins clinking"
+       ],
+       "fears": [
+        "ruining his reputation with his wealthy backers"
+       ],
+       "wants": [
+        "Clear the forest up to the ancient ironwood grove."
+       ],
+       "voice": ""
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 0,
+        "fear": 0,
+        "trust": 0,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   }
+  },
+  "factions": {
+   "wood-wardens": {
+    "id": "wood-wardens",
+    "name": "The Wood-Wardens",
+    "kind": "sect",
+    "description": "A small, dedicated band of elven rangers sworn to defend the borders of Aethelwood at any cost.",
+    "parent_id": null,
+    "status": "intact",
+    "status_history": [],
+    "activity": "active",
+    "leader_ids": [
+     "eldrin"
+    ],
+    "goal": "Halt the human expansion and protect the sacred heart of the forest.",
+    "methods": "Guerilla tactics, sabotage, and direct archery ambushes.",
+    "strength": "Dozens of highly skilled elven rangers hiding in the canopy, familiar with every secret path.",
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "threat": 0,
+    "relations": {},
+    "survivors": [],
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ]
+   },
+   "high-reach-settlers": {
+    "id": "high-reach-settlers",
+    "name": "High Reach Logging Syndicate",
+    "kind": "crew",
+    "description": "A well-funded human enterprise driving the clearance of the forest for timber and settlement space.",
+    "parent_id": null,
+    "status": "intact",
+    "status_history": [],
+    "activity": "active",
+    "leader_ids": [
+     "overseer-graves"
+    ],
+    "goal": "Clear-cut the ironwood trees up to the Sacred Grove to fulfill a massive trade agreement.",
+    "methods": "Hiring mercenary guards, utilizing heavy iron axes, and pushing deeper into the forest daily.",
+    "strength": "Dozens of rough woodsmen, armed mercenaries, and the legal backing of the local regional lords.",
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "threat": 0,
+    "relations": {},
+    "survivors": [],
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "places": {
+   "aethelwood": {
+    "id": "aethelwood",
+    "name": "Aethelwood Forest",
+    "kind": "wilds",
+    "description": "An ancient, towering forest of massive ironwood trees, shadowed hollows, and thick, mossy undergrowth.",
+    "parent_id": null,
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "solemn and ancient",
+    "stability": 70,
+    "routes": [],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "high-canopy": {
+    "id": "high-canopy",
+    "name": "The High Canopy Sentry",
+    "kind": "wilds",
+    "description": "A lofty natural lookout branch high in a giant ironwood tree, offering a clear view over the western forest boundary.",
+    "parent_id": "aethelwood",
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "windy and vigilant",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "ranger-outpost",
+      "travel_s": 3600,
+      "mode": "on foot"
+     },
+     {
+      "to_id": "loggers-camp",
+      "travel_s": 1800,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [
+     "player"
+    ],
+    "judged": []
+   },
+   "ranger-outpost": {
+    "id": "ranger-outpost",
+    "name": "The Whispering Hollow",
+    "kind": "building",
+    "description": "A hidden sanctuary built inside the hollow trunk of a living sentinel tree, serving as a ranger outpost.",
+    "parent_id": "aethelwood",
+    "setting": "indoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "safe and earthy",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "high-canopy",
+      "travel_s": 3600,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "loggers-camp": {
+    "id": "loggers-camp",
+    "name": "The Encroaching Scar",
+    "kind": "wilds",
+    "description": "A muddy, bustling logging camp filled with stacks of freshly felled timber, smelling heavily of sawdust and pine resin.",
+    "parent_id": "aethelwood",
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": "high-reach-settlers",
+    "mood": "chaotic and destructive",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "high-reach",
+      "travel_s": 10800,
+      "mode": "by cart"
+     },
+     {
+      "to_id": "high-canopy",
+      "travel_s": 1800,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "high-reach": {
+    "id": "high-reach",
+    "name": "High Reach Settlement",
+    "kind": "village",
+    "description": "A rapidly growing human border town made of raw timber, busy with stone masons, builders, and eager pioneers.",
+    "parent_id": null,
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": "high-reach-settlers",
+    "mood": "busy and ambitious",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "loggers-camp",
+      "travel_s": 10800,
+      "mode": "by cart"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   }
+  },
+  "deeds": {},
+  "rumors": {},
+  "bonds": {},
+  "lives": {},
+  "aged_s": null,
+  "changes": {},
+  "strife_s": {},
+  "facts": {
+   "fact-1": {
+    "id": "fact-1",
+    "text": "Aethelwood is an ancient forest that has stood untouched for thousands of years.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-2": {
+    "id": "fact-2",
+    "text": "Humans from High Reach have recently breached the forest boundaries with heavy logging equipment.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-3": {
+    "id": "fact-3",
+    "text": "The Wood-Wardens expect every ranger to protect the trees, even if it means open conflict.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   }
+  },
+  "goals": {},
+  "leads": {},
+  "threads": {
+   "save-the-grove": {
+    "id": "save-the-grove",
+    "title": "Guarding the Sacred Ironwood",
+    "kind": "quest",
+    "stakes": "The ancient, sentient heart of Aethelwood will be forever destroyed by human axes.",
+    "involved_ids": [
+     "player",
+     "overseer-graves",
+     "eldrin"
+    ],
+    "clock_id": "logging-expansion",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "status": "open",
+    "opened_turn": 0,
+    "last_active_turn": 0,
+    "taken_up_turn": null,
+    "closed_turn": null,
+    "arc": null,
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "clocks": {
+   "logging-expansion": {
+    "id": "logging-expansion",
+    "name": "The logging camp reaches the Sacred Ironwood grove",
+    "steps": [
+     "Loggers clear the outer perimeter of Sentinel trees.",
+     "Warden patrol sentries are forced back by mercenary guards.",
+     "Felling crews position their heavy iron axes at the grove boundary.",
+     "The ancient Sacred Ironwood trees are chopped down."
+    ],
+    "filled": 0,
+    "advances_on": [],
+    "reverses_on": [],
+    "interval_s": 172800,
+    "next_step_s": 172800,
+    "owner_id": null,
+    "thread_id": "save-the-grove",
+    "status": "running",
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "pending_events": {
+   "event-1": {
+    "id": "event-1",
+    "kind": "world.clock_step",
+    "title": "The logging camp reaches the Sacred Ironwood grove: Loggers clear the outer perimeter of Sentinel trees.",
+    "due_s": 172800,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": {
+     "kind": "clock",
+     "ref_id": "logging-expansion",
+     "text": ""
+    },
+    "payload": {
+     "clock_id": "logging-expansion"
+    },
+    "seed": "story=play%2Fx-elf/timeline=main/turn=1/world/schedule/event-1",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-2": {
+    "id": "event-2",
+    "kind": "world.old_age",
+    "title": "Your years run short",
+    "due_s": 50191940488,
+    "timeline_id": "main",
+    "needs_player": true,
+    "status": "pending",
+    "subject_ids": [
+     "player"
+    ],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "phase": "near",
+     "who": "player",
+     "span": 2000,
+     "day_s": 52168106272
+    },
+    "seed": "story=play%2Fx-elf/timeline=main/turn=1/world/schedule/event-2",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-3": {
+    "id": "event-3",
+    "kind": "world.tick",
+    "title": "The world moves on",
+    "due_s": 86400,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "last_s": 0,
+     "stride_s": 86400
+    },
+    "seed": "story=play%2Fx-elf/timeline=main/turn=1/world/schedule/event-3",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   }
+  },
+  "transfers": [],
+  "time_effects": [],
+  "scene": {
+   "place_id": "high-canopy",
+   "present_ids": [
+    "player"
+   ],
+   "positions": [
+    "perched silently on a thick ironwood branch high above",
+    "human scout searching the forest floor below"
+   ],
+   "props": [
+    "the recurve bow in your hands",
+    "rising plumes of smoke in the distance"
+   ],
+   "ended_on": "A lone human scout moves cautiously near the base of your lookout tree, unaware of your presence above.",
+   "encounter": null
+  },
+  "director": {
+   "turns_without_stakes": 0,
+   "low_stakes_streak": 0,
+   "last_action_key": null,
+   "last_event_turn": null,
+   "last_event_size": null,
+   "last_event_s": {},
+   "last_small_s": null,
+   "recent_moments": [],
+   "recent_clock": [
+    0
+   ],
+   "frequency_drift": 0.0,
+   "recent_sources": [],
+   "auto_pictures": 1,
+   "picture_credit": 1.1,
+   "pictured": [
+    "portrait:player",
+    "portrait:player:v1"
+   ],
+   "fight": null,
+   "deck_draws": 0,
+   "road_stops": 0
+  },
+  "summary": "At dawn, the elven ranger Sylris watches the destructive advance of human loggers from her high perch in Aethelwood. As the distant ring of axes shakes the ancient trees, she spots a lone human scout searching the ground directly beneath her lookout branch.",
+  "chapters": [],
+  "id_counters": {
+   "fact": 3,
+   "goal": 1,
+   "bond": 0,
+   "event": 3
+  },
+  "fallen": [],
+  "opening_due": false,
+  "misses_in_a_row": 0,
+  "openings": [],
+  "journey": null,
+  "untold": [
+   "person:eldrin",
+   "person:overseer-graves"
+  ]
+ },
+ "scenes": [
+  {
+   "turn": 1,
+   "narration": "Perched silently on a thick ironwood branch high in the canopy of Aethelwood, you watch the first light of dawn pierce the heavy morning mist. The wind carries a bitter scent that tightens your chest: the sharp, burning odor of green timber on a human campfire. Below, the rhythmic, metallic ring of iron axes strikes a brutal cadence against the ancient, semi-sentient trees, making the great branch beneath you tremble. The High Reach settlers have set up their camp within the western boundary, carving an ugly scar into the ancient green. Through your keen elven senses, you hear the distant, raucous laughter of the loggers and the groan of falling ironwood. This grove has stood untouched for thousands of years, and the Wood-Wardens expect their rangers to protect the trees at any cost. A sudden, sharp snap of dry undergrowth from the forest floor below breaks your focus. Looking down through the dense leaves, you spot a lone human scout bearing the emblem of the High Reach Logging Syndicate, moving cautiously toward the base of your lookout tree.",
+   "player_action": null
+  }
+ ],
+ "choices": [
+  "Draw your recurve bow and quiet the scout from above.",
+  "Slip down silently using Forest Walk to ambush them.",
+  "Retreat back through the branches toward the Whispering Hollow outpost."
+ ],
+ "cost_usd": 0.131412,
+ "draft": {
+  "premise": "A 300-year-old elf ranger, still young for her kind, guarding a forest that humans have started to cut down.",
+  "proposal": {
+   "world": {
+    "title": "The Verge of the Green",
+    "genre": "High Fantasy",
+    "tone": "solemn",
+    "era": "A medieval-era fantasy world of iron axes, hand-carved bows, and wooden wagons",
+    "extraordinary": [
+     {
+      "id": "magic",
+      "kind": "druidic nature magic",
+      "prevalence": "rare",
+      "reach": "allowing practitioners to speak with flora, blend into shadows, and encourage rapid plant growth."
+     },
+     {
+      "id": "elves",
+      "kind": "elven biology",
+      "prevalence": "rare",
+      "reach": "granting lifespans of several thousand years and highly acute physical senses."
+     }
+    ],
+    "rules": [
+     {
+      "id": "elven-lifespan",
+      "text": "Elves live for thousands of years, maturing slowly and remaining physically youthful for centuries.",
+      "fixed": true,
+      "topic": "peoples",
+      "about": [
+       "elves"
+      ]
+     },
+     {
+      "id": "forest-sentience",
+      "text": "The ancient forest of Aethelwood is semi-sentient and bleeds amber sap when harmed.",
+      "fixed": false,
+      "topic": "nature",
+      "about": []
+     },
+     {
+      "id": "magic-limits",
+      "text": "Nature magic can accelerate growth and soothe beasts, but it cannot conjure matter from nothing.",
+      "fixed": true,
+      "topic": "limits",
+      "about": [
+       "magic"
+      ]
+     }
+    ],
+    "dropped_rule_ids": [],
+    "peoples": [
+     {
+      "id": "elves",
+      "name": "Elves",
+      "description": "An ancient, isolationist people deeply bonded with the deep forests.",
+      "lifespan_years": 2000,
+      "gifts": [
+       "Night vision",
+       "Uncanny balance"
+      ],
+      "culture": "A slow-moving, artistic culture focused on preservation and harmony with nature.",
+      "relations": [
+       "Tense stand-off with expanding human settlements that encroach upon ancient boundaries."
+      ],
+      "path": ""
+     },
+     {
+      "id": "humans",
+      "name": "Humans",
+      "description": "Ambitious, short-lived, and rapidly expanding settlers.",
+      "lifespan_years": 80,
+      "gifts": [],
+      "culture": "Industrious and pragmatic, valuing resource gathering, agriculture, and construction.",
+      "relations": [
+       "View the elven forest as an untapped source of valuable lumber and farmland."
+      ],
+      "path": ""
+     }
+    ],
+    "creatures": [
+     {
+      "id": "forest-stalker",
+      "name": "Forest Stalker",
+      "description": "Great dark-furred wolves that protect the deeper heart of Aethelwood.",
+      "rung": "",
+      "habitat": "Deep forest canopy and dark hollows",
+      "worth": "Valuable pelt and protective fangs",
+      "can_be_tamed": true
+     }
+    ],
+    "nature": [
+     "The oldest trees in Aethelwood whisper warnings to those who know how to listen.",
+     "The soil here is rich and quick to reclaim abandoned stone structures."
+    ],
+    "ladders": [],
+    "calendar": {
+     "style": "day_count",
+     "clock_time": false,
+     "epoch": "",
+     "start_hour": 6,
+     "months": [],
+     "start_year": 1,
+     "start_month": 1,
+     "start_day": 1,
+     "era": ""
+    },
+    "travel": {
+     "description": "Travel is slow, conducted entirely on foot, on horseback, or via wooden lumber carts.",
+     "instant_messages": false
+    },
+    "medicine": {
+     "healing": "Herbal elixirs, poultices, and minor elven restorative salves.",
+     "resurrection": "none",
+     "resurrection_means": ""
+    },
+    "laws": [
+     {
+      "id": "human-charter",
+      "text": "The High Reach charter permits the logging of any 'unclaimed wild woodland' for local development.",
+      "enforcer": "Bailiff of High Reach",
+      "enforcer_faction_id": "high-reach-settlers",
+      "zeal": "high",
+      "corruptible": true
+     },
+     {
+      "id": "ranger-code",
+      "text": "The ancient code of the wardens forbids the cutting of ironwood trees and dictates death to those who desecrate the sacred groves.",
+      "enforcer": "Wood-Wardens",
+      "enforcer_faction_id": "wood-wardens",
+      "zeal": "high",
+      "corruptible": false
+     }
+    ],
+    "norms": [],
+    "several_partners": false,
+    "unions": "for_life",
+    "places": [
+     {
+      "id": "aethelwood",
+      "name": "Aethelwood Forest",
+      "kind": "wilds",
+      "description": "An ancient, towering forest of massive ironwood trees, shadowed hollows, and thick, mossy undergrowth.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "solemn and ancient",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "high-canopy",
+      "name": "The High Canopy Sentry",
+      "kind": "wilds",
+      "description": "A lofty natural lookout branch high in a giant ironwood tree, offering a clear view over the western forest boundary.",
+      "parent_id": "aethelwood",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "windy and vigilant",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "ranger-outpost",
+        "travel_hours": 1.0,
+        "mode": "on foot"
+       },
+       {
+        "to_id": "loggers-camp",
+        "travel_hours": 0.5,
+        "mode": "on foot"
+       }
+      ]
+     },
+     {
+      "id": "ranger-outpost",
+      "name": "The Whispering Hollow",
+      "kind": "building",
+      "description": "A hidden sanctuary built inside the hollow trunk of a living sentinel tree, serving as a ranger outpost.",
+      "parent_id": "aethelwood",
+      "setting": "indoors",
+      "controller_id": "",
+      "mood": "safe and earthy",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "loggers-camp",
+      "name": "The Encroaching Scar",
+      "kind": "wilds",
+      "description": "A muddy, bustling logging camp filled with stacks of freshly felled timber, smelling heavily of sawdust and pine resin.",
+      "parent_id": "aethelwood",
+      "setting": "outdoors",
+      "controller_id": "high-reach-settlers",
+      "mood": "chaotic and destructive",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "high-reach",
+        "travel_hours": 3.0,
+        "mode": "by cart"
+       }
+      ]
+     },
+     {
+      "id": "high-reach",
+      "name": "High Reach Settlement",
+      "kind": "village",
+      "description": "A rapidly growing human border town made of raw timber, busy with stone masons, builders, and eager pioneers.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "high-reach-settlers",
+      "mood": "busy and ambitious",
+      "known_to_player": true,
+      "routes": []
+     }
+    ],
+    "factions": [
+     {
+      "id": "wood-wardens",
+      "name": "The Wood-Wardens",
+      "kind": "sect",
+      "description": "A small, dedicated band of elven rangers sworn to defend the borders of Aethelwood at any cost.",
+      "parent_id": "",
+      "leader_ids": [
+       "eldrin"
+      ],
+      "goal": "Halt the human expansion and protect the sacred heart of the forest.",
+      "methods": "Guerilla tactics, sabotage, and direct archery ambushes.",
+      "strength": "Dozens of highly skilled elven rangers hiding in the canopy, familiar with every secret path.",
+      "relations": [],
+      "secrets": [],
+      "known_to_player": true
+     },
+     {
+      "id": "high-reach-settlers",
+      "name": "High Reach Logging Syndicate",
+      "kind": "crew",
+      "description": "A well-funded human enterprise driving the clearance of the forest for timber and settlement space.",
+      "parent_id": "",
+      "leader_ids": [
+       "overseer-graves"
+      ],
+      "goal": "Clear-cut the ironwood trees up to the Sacred Grove to fulfill a massive trade agreement.",
+      "methods": "Hiring mercenary guards, utilizing heavy iron axes, and pushing deeper into the forest daily.",
+      "strength": "Dozens of rough woodsmen, armed mercenaries, and the legal backing of the local regional lords.",
+      "relations": [],
+      "secrets": [],
+      "known_to_player": true
+     }
+    ],
+    "npcs": [
+     {
+      "id": "eldrin",
+      "name": "Captain Eldrin",
+      "aliases": [],
+      "description": "An ancient elven ranger with centuries of experience, bearing a scarred face and an uncompromising resolve.",
+      "appearance": "Tall, lean, with silver-grey hair braided with dry oak leaves, wearing dark moss-green armor and carrying a massive black bow.",
+      "age": 1200,
+      "people_id": "elves",
+      "location_id": "ranger-outpost",
+      "memberships": [
+       {
+        "faction_id": "wood-wardens",
+        "rank": "Captain",
+        "loyalty": 100
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "cautious",
+        "stoic",
+        "protective"
+       ],
+       "values": [
+        "tradition",
+        "nature",
+        "duty"
+       ],
+       "loves": [
+        "the deep silence of the untouched woods"
+       ],
+       "fears": [
+        "the total extinction of his kind's sacred spaces"
+       ],
+       "wants": [
+        "To drive the humans entirely out of Aethelwood."
+       ],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 4,
+       "speed": 4,
+       "toughness": 4,
+       "wits": 4,
+       "knowledge": 5,
+       "willpower": 5,
+       "charm": 3,
+       "nerve": 5,
+       "bearing": 5
+      },
+      "skills": [
+       {
+        "name": "Archery",
+        "level": "master",
+        "notes": ""
+       },
+       {
+        "name": "Stealth",
+        "level": "master",
+        "notes": ""
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 0,
+       "fear": 0,
+       "trust": 0,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "met"
+     },
+     {
+      "id": "overseer-graves",
+      "name": "Overseer Graves",
+      "aliases": [],
+      "description": "An ambitious human supervisor who views Aethelwood as nothing more than logs waiting to be sold.",
+      "appearance": "Stout, muscular, with short-cropped black hair and a sunburnt neck, wearing stained leather garments and carrying an iron-headed handaxe.",
+      "age": 42,
+      "people_id": "humans",
+      "location_id": "loggers-camp",
+      "memberships": [
+       {
+        "faction_id": "high-reach-settlers",
+        "rank": "Overseer",
+        "loyalty": 85
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "ruthless",
+        "pragmatic",
+        "greedy"
+       ],
+       "values": [
+        "wealth",
+        "progress"
+       ],
+       "loves": [
+        "the sound of coins clinking"
+       ],
+       "fears": [
+        "ruining his reputation with his wealthy backers"
+       ],
+       "wants": [
+        "Clear the forest up to the ancient ironwood grove."
+       ],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 4,
+       "speed": 3,
+       "toughness": 4,
+       "wits": 3,
+       "knowledge": 2,
+       "willpower": 4,
+       "charm": 2,
+       "nerve": 4,
+       "bearing": 3
+      },
+      "skills": [
+       {
+        "name": "Intimidation",
+        "level": "skilled",
+        "notes": ""
+       },
+       {
+        "name": "Axes",
+        "level": "skilled",
+        "notes": ""
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 0,
+       "fear": 0,
+       "trust": 0,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "heard_of"
+     }
+    ],
+    "clocks": [
+     {
+      "id": "logging-expansion",
+      "name": "The logging camp reaches the Sacred Ironwood grove",
+      "steps": [
+       "Loggers clear the outer perimeter of Sentinel trees.",
+       "Warden patrol sentries are forced back by mercenary guards.",
+       "Felling crews position their heavy iron axes at the grove boundary.",
+       "The ancient Sacred Ironwood trees are chopped down."
+      ],
+      "step_every_hours": 48.0,
+      "owner_id": "",
+      "thread_id": "",
+      "known_to_player": true
+     }
+    ],
+    "threads": [
+     {
+      "id": "save-the-grove",
+      "title": "Guarding the Sacred Ironwood",
+      "kind": "quest",
+      "stakes": "The ancient, sentient heart of Aethelwood will be forever destroyed by human axes.",
+      "involved_ids": [
+       "player",
+       "overseer-graves",
+       "eldrin"
+      ],
+      "clock_id": "logging-expansion",
+      "known_to_player": true
+     }
+    ],
+    "mysteries": [
+     {
+      "id": "the-barons-order",
+      "question": "Why is the logging syndicate suddenly so desperate to claim Aethelwood's ironwood?",
+      "answer": "The local human Baron has secretly contracted with a foreign navy to supply exceptionally tough ironwood timber for a secret fleet of warships, hoping to win royal favor.",
+      "clues": [
+       "Shipping crates in the loggers' camp are marked with a foreign military crest.",
+       "A hidden ledger in Graves' tent shows massive, desperate debts owed to external merchants.",
+       "A captured human scout mentions that the Baron's own emissaries are arriving soon to inspect the timber quality."
+      ],
+      "thread_id": "save-the-grove",
+      "known_to_player": true
+     }
+    ],
+    "known_facts": [
+     "Aethelwood is an ancient forest that has stood untouched for thousands of years.",
+     "Humans from High Reach have recently breached the forest boundaries with heavy logging equipment.",
+     "The Wood-Wardens expect every ranger to protect the trees, even if it means open conflict."
+    ],
+    "opening": {
+     "place_id": "high-canopy",
+     "present_ids": [
+      "player"
+     ],
+     "positions": [
+      "perched silently on a thick ironwood branch"
+     ],
+     "props": [
+      "the recurve bow in your hands",
+      "the rising plumes of smoke from the human logging camp below"
+     ],
+     "situation": "From your high canopy perch, you watch the smoke rise from the human logging camp as the rhythmic bite of iron axes echoes through the ancient branches of your home."
+    },
+    "summary": "A 300-year-old elven ranger stands vigil in the canopy of Aethelwood Forest. Below, human pioneers and loggers from High Reach have begun to ruthlessly cut down the ancient trees. She must find a way to protect the sacred ironwood groves before the forest's heart is lost forever."
+   },
+   "character": {
+    "name": "Sylris",
+    "aliases": [
+     "The Whispering Arrow",
+     "Sentry of the Green"
+    ],
+    "age": 300,
+    "lifespan_years": 2000,
+    "people_id": "elves",
+    "description": "A vigilant elven ranger with a quiet, watchful grace.",
+    "appearance": "Slender, athletic build, long silver-gold hair braided tight, wearing green-and-brown leather armor that blends perfectly into the forest canopy, carrying a recurve bow.",
+    "location_id": "high-canopy",
+    "attributes": {
+     "strength": 3,
+     "speed": 5,
+     "toughness": 3,
+     "wits": 4,
+     "knowledge": 3,
+     "willpower": 4,
+     "charm": 3,
+     "nerve": 5,
+     "bearing": 4
+    },
+    "skills": [
+     {
+      "name": "Archery",
+      "level": "expert",
+      "notes": ""
+     },
+     {
+      "name": "Stealth",
+      "level": "expert",
+      "notes": ""
+     },
+     {
+      "name": "Forest Survival",
+      "level": "skilled",
+      "notes": ""
+     },
+     {
+      "name": "Tracking",
+      "level": "skilled",
+      "notes": ""
+     }
+    ],
+    "traits": [
+     {
+      "name": "Elven Senses",
+      "kind": "gift",
+      "description": "Allows you to see clearly in starlight and hear the softest brush of leaves a mile away."
+     }
+    ],
+    "talents": [],
+    "powers": [
+     {
+      "id": "forest-walk",
+      "name": "Forest Walk",
+      "description": "Move through dense undergrowth and moss without leaving any physical trace or making a single sound.",
+      "kind_id": "magic",
+      "gift": false,
+      "strength": null,
+      "limits": [
+       "Does not function on paved human roads or stone surfaces."
+      ],
+      "costs": [],
+      "secret": false,
+      "time": null
+     },
+     {
+      "id": "woodland-speak",
+      "name": "Woodland Speak",
+      "description": "Sense the collective mood, pain, or distress of nearby plants and trees.",
+      "kind_id": "magic",
+      "gift": false,
+      "strength": null,
+      "limits": [
+       "Requires a moment of silent, physical contact with a living trunk or vine."
+      ],
+      "costs": [],
+      "secret": false,
+      "time": null
+     }
+    ],
+    "techniques": [],
+    "temperament": {
+     "traits": [
+      "cautious",
+      "protective",
+      "patient"
+     ],
+     "values": [
+      "harmony",
+      "duty"
+     ],
+     "loves": [
+      "the quiet canopy of the deep woods"
+     ],
+     "fears": [
+      "the scent of burnt wood",
+      "the dynamic destruction wrought by humans"
+     ],
+     "wants": [
+      "Guard the forest from the human loggers."
+     ],
+     "voice": ""
+    },
+    "items": [
+     {
+      "name": "Elven Recurve Bow",
+      "kind": "weapon",
+      "description": "A beautifully balanced bow carved from flexible ash wood.",
+      "quantity": 1,
+      "carried": true
+     },
+     {
+      "name": "Quiver of Fletched Arrows",
+      "kind": "gear",
+      "description": "A leather quiver holding twenty sharp, iron-tipped arrows.",
+      "quantity": 20,
+      "carried": true
+     },
+     {
+      "name": "Hunting Knife",
+      "kind": "weapon",
+      "description": "A sharp, simple knife used for skinning or self-defense.",
+      "quantity": 1,
+      "carried": true
+     },
+     {
+      "name": "Camo Cloak",
+      "kind": "gear",
+      "description": "A hooded cloak patterned in shades of autumn moss.",
+      "quantity": 1,
+      "carried": true
+     }
+    ],
+    "money": 0,
+    "currency": "silver shards",
+    "title": "Warden Ranger",
+    "rank": "Sentry",
+    "family_name": "",
+    "connections": [
+     {
+      "name": "Captain Eldrin",
+      "kind": "trusts_them",
+      "character_id": "eldrin",
+      "note": "Your commanding officer, who has charged you with watching the western border."
+     }
+    ],
+    "parent_ids": [],
+    "memberships": [
+     {
+      "faction_id": "wood-wardens",
+      "rank": "Warden Sentry",
+      "loyalty": 90
+     }
+    ],
+    "ladders": [],
+    "axes": {
+     "might": 2,
+     "influence": 1,
+     "wealth": 1,
+     "knowledge": 2,
+     "stealth": 4
+    },
+    "reserves": [],
+    "goals": [
+     "Guard the forest from the human loggers."
+    ],
+    "backstory": [
+     "You have spent three hundred years wandering the quiet paths of Aethelwood, still considered young among your slow-maturing kind.",
+     "The sudden arrival of iron axes and greedy human settlements on the border has disrupted the ancient peace, forcing you to take up your bow in defense of the trees."
+    ],
+    "hidden_past": []
+   }
+  },
+  "rating": "teen",
+  "premise_id": null,
+  "physics": "fun_first",
+  "gift": null,
+  "released_rules": [],
+  "language": "en",
+  "told": []
+ }
+}

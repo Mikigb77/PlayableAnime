@@ -1,0 +1,1987 @@
+{
+ "premise": "A farm boy with no talent for cultivation at all, the worst in his village. One day he finds a ring with the soul of an ancient master inside.",
+ "language": "en",
+ "rating": "teen",
+ "settings": {
+  "narration_length": "medium",
+  "tone": null,
+  "difficulty": "balanced",
+  "event_frequency": "normal",
+  "images": "key_moments",
+  "suggestions": true,
+  "language": "en",
+  "accent": null
+ },
+ "seed": "play/x-ring",
+ "state": {
+  "schema_version": 1,
+  "turn": 1,
+  "timeline_id": "main",
+  "world_s": 0,
+  "bible": {
+   "title": "The Master's Ring",
+   "genre": "cultivation fantasy",
+   "tone": "wonder",
+   "era": "Ancient Jade Province: wooden villages, spiritual herbs, and soaring swords",
+   "extraordinary": [
+    {
+     "id": "qi",
+     "kind": "qi cultivation",
+     "prevalence": "common",
+     "reach": "Cultivators can shatter mountains and live for thousands of years.",
+     "rule_ids": [
+      "qi-channels",
+      "cultivation-limits",
+      "qi-exists"
+     ]
+    },
+    {
+     "id": "souls",
+     "kind": "bound souls",
+     "prevalence": "rare",
+     "reach": "The souls of deceased masters can latch onto relics to escape physical decay.",
+     "rule_ids": [
+      "relic-binding",
+      "souls-exists"
+     ]
+    }
+   ],
+   "peoples": [
+    {
+     "id": "humans",
+     "name": "Humans",
+     "description": "",
+     "lifespan_years": 80,
+     "gifts": [],
+     "culture": "A society deeply divided between the mortal farmers who toil in the dirt and the immortal cultivators who command the heavens.",
+     "relations": [],
+     "path": ""
+    }
+   ],
+   "creatures": [
+    {
+     "id": "spirit-wolf",
+     "name": "Spitfire Wolf",
+     "description": "A wolf with embers trailing from its fur, drawn to areas rich in fire Qi.",
+     "tier": 4,
+     "habitat": "The Whispering Hills",
+     "worth": "Fire core and flame-resistant pelt.",
+     "can_be_tamed": true
+    }
+   ],
+   "nature": [
+    "Qi density varies by region, heavily affecting how fast a cultivator can recover energy."
+   ],
+   "physics": "fun_first",
+   "force": {
+    "tier1_joules": 10000.0,
+    "per_tier": 10.0
+   },
+   "ladders": [
+    {
+     "id": "cultivation-realms",
+     "name": "cultivation realms",
+     "axis": "might",
+     "rungs": [
+      {
+       "name": "Body Tempering",
+       "tier": 2,
+       "description": "Strengthening the flesh and bones to endure spiritual energy.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 100,
+       "added_s": null
+      },
+      {
+       "name": "Qi Condensation",
+       "tier": 4,
+       "description": "Drawing external Qi into the body to pool in the dantian.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 120,
+       "added_s": null
+      },
+      {
+       "name": "Foundation Establishment",
+       "tier": 6,
+       "description": "Solidifying spiritual energy into a liquid sea of Qi.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 250,
+       "added_s": null
+      },
+      {
+       "name": "Core Formation",
+       "tier": 8,
+       "description": "Condensing the liquid Qi into a solid golden core of immense power.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 500,
+       "added_s": null
+      },
+      {
+       "name": "Nascent Soul",
+       "tier": 10,
+       "description": "Nurturing an immortal spirit within, capable of surviving physical death.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 1000,
+       "added_s": null
+      }
+     ],
+     "standing_follows": true,
+     "sensing": true,
+     "rung_levels": 1,
+     "shrugs_off": 3,
+     "known_to_all": 3
+    }
+   ],
+   "calendar": {
+    "style": "day_count",
+    "time_of_day": "parts",
+    "epoch": null,
+    "start_second_of_day": 21600,
+    "months": [],
+    "start_year": 1,
+    "start_month": 1,
+    "start_day": 1,
+    "era": ""
+   },
+   "travel": {
+    "description": "Cultivators travel by flying swords or spiritual beasts; mortals travel slowly on foot or by ox cart.",
+    "instant_messages": false
+   },
+   "medicine": {
+    "healing": "Mortal herbs heal flesh wounds, while spirit pills can repair damaged meridians and seal broken bones instantly.",
+    "resurrection": "none",
+    "resurrection_means": ""
+   },
+   "laws": [
+    {
+     "id": "sect-dominance",
+     "text": "Mortals must pay an annual tribute of spirit stones to the local Iron Mountain Sect.",
+     "enforcer": "Sect Disciples",
+     "enforcer_faction_id": null,
+     "zeal": "high",
+     "corruptible": true
+    }
+   ],
+   "norms": [
+    "Treating a mortal with mercy is seen as a sign of weakness by orthodox sects."
+   ],
+   "several_partners": false,
+   "unions": "for_life",
+   "rules": [
+    {
+     "id": "qi-channels",
+     "text": "Only those who open their meridian channels can manipulate spiritual Qi.",
+     "fixed": true,
+     "topic": "other"
+    },
+    {
+     "id": "relic-binding",
+     "text": "A soul bound to an artifact cannot wander far from its physical vessel.",
+     "fixed": true,
+     "topic": "other"
+    },
+    {
+     "id": "cultivation-limits",
+     "text": "A weak spiritual root can be refined and elevated through rare spiritual medicines.",
+     "fixed": false,
+     "topic": "other"
+    },
+    {
+     "id": "qi-exists",
+     "text": "Qi cultivation: real, and everywhere.",
+     "fixed": true,
+     "topic": "existence"
+    },
+    {
+     "id": "souls-exists",
+     "text": "Bound souls: real, and rare.",
+     "fixed": true,
+     "topic": "existence"
+    }
+   ],
+   "mysteries": [
+    {
+     "id": "master-death",
+     "question": "Who betrayed Master Mo and sealed him within the ring?",
+     "answer": "His chief disciple, who is now the Grand Elder of the Iron Mountain Sect.",
+     "clues": [
+      "A broken insignia of the Iron Mountain Sect engraved inside the master's soul space.",
+      "Master Mo's violent reaction when he hears the name of the local sect."
+     ],
+     "thread_id": "master-guidance",
+     "solved": false
+    }
+   ]
+  },
+  "player_id": "player",
+  "characters": {
+   "player": {
+    "id": "player",
+    "name": "Chen Xiao",
+    "aliases": [
+     "The Village Trash"
+    ],
+    "prominence": "key",
+    "description": "A stubborn boy of humble origins, used to hard labor and mockery.",
+    "appearance": "Leathers, coarse cotton shirt, scruffy dark hair, and a determined gaze despite his lean frame.",
+    "look_version": 1,
+    "age": 16,
+    "people_id": null,
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "southern-fields",
+    "personal_offset_s": 0,
+    "memberships": [
+     {
+      "faction_id": "stonefalls-mortals",
+      "rank": "Farm Boy",
+      "loyalty": 70
+     }
+    ],
+    "sheet": {
+     "attributes": {
+      "strength": 2,
+      "speed": 3,
+      "toughness": 4,
+      "wits": 3,
+      "knowledge": 1,
+      "willpower": 5,
+      "charm": 3,
+      "nerve": 4,
+      "bearing": 2
+     },
+     "skills": [
+      {
+       "name": "Farming",
+       "level": "fair",
+       "notes": ""
+      },
+      {
+       "name": "Endurance",
+       "level": "skilled",
+       "notes": ""
+      }
+     ],
+     "traits": [
+      {
+       "name": "Clogged Meridians",
+       "kind": "flaw",
+       "description": "Your internal channels are blocked, making it incredibly difficult to absorb spiritual Qi."
+      }
+     ],
+     "talents": [
+      {
+       "id": "cultivation-block",
+       "name": "Cultivation Block",
+       "covers": "Refining spiritual Qi into your dantian.",
+       "strength": "slow",
+       "general": false,
+       "reason": ""
+      }
+     ],
+     "powers": [
+      {
+       "id": "soul-communion",
+       "name": "Soul Communion",
+       "description": "Allows you to communicate telepathically with Master Mo inside the ring and peer into his mental space.",
+       "strength": null,
+       "limits": [
+        "Requires wearing or holding the bound ring."
+       ],
+       "costs": [],
+       "secret": false,
+       "time": null,
+       "settings": {},
+       "ready_at_personal_s": null
+      }
+     ],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "stubborn",
+        "resilient",
+        "earnest"
+       ],
+       "values": [
+        "family",
+        "hard work"
+       ],
+       "loves": [],
+       "fears": [
+        "failing to protect his family",
+        "being weak forever"
+       ],
+       "wants": [],
+       "voice": ""
+      },
+      "attitudes": {}
+     },
+     "resources": {
+      "items": [
+       {
+        "id": "rusted-copper-ring",
+        "name": "Rusted Copper Ring",
+        "kind": "treasure",
+        "description": "A heavy, pitted ring that houses the soul of Master Mo.",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       },
+       {
+        "id": "iron-shovel",
+        "name": "Iron Shovel",
+        "kind": "gear",
+        "description": "A worn tool used for tilling the tough earth of the fields.",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       }
+      ],
+      "money": 12,
+      "currency": "copper coins",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 2,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 2
+     },
+     "ladders": [
+      {
+       "ladder_id": "cultivation-realms",
+       "rung": 0,
+       "stage": "early",
+       "shown_rung": null,
+       "yearly_s": null
+      }
+     ],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": [
+      {
+       "text": "You were born to simple farmers in Stonefalls Village.",
+       "turn": 0
+      },
+      {
+       "text": "At the annual testing, your spiritual roots were declared 'trash-grade', cementing your status as the worst prospect in the village.",
+       "turn": 0
+      }
+     ]
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [
+     "father-chen"
+    ],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": 80,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   },
+   "village-chief": {
+    "id": "village-chief",
+    "name": "Chief Wu",
+    "aliases": [],
+    "prominence": "key",
+    "description": "A severe elder with deep frown lines and a stooped back, burdened by the village's debts.",
+    "appearance": "Grey hair tied in a tight bun, wearing rough-spun hemp robes.",
+    "look_version": 1,
+    "age": 62,
+    "people_id": null,
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "stonefalls-village",
+    "personal_offset_s": 0,
+    "memberships": [
+     {
+      "faction_id": "stonefalls-mortals",
+      "rank": "Chief",
+      "loyalty": 90
+     }
+    ],
+    "sheet": {
+     "attributes": {
+      "strength": 2,
+      "speed": 2,
+      "toughness": 2,
+      "wits": 3,
+      "knowledge": 3,
+      "willpower": 3,
+      "charm": 3,
+      "nerve": 3,
+      "bearing": 3
+     },
+     "skills": [
+      {
+       "name": "Agriculture",
+       "level": "expert",
+       "notes": ""
+      }
+     ],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "cautious",
+        "pessimistic",
+        "stern"
+       ],
+       "values": [],
+       "loves": [],
+       "fears": [],
+       "wants": [],
+       "voice": ""
+      },
+      "attitudes": {
+       "player": {
+        "affinity": -10,
+        "fear": 0,
+        "trust": 10,
+        "apparent_affinity": -20,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   },
+   "father-chen": {
+    "id": "father-chen",
+    "name": "Chen Ding",
+    "aliases": [],
+    "prominence": "key",
+    "description": "A loving but deeply exhausted farmer who has spent his entire life working the rocky soil of the village.",
+    "appearance": "Leathery, sun-bronzed skin, thick calloused hands, and kind, tired eyes.",
+    "look_version": 1,
+    "age": 45,
+    "people_id": null,
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "southern-fields",
+    "personal_offset_s": 0,
+    "memberships": [
+     {
+      "faction_id": "stonefalls-mortals",
+      "rank": "Farmer",
+      "loyalty": 80
+     }
+    ],
+    "sheet": {
+     "attributes": {
+      "strength": 3,
+      "speed": 2,
+      "toughness": 4,
+      "wits": 2,
+      "knowledge": 2,
+      "willpower": 4,
+      "charm": 3,
+      "nerve": 3,
+      "bearing": 2
+     },
+     "skills": [
+      {
+       "name": "Farming",
+       "level": "expert",
+       "notes": ""
+      }
+     ],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "loving",
+        "quiet",
+        "stubborn"
+       ],
+       "values": [],
+       "loves": [],
+       "fears": [],
+       "wants": [],
+       "voice": ""
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 80,
+        "fear": 0,
+        "trust": 70,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": 0,
+    "near_s": null,
+    "met_s": null
+   },
+   "ancient-master": {
+    "id": "ancient-master",
+    "name": "Master Mo",
+    "aliases": [],
+    "prominence": "key",
+    "description": "An ethereal soul projection residing inside a rusted copper ring, sharp-tongued and proud.",
+    "appearance": "A faint, semi-translucent figure of a middle-aged man with sharp features and floating long hair.",
+    "look_version": 1,
+    "age": 320,
+    "people_id": null,
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "southern-fields",
+    "personal_offset_s": 0,
+    "memberships": [],
+    "sheet": {
+     "attributes": {
+      "strength": 0,
+      "speed": 0,
+      "toughness": 1,
+      "wits": 5,
+      "knowledge": 5,
+      "willpower": 5,
+      "charm": 4,
+      "nerve": 4,
+      "bearing": 5
+     },
+     "skills": [
+      {
+       "name": "Alchemical Theory",
+       "level": "master",
+       "notes": ""
+      },
+      {
+       "name": "Qi Control",
+       "level": "master",
+       "notes": ""
+      }
+     ],
+     "traits": [
+      {
+       "name": "Disembodied",
+       "kind": "quirk",
+       "description": "Has no physical body and cannot interact directly with physical objects."
+      }
+     ],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "demanding",
+        "proud",
+        "secretive"
+       ],
+       "values": [],
+       "loves": [],
+       "fears": [],
+       "wants": [],
+       "voice": ""
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 5,
+        "fear": 0,
+        "trust": 0,
+        "apparent_affinity": -10,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 10,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [
+      {
+       "ladder_id": "cultivation-realms",
+       "rung": 4,
+       "stage": "",
+       "shown_rung": null,
+       "yearly_s": null
+      }
+     ],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": {
+     "goal": "Rebuild his physical body and take revenge on his treacherous disciples.",
+     "method": "Guide the player to become a powerful cultivator so he has an ally.",
+     "secret": "",
+     "clock_id": null
+    },
+    "secrets": [
+     "Master Mo was poisoned and betrayed by the current Sect Master of the Iron Mountain Sect."
+    ],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": 0,
+    "near_s": null,
+    "met_s": null
+   }
+  },
+  "factions": {
+   "stonefalls-mortals": {
+    "id": "stonefalls-mortals",
+    "name": "Stonefalls Villagers",
+    "kind": "family",
+    "description": "Hardy, superstitious farmers who simply wish to survive the winter and avoid the anger of the sects.",
+    "parent_id": null,
+    "status": "intact",
+    "status_history": [],
+    "activity": "active",
+    "leader_ids": [
+     "village-chief"
+    ],
+    "goal": "Pay the sect tribute on time.",
+    "methods": "Harsh rationing and exhausting farm labor.",
+    "strength": "Dozens of simple, unarmed mortal laborers.",
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "threat": 0,
+    "relations": {},
+    "survivors": [],
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ]
+   },
+   "iron-mountain-sect": {
+    "id": "iron-mountain-sect",
+    "name": "Iron Mountain Sect",
+    "kind": "sect",
+    "description": "A minor cultivation sect that rules the local territory with an iron fist, demanding resources from nearby villages.",
+    "parent_id": null,
+    "status": "intact",
+    "status_history": [],
+    "activity": "active",
+    "leader_ids": [],
+    "goal": "Acquire more spirit stones to expand their influence.",
+    "methods": "Forced taxation and martial intimidation.",
+    "strength": "Dozens of Qi Condensation disciples and a Foundation Establishment Sect Master.",
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "threat": 0,
+    "relations": {},
+    "survivors": [],
+    "secrets": [
+     "The Sect Master is dying of a poisoned meridian and is desperate for a cure."
+    ],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "places": {
+   "stonefalls-village": {
+    "id": "stonefalls-village",
+    "name": "Stonefalls Village",
+    "kind": "village",
+    "description": "A quiet agrarian community built from gray river stones and timber, nestled at the base of the mountains.",
+    "parent_id": null,
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "southern-fields",
+      "travel_s": 1800,
+      "mode": "on foot"
+     },
+     {
+      "to_id": "whispering-hills",
+      "travel_s": 14400,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "southern-fields": {
+    "id": "southern-fields",
+    "name": "The Southern Fields",
+    "kind": "wilds",
+    "description": "Terraced plots of coarse earth where the villagers grow low-grade spiritual grain.",
+    "parent_id": "stonefalls-village",
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "stonefalls-village",
+      "travel_s": 1800,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [
+     "player"
+    ],
+    "judged": []
+   },
+   "whispering-hills": {
+    "id": "whispering-hills",
+    "name": "The Whispering Hills",
+    "kind": "wilds",
+    "description": "Lush, rolling hills surrounding the village, home to wild herbs and dangerous spirit beasts.",
+    "parent_id": null,
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "stonefalls-village",
+      "travel_s": 14400,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   }
+  },
+  "deeds": {},
+  "rumors": {},
+  "bonds": {},
+  "lives": {},
+  "aged_s": null,
+  "changes": {},
+  "strife_s": {},
+  "facts": {
+   "fact-1": {
+    "id": "fact-1",
+    "text": "You have the worst spiritual root in the entire village.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-2": {
+    "id": "fact-2",
+    "text": "The Iron Mountain Sect demands tribute every year.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-3": {
+    "id": "fact-3",
+    "text": "The copper ring you found contains a living soul.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   }
+  },
+  "goals": {},
+  "leads": {},
+  "threads": {
+   "tribute-threat": {
+    "id": "tribute-threat",
+    "title": "Sect Tribute",
+    "kind": "threat",
+    "stakes": "The village must pay the tribute, or the sect will drag away the young mortals as forced laborers.",
+    "involved_ids": [
+     "stonefalls-mortals",
+     "iron-mountain-sect"
+    ],
+    "clock_id": "tribute-collection",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "status": "open",
+    "opened_turn": 0,
+    "last_active_turn": 0,
+    "taken_up_turn": null,
+    "closed_turn": null,
+    "arc": null,
+    "known_by": [
+     "player"
+    ]
+   },
+   "master-guidance": {
+    "id": "master-guidance",
+    "title": "A Master's Legacy",
+    "kind": "quest",
+    "stakes": "The player must overcome their trash-tier spiritual root to step onto the path of immortality.",
+    "involved_ids": [
+     "player",
+     "ancient-master"
+    ],
+    "clock_id": null,
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "status": "open",
+    "opened_turn": 0,
+    "last_active_turn": 0,
+    "taken_up_turn": null,
+    "closed_turn": null,
+    "arc": null,
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "clocks": {
+   "tribute-collection": {
+    "id": "tribute-collection",
+    "name": "The Iron Mountain Sect Tribute Collection",
+    "steps": [
+     "Sect heralds declare the tribute total.",
+     "Villagers struggle to gather enough spiritual grain.",
+     "Ruthless collectors arrive in the village to claim grain or take hostages."
+    ],
+    "filled": 0,
+    "advances_on": [],
+    "reverses_on": [],
+    "interval_s": 172800,
+    "next_step_s": 172800,
+    "owner_id": null,
+    "thread_id": "tribute-threat",
+    "status": "running",
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "pending_events": {
+   "event-1": {
+    "id": "event-1",
+    "kind": "world.clock_step",
+    "title": "The Iron Mountain Sect Tribute Collection: Sect heralds declare the tribute total.",
+    "due_s": 172800,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": {
+     "kind": "clock",
+     "ref_id": "tribute-collection",
+     "text": ""
+    },
+    "payload": {
+     "clock_id": "tribute-collection"
+    },
+    "seed": "story=play%2Fx-ring/timeline=main/turn=1/world/schedule/event-1",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-2": {
+    "id": "event-2",
+    "kind": "world.old_age",
+    "title": "Your years run short",
+    "due_s": 2767806714,
+    "timeline_id": "main",
+    "needs_player": true,
+    "status": "pending",
+    "subject_ids": [
+     "player"
+    ],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "phase": "near",
+     "who": "player",
+     "span": 100,
+     "day_s": 2806321403
+    },
+    "seed": "story=play%2Fx-ring/timeline=main/turn=1/world/schedule/event-2",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-3": {
+    "id": "event-3",
+    "kind": "world.tick",
+    "title": "The world moves on",
+    "due_s": 86400,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "last_s": 0,
+     "stride_s": 86400
+    },
+    "seed": "story=play%2Fx-ring/timeline=main/turn=1/world/schedule/event-3",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   }
+  },
+  "transfers": [],
+  "time_effects": [],
+  "scene": {
+   "place_id": "southern-fields",
+   "present_ids": [
+    "player",
+    "father-chen",
+    "ancient-master"
+   ],
+   "positions": [
+    "Chen Xiao is kneeling in the dirt, holding the glowing ring",
+    "Chen Ding is resting under the shade of the withered tree"
+   ],
+   "props": [
+    "iron shovel",
+    "rusted-copper-ring"
+   ],
+   "ended_on": "The cold voice inside your head fades into a demanding silence as the copper ring pulses in your hand.",
+   "encounter": null
+  },
+  "director": {
+   "turns_without_stakes": 0,
+   "low_stakes_streak": 0,
+   "last_action_key": null,
+   "last_event_turn": null,
+   "last_event_size": null,
+   "last_event_s": {},
+   "last_small_s": null,
+   "recent_moments": [],
+   "recent_clock": [
+    0
+   ],
+   "frequency_drift": 0.0,
+   "recent_sources": [],
+   "auto_pictures": 1,
+   "picture_credit": 1.1,
+   "pictured": [
+    "portrait:player",
+    "portrait:player:v1"
+   ],
+   "fight": null,
+   "deck_draws": 0,
+   "road_stops": 0
+  },
+  "summary": "You are a simple farm boy with zero talent for cultivation, the laughingstock of your village. Everything changes when you dig up a strange copper ring containing the proud soul of an ancient, betrayed master.",
+  "chapters": [],
+  "id_counters": {
+   "fact": 3,
+   "goal": 0,
+   "bond": 0,
+   "event": 3
+  },
+  "fallen": [],
+  "opening_due": false,
+  "misses_in_a_row": 0,
+  "openings": [],
+  "journey": null,
+  "untold": [
+   "person:ancient-master",
+   "person:village-chief",
+   "thread:master-guidance"
+  ]
+ },
+ "scenes": [
+  {
+   "turn": 1,
+   "narration": "Your iron shovel strikes a hard object in the dry earth of the Southern Fields, ringing out with a sharp metallic clink. Wiping sweat from your brow under the pale dawn sky, you kneel and brush away the coarse red soil to reveal a heavy, rusted copper ring. In the crevices of its pitted surface, a faint, warm amber light begins to throb with the rhythmic beat of a silent heart.\n\nBeyond the terraced plots of low-grade spiritual grain, the jagged peaks of the Iron Mountain Sect loom in the morning mist, a constant reminder of the tribute your village cannot pay. Under the shade of a nearby withered tree, your father, Chen Ding, rests his aching back, his sun-bronzed face lined with exhaustion. He is too tired to notice your discovery.\n\nAs your fingers brush the warm metal, a voice resonates directly inside your head, cold, sharp, and incredibly proud. *'A trash-grade spiritual root, and completely clogged meridians? What a pathetic mortal to wake me from my slumber.'* The ring pulses brighter, waiting for your response.",
+   "player_action": null
+  }
+ ],
+ "choices": [
+  "Put the glowing ring on and speak to the voice in your head",
+  "Hide the glowing ring in your pocket before your father notices",
+  "Ask Father if the village has enough spirit stones for the tribute"
+ ],
+ "cost_usd": 0.136941,
+ "draft": {
+  "premise": "A farm boy with no talent for cultivation at all, the worst in his village. One day he finds a ring with the soul of an ancient master inside.",
+  "proposal": {
+   "world": {
+    "title": "The Master's Ring",
+    "genre": "cultivation fantasy",
+    "tone": "wonder",
+    "era": "Ancient Jade Province: wooden villages, spiritual herbs, and soaring swords",
+    "extraordinary": [
+     {
+      "id": "qi",
+      "kind": "qi cultivation",
+      "prevalence": "common",
+      "reach": "Cultivators can shatter mountains and live for thousands of years."
+     },
+     {
+      "id": "souls",
+      "kind": "bound souls",
+      "prevalence": "rare",
+      "reach": "The souls of deceased masters can latch onto relics to escape physical decay."
+     }
+    ],
+    "rules": [
+     {
+      "id": "qi-channels",
+      "text": "Only those who open their meridian channels can manipulate spiritual Qi.",
+      "fixed": true,
+      "topic": "other",
+      "about": [
+       "qi"
+      ]
+     },
+     {
+      "id": "relic-binding",
+      "text": "A soul bound to an artifact cannot wander far from its physical vessel.",
+      "fixed": true,
+      "topic": "other",
+      "about": [
+       "souls"
+      ]
+     },
+     {
+      "id": "cultivation-limits",
+      "text": "A weak spiritual root can be refined and elevated through rare spiritual medicines.",
+      "fixed": false,
+      "topic": "other",
+      "about": [
+       "qi"
+      ]
+     }
+    ],
+    "dropped_rule_ids": [],
+    "peoples": [
+     {
+      "id": "humans",
+      "name": "Humans",
+      "description": "",
+      "lifespan_years": 80,
+      "gifts": [],
+      "culture": "A society deeply divided between the mortal farmers who toil in the dirt and the immortal cultivators who command the heavens.",
+      "relations": [],
+      "path": ""
+     }
+    ],
+    "creatures": [
+     {
+      "id": "spirit-wolf",
+      "name": "Spitfire Wolf",
+      "description": "A wolf with embers trailing from its fur, drawn to areas rich in fire Qi.",
+      "rung": "Qi Condensation",
+      "habitat": "The Whispering Hills",
+      "worth": "Fire core and flame-resistant pelt.",
+      "can_be_tamed": true
+     }
+    ],
+    "nature": [
+     "Qi density varies by region, heavily affecting how fast a cultivator can recover energy."
+    ],
+    "ladders": [
+     {
+      "id": "cultivation-realms",
+      "name": "cultivation realms",
+      "axis": "might",
+      "rungs": [
+       {
+        "name": "Body Tempering",
+        "description": "Strengthening the flesh and bones to endure spiritual energy.",
+        "lifespan_years": 100
+       },
+       {
+        "name": "Qi Condensation",
+        "description": "Drawing external Qi into the body to pool in the dantian.",
+        "lifespan_years": 120
+       },
+       {
+        "name": "Foundation Establishment",
+        "description": "Solidifying spiritual energy into a liquid sea of Qi.",
+        "lifespan_years": 250
+       },
+       {
+        "name": "Core Formation",
+        "description": "Condensing the liquid Qi into a solid golden core of immense power.",
+        "lifespan_years": 500
+       },
+       {
+        "name": "Nascent Soul",
+        "description": "Nurturing an immortal spirit within, capable of surviving physical death.",
+        "lifespan_years": 1000
+       }
+      ],
+      "known_to_all": 3,
+      "sensing": true,
+      "standing_follows": true,
+      "lengthens_life": true
+     }
+    ],
+    "calendar": {
+     "style": "day_count",
+     "clock_time": false,
+     "epoch": "",
+     "start_hour": 6,
+     "months": [],
+     "start_year": 1,
+     "start_month": 1,
+     "start_day": 1,
+     "era": ""
+    },
+    "travel": {
+     "description": "Cultivators travel by flying swords or spiritual beasts; mortals travel slowly on foot or by ox cart.",
+     "instant_messages": false
+    },
+    "medicine": {
+     "healing": "Mortal herbs heal flesh wounds, while spirit pills can repair damaged meridians and seal broken bones instantly.",
+     "resurrection": "none",
+     "resurrection_means": ""
+    },
+    "laws": [
+     {
+      "id": "sect-dominance",
+      "text": "Mortals must pay an annual tribute of spirit stones to the local Iron Mountain Sect.",
+      "enforcer": "Sect Disciples",
+      "enforcer_faction_id": "",
+      "zeal": "high",
+      "corruptible": true
+     }
+    ],
+    "norms": [
+     "Treating a mortal with mercy is seen as a sign of weakness by orthodox sects."
+    ],
+    "several_partners": false,
+    "unions": "for_life",
+    "places": [
+     {
+      "id": "stonefalls-village",
+      "name": "Stonefalls Village",
+      "kind": "village",
+      "description": "A quiet agrarian community built from gray river stones and timber, nestled at the base of the mountains.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "southern-fields",
+        "travel_hours": 0.5,
+        "mode": "on foot"
+       },
+       {
+        "to_id": "whispering-hills",
+        "travel_hours": 4.0,
+        "mode": "on foot"
+       }
+      ]
+     },
+     {
+      "id": "southern-fields",
+      "name": "The Southern Fields",
+      "kind": "wilds",
+      "description": "Terraced plots of coarse earth where the villagers grow low-grade spiritual grain.",
+      "parent_id": "stonefalls-village",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "whispering-hills",
+      "name": "The Whispering Hills",
+      "kind": "wilds",
+      "description": "Lush, rolling hills surrounding the village, home to wild herbs and dangerous spirit beasts.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     }
+    ],
+    "factions": [
+     {
+      "id": "stonefalls-mortals",
+      "name": "Stonefalls Villagers",
+      "kind": "family",
+      "description": "Hardy, superstitious farmers who simply wish to survive the winter and avoid the anger of the sects.",
+      "parent_id": "",
+      "leader_ids": [
+       "village-chief"
+      ],
+      "goal": "Pay the sect tribute on time.",
+      "methods": "Harsh rationing and exhausting farm labor.",
+      "strength": "Dozens of simple, unarmed mortal laborers.",
+      "relations": [],
+      "secrets": [],
+      "known_to_player": true
+     },
+     {
+      "id": "iron-mountain-sect",
+      "name": "Iron Mountain Sect",
+      "kind": "sect",
+      "description": "A minor cultivation sect that rules the local territory with an iron fist, demanding resources from nearby villages.",
+      "parent_id": "",
+      "leader_ids": [],
+      "goal": "Acquire more spirit stones to expand their influence.",
+      "methods": "Forced taxation and martial intimidation.",
+      "strength": "Dozens of Qi Condensation disciples and a Foundation Establishment Sect Master.",
+      "relations": [],
+      "secrets": [
+       "The Sect Master is dying of a poisoned meridian and is desperate for a cure."
+      ],
+      "known_to_player": true
+     }
+    ],
+    "npcs": [
+     {
+      "id": "village-chief",
+      "name": "Chief Wu",
+      "aliases": [],
+      "description": "A severe elder with deep frown lines and a stooped back, burdened by the village's debts.",
+      "appearance": "Grey hair tied in a tight bun, wearing rough-spun hemp robes.",
+      "age": 62,
+      "people_id": "",
+      "location_id": "stonefalls-village",
+      "memberships": [
+       {
+        "faction_id": "stonefalls-mortals",
+        "rank": "Chief",
+        "loyalty": 90
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "cautious",
+        "pessimistic",
+        "stern"
+       ],
+       "values": [],
+       "loves": [],
+       "fears": [],
+       "wants": [],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 2,
+       "speed": 2,
+       "toughness": 2,
+       "wits": 3,
+       "knowledge": 3,
+       "willpower": 3,
+       "charm": 3,
+       "nerve": 3,
+       "bearing": 3
+      },
+      "skills": [
+       {
+        "name": "Agriculture",
+        "level": "expert",
+        "notes": ""
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": -10,
+       "fear": 0,
+       "trust": 10,
+       "shown_affinity": -20,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "met"
+     },
+     {
+      "id": "father-chen",
+      "name": "Chen Ding",
+      "aliases": [],
+      "description": "A loving but deeply exhausted farmer who has spent his entire life working the rocky soil of the village.",
+      "appearance": "Leathery, sun-bronzed skin, thick calloused hands, and kind, tired eyes.",
+      "age": 45,
+      "people_id": "",
+      "location_id": "southern-fields",
+      "memberships": [
+       {
+        "faction_id": "stonefalls-mortals",
+        "rank": "Farmer",
+        "loyalty": 80
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "loving",
+        "quiet",
+        "stubborn"
+       ],
+       "values": [],
+       "loves": [],
+       "fears": [],
+       "wants": [],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 3,
+       "speed": 2,
+       "toughness": 4,
+       "wits": 2,
+       "knowledge": 2,
+       "willpower": 4,
+       "charm": 3,
+       "nerve": 3,
+       "bearing": 2
+      },
+      "skills": [
+       {
+        "name": "Farming",
+        "level": "expert",
+        "notes": ""
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 80,
+       "fear": 0,
+       "trust": 70,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "met"
+     },
+     {
+      "id": "ancient-master",
+      "name": "Master Mo",
+      "aliases": [],
+      "description": "An ethereal soul projection residing inside a rusted copper ring, sharp-tongued and proud.",
+      "appearance": "A faint, semi-translucent figure of a middle-aged man with sharp features and floating long hair.",
+      "age": 320,
+      "people_id": "",
+      "location_id": "southern-fields",
+      "memberships": [],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "demanding",
+        "proud",
+        "secretive"
+       ],
+       "values": [],
+       "loves": [],
+       "fears": [],
+       "wants": [],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 0,
+       "speed": 0,
+       "toughness": 1,
+       "wits": 5,
+       "knowledge": 5,
+       "willpower": 5,
+       "charm": 4,
+       "nerve": 4,
+       "bearing": 5
+      },
+      "skills": [
+       {
+        "name": "Alchemical Theory",
+        "level": "master",
+        "notes": ""
+       },
+       {
+        "name": "Qi Control",
+        "level": "master",
+        "notes": ""
+       }
+      ],
+      "traits": [
+       {
+        "name": "Disembodied",
+        "kind": "quirk",
+        "description": "Has no physical body and cannot interact directly with physical objects."
+       }
+      ],
+      "powers": [],
+      "techniques": [],
+      "ladders": [
+       {
+        "ladder_id": "cultivation-realms",
+        "rung": "Nascent Soul",
+        "stage": ""
+       }
+      ],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 5,
+       "fear": 0,
+       "trust": 0,
+       "shown_affinity": -10,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": {
+       "goal": "Rebuild his physical body and take revenge on his treacherous disciples.",
+       "method": "Guide the player to become a powerful cultivator so he has an ally.",
+       "secret": "",
+       "clock_id": ""
+      },
+      "secrets": [
+       "Master Mo was poisoned and betrayed by the current Sect Master of the Iron Mountain Sect."
+      ],
+      "player_knows": "met"
+     }
+    ],
+    "clocks": [
+     {
+      "id": "tribute-collection",
+      "name": "The Iron Mountain Sect Tribute Collection",
+      "steps": [
+       "Sect heralds declare the tribute total.",
+       "Villagers struggle to gather enough spiritual grain.",
+       "Ruthless collectors arrive in the village to claim grain or take hostages."
+      ],
+      "step_every_hours": 48.0,
+      "owner_id": "",
+      "thread_id": "",
+      "known_to_player": true
+     }
+    ],
+    "threads": [
+     {
+      "id": "tribute-threat",
+      "title": "Sect Tribute",
+      "kind": "threat",
+      "stakes": "The village must pay the tribute, or the sect will drag away the young mortals as forced laborers.",
+      "involved_ids": [
+       "stonefalls-mortals",
+       "iron-mountain-sect"
+      ],
+      "clock_id": "tribute-collection",
+      "known_to_player": true
+     },
+     {
+      "id": "master-guidance",
+      "title": "A Master's Legacy",
+      "kind": "quest",
+      "stakes": "The player must overcome their trash-tier spiritual root to step onto the path of immortality.",
+      "involved_ids": [
+       "player",
+       "ancient-master"
+      ],
+      "clock_id": "",
+      "known_to_player": true
+     }
+    ],
+    "mysteries": [
+     {
+      "id": "master-death",
+      "question": "Who betrayed Master Mo and sealed him within the ring?",
+      "answer": "His chief disciple, who is now the Grand Elder of the Iron Mountain Sect.",
+      "clues": [
+       "A broken insignia of the Iron Mountain Sect engraved inside the master's soul space.",
+       "Master Mo's violent reaction when he hears the name of the local sect."
+      ],
+      "thread_id": "master-guidance",
+      "known_to_player": false
+     }
+    ],
+    "known_facts": [
+     "You have the worst spiritual root in the entire village.",
+     "The Iron Mountain Sect demands tribute every year.",
+     "The copper ring you found contains a living soul."
+    ],
+    "opening": {
+     "place_id": "southern-fields",
+     "present_ids": [
+      "father-chen"
+     ],
+     "positions": [
+      "digging in the dirt",
+      "resting under the shade of an old tree"
+     ],
+     "props": [
+      "iron shovel",
+      "weathered bronze ring"
+     ],
+     "situation": "Your rusty shovel strikes a hard object in the dry earth of the southern fields, revealing a heavy bronze ring that suddenly begins to throb with a faint, warm light."
+    },
+    "summary": "You are a simple farm boy with zero talent for cultivation, the laughingstock of your village. Everything changes when you dig up a strange copper ring containing the proud soul of an ancient, betrayed master."
+   },
+   "character": {
+    "name": "Chen Xiao",
+    "aliases": [
+     "The Village Trash"
+    ],
+    "age": 16,
+    "lifespan_years": 80,
+    "people_id": "",
+    "description": "A stubborn boy of humble origins, used to hard labor and mockery.",
+    "appearance": "Leathers, coarse cotton shirt, scruffy dark hair, and a determined gaze despite his lean frame.",
+    "location_id": "southern-fields",
+    "attributes": {
+     "strength": 2,
+     "speed": 3,
+     "toughness": 4,
+     "wits": 3,
+     "knowledge": 1,
+     "willpower": 5,
+     "charm": 3,
+     "nerve": 4,
+     "bearing": 2
+    },
+    "skills": [
+     {
+      "name": "Farming",
+      "level": "fair",
+      "notes": ""
+     },
+     {
+      "name": "Endurance",
+      "level": "skilled",
+      "notes": ""
+     }
+    ],
+    "traits": [
+     {
+      "name": "Clogged Meridians",
+      "kind": "flaw",
+      "description": "Your internal channels are blocked, making it incredibly difficult to absorb spiritual Qi."
+     }
+    ],
+    "talents": [
+     {
+      "said": "no talent for cultivation at all",
+      "name": "Cultivation Block",
+      "covers": "Refining spiritual Qi into your dantian.",
+      "strength": "slow",
+      "general": false,
+      "reason": ""
+     }
+    ],
+    "powers": [
+     {
+      "id": "soul-communion",
+      "name": "Soul Communion",
+      "description": "Allows you to communicate telepathically with Master Mo inside the ring and peer into his mental space.",
+      "kind_id": "souls",
+      "gift": false,
+      "strength": null,
+      "limits": [
+       "Requires wearing or holding the bound ring."
+      ],
+      "costs": [],
+      "secret": false,
+      "time": null
+     }
+    ],
+    "techniques": [],
+    "temperament": {
+     "traits": [
+      "stubborn",
+      "resilient",
+      "earnest"
+     ],
+     "values": [
+      "family",
+      "hard work"
+     ],
+     "loves": [],
+     "fears": [
+      "failing to protect his family",
+      "being weak forever"
+     ],
+     "wants": [],
+     "voice": ""
+    },
+    "items": [
+     {
+      "name": "Rusted Copper Ring",
+      "kind": "treasure",
+      "description": "A heavy, pitted ring that houses the soul of Master Mo.",
+      "quantity": 1,
+      "carried": true
+     },
+     {
+      "name": "Iron Shovel",
+      "kind": "gear",
+      "description": "A worn tool used for tilling the tough earth of the fields.",
+      "quantity": 1,
+      "carried": true
+     }
+    ],
+    "money": 12,
+    "currency": "copper coins",
+    "title": "",
+    "rank": "",
+    "family_name": "",
+    "connections": [],
+    "parent_ids": [
+     "father-chen"
+    ],
+    "memberships": [
+     {
+      "faction_id": "stonefalls-mortals",
+      "rank": "Farm Boy",
+      "loyalty": 70
+     }
+    ],
+    "ladders": [
+     {
+      "ladder_id": "cultivation-realms",
+      "rung": "Body Tempering",
+      "stage": "early"
+     }
+    ],
+    "axes": {
+     "might": 1,
+     "influence": 1,
+     "wealth": 1,
+     "knowledge": 1,
+     "stealth": 2
+    },
+    "reserves": [],
+    "goals": [],
+    "backstory": [
+     "You were born to simple farmers in Stonefalls Village.",
+     "At the annual testing, your spiritual roots were declared 'trash-grade', cementing your status as the worst prospect in the village."
+    ],
+    "hidden_past": []
+   }
+  },
+  "rating": "teen",
+  "premise_id": null,
+  "physics": "fun_first",
+  "gift": null,
+  "released_rules": [],
+  "language": "en",
+  "told": []
+ }
+}

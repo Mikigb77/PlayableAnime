@@ -1,0 +1,2078 @@
+{
+ "premise": "A level 1 adventurer, the weakest in the guild, with a unique skill that lets him keep leveling up without any limit.",
+ "language": "en",
+ "rating": "teen",
+ "settings": {
+  "narration_length": "medium",
+  "tone": null,
+  "difficulty": "balanced",
+  "event_frequency": "normal",
+  "images": "key_moments",
+  "suggestions": true,
+  "language": "en",
+  "accent": null
+ },
+ "seed": "play/x-level",
+ "state": {
+  "schema_version": 1,
+  "turn": 1,
+  "timeline_id": "main",
+  "world_s": 0,
+  "bible": {
+   "title": "Limitless Horizon",
+   "genre": "LitRPG Fantasy",
+   "tone": "determined",
+   "era": "Oridell, a medieval frontier town: swords, bows, basic magic, and carriage transit",
+   "extraordinary": [
+    {
+     "id": "adventurer-system",
+     "kind": "The Adventurer System",
+     "prevalence": "common",
+     "reach": "Grants visible levels, attributes, and skills to registered adventurers up to the mortal limit of level 50.",
+     "rule_ids": [
+      "system-law",
+      "mortal-limit",
+      "adventurer-system-exists"
+     ]
+    },
+    {
+     "id": "magic",
+     "kind": "elemental magic",
+     "prevalence": "common",
+     "reach": "Allows manipulation of fire, water, wind, and earth through mana consumption.",
+     "rule_ids": [
+      "magic-needs-mana",
+      "magic-exists"
+     ]
+    }
+   ],
+   "peoples": [
+    {
+     "id": "human",
+     "name": "Human",
+     "description": "",
+     "lifespan_years": 80,
+     "gifts": [],
+     "culture": "Hardworking and adaptable, dominant in frontier towns like Oridell.",
+     "relations": [],
+     "path": ""
+    }
+   ],
+   "creatures": [
+    {
+     "id": "forest-goblin",
+     "name": "Forest Goblin",
+     "description": "Small, green-skinned thieves that ambush travelers in packs.",
+     "tier": 2,
+     "habitat": "The Goblin Forest",
+     "worth": "Goblin ears, copper coins",
+     "can_be_tamed": false
+    }
+   ],
+   "nature": [],
+   "physics": "fun_first",
+   "force": {
+    "tier1_joules": 10000.0,
+    "per_tier": 10.0
+   },
+   "ladders": [
+    {
+     "id": "level-ladder",
+     "name": "Adventurer Levels",
+     "axis": "might",
+     "rungs": [
+      {
+       "name": "Level 1: Novice",
+       "tier": 2,
+       "description": "The starting point. Physically weak and inexperienced.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 80,
+       "added_s": null
+      },
+      {
+       "name": "Level 10: Iron-rank",
+       "tier": 4,
+       "description": "Capable of handling basic monsters and wild beasts.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 80,
+       "added_s": null
+      },
+      {
+       "name": "Level 30: Silver-rank",
+       "tier": 6,
+       "description": "Veterans who lead regional operations.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 100,
+       "added_s": null
+      },
+      {
+       "name": "Level 50: Gold-rank",
+       "tier": 8,
+       "description": "The peak of ordinary human achievement.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 120,
+       "added_s": null
+      },
+      {
+       "name": "Level 80: Legend",
+       "tier": 10,
+       "description": "Beings of myth who transcend mortal limits.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 200,
+       "added_s": null
+      }
+     ],
+     "standing_follows": true,
+     "sensing": true,
+     "rung_levels": 1,
+     "shrugs_off": 3,
+     "known_to_all": 4
+    }
+   ],
+   "calendar": {
+    "style": "day_count",
+    "time_of_day": "parts",
+    "epoch": null,
+    "start_second_of_day": 28800,
+    "months": [],
+    "start_year": 1,
+    "start_month": 1,
+    "start_day": 1,
+    "era": ""
+   },
+   "travel": {
+    "description": "Travel is done on foot or by horse-drawn cart along dirt roads.",
+    "instant_messages": false
+   },
+   "medicine": {
+    "healing": "Minor wounds are healed with poultices or low-tier light magic.",
+    "resurrection": "none",
+    "resurrection_means": ""
+   },
+   "laws": [
+    {
+     "id": "guild-accord",
+     "text": "Adventurers must not turn their blades against fellow guild members within town limits.",
+     "enforcer": "The Guild Peacekeepers",
+     "enforcer_faction_id": "adventurers-guild",
+     "zeal": "high",
+     "corruptible": false
+    }
+   ],
+   "norms": [],
+   "several_partners": false,
+   "unions": "held",
+   "rules": [
+    {
+     "id": "system-law",
+     "text": "The Adventurer System governs growth, measuring power through visible levels and attributes.",
+     "fixed": true,
+     "topic": "nature"
+    },
+    {
+     "id": "mortal-limit",
+     "text": "Ordinary mortals face an absolute level cap at Level 50.",
+     "fixed": false,
+     "topic": "limits"
+    },
+    {
+     "id": "magic-needs-mana",
+     "text": "Spells require active focus and draw directly from an adventurer's internal mana pool.",
+     "fixed": true,
+     "topic": "nature"
+    },
+    {
+     "id": "adventurer-system-exists",
+     "text": "The Adventurer System: real, and everywhere.",
+     "fixed": true,
+     "topic": "existence"
+    },
+    {
+     "id": "magic-exists",
+     "text": "Elemental magic: real, and everywhere.",
+     "fixed": true,
+     "topic": "existence"
+    }
+   ],
+   "mysteries": [
+    {
+     "id": "unlimited-potential-origin",
+     "question": "Why does my System profile contain a glitched, uncapped growth parameter?",
+     "answer": "Kaelen's soul matrix was fused with a tiny shard of the cosmic Star of Beginnings during a meteor shower when he was a child, allowing him to bypass the mortal level-50 limit entirely.",
+     "clues": [
+      "A strange, star-shaped birthmark on his chest that occasionally pulses with silver light.",
+      "An old leather-bound journal found in his family home describing a brilliant falling star on the night of his birth.",
+      "The unique golden color of his level-up notifications, unlike the standard blue of the System."
+     ],
+     "thread_id": "unlimited-potential-origin",
+     "solved": false
+    }
+   ]
+  },
+  "player_id": "player",
+  "characters": {
+   "player": {
+    "id": "player",
+    "name": "Kaelen",
+    "aliases": [
+     "The Uncapped",
+     "The Weakest Novice"
+    ],
+    "prominence": "key",
+    "description": "A quiet, determined youth who hides a sharp spark of ambition behind an ordinary exterior.",
+    "appearance": "Lean build, messy dark hair, pale grey eyes. Wears a frayed tunic, tattered leather jerkin, and a standard-issue copper guild badge on his chest.",
+    "look_version": 1,
+    "age": 18,
+    "people_id": "human",
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "adventurers-guild",
+    "personal_offset_s": 0,
+    "memberships": [
+     {
+      "faction_id": "adventurers-guild",
+      "rank": "Level 1 Novice",
+      "loyalty": 40
+     }
+    ],
+    "sheet": {
+     "attributes": {
+      "strength": 2,
+      "speed": 3,
+      "toughness": 2,
+      "wits": 4,
+      "knowledge": 3,
+      "willpower": 5,
+      "charm": 3,
+      "nerve": 4,
+      "bearing": 2
+     },
+     "skills": [
+      {
+       "name": "One-Handed Sword",
+       "level": "novice",
+       "notes": "Basic slashes learned from training dummies."
+      },
+      {
+       "name": "Wilderness Survival",
+       "level": "novice",
+       "notes": "Knowledge of simple herbs and basic tracking."
+      }
+     ],
+     "traits": [
+      {
+       "name": "Fragile Frame",
+       "kind": "flaw",
+       "description": "Due to your lack of levels, your physical endurance starts significantly lower than active veterans."
+      }
+     ],
+     "talents": [
+      {
+       "id": "limitless-uncapping",
+       "name": "Limitless Uncapping",
+       "covers": "the accumulation of experience points and the enhancement of personal parameters through the system",
+       "strength": "one_of_a_kind",
+       "general": false,
+       "reason": "His soul matrix is permanently fused with a cosmic star shard, allowing infinite energy storage."
+      }
+     ],
+     "powers": [
+      {
+       "id": "uncapped-potential",
+       "name": "Limitless Growth",
+       "description": "Bypasses the absolute level-50 cap of mortal beings, allowing the user to level up and accumulate attributes indefinitely.",
+       "strength": "overpowered",
+       "limits": [
+        "Requires the standard acquisition of experience points through battles or quests."
+       ],
+       "costs": [],
+       "secret": false,
+       "time": null,
+       "settings": {},
+       "ready_at_personal_s": null
+      }
+     ],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "cautious",
+        "determined",
+        "observant"
+       ],
+       "values": [
+        "self-reliance",
+        "limitless progress"
+       ],
+       "loves": [
+        "quiet breakthroughs",
+        "the sound of a level-up notification"
+       ],
+       "fears": [
+        "confinement",
+        "losing his adventurer license"
+       ],
+       "wants": [],
+       "voice": "Soft-spoken, polite, but backed by unyielding resolve."
+      },
+      "attitudes": {}
+     },
+     "resources": {
+      "items": [
+       {
+        "id": "rusted-sword",
+        "name": "Rusted Sword",
+        "kind": "weapon",
+        "description": "A chipped, dull iron sword that has seen far better days.",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       },
+       {
+        "id": "tattered-leather-jerkin",
+        "name": "Tattered Leather Jerkin",
+        "kind": "armour",
+        "description": "Scuffed armor that provides minimal protection against monster claws.",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       }
+      ],
+      "money": 15,
+      "currency": "copper coins",
+      "title": "Novice",
+      "rank": "F-Rank",
+      "family_name": "",
+      "connections": [
+       {
+        "name": "Lyra",
+        "kind": "trusts_them",
+        "character_id": "receptionist-lyra",
+        "note": "She has consistently been kind and helpful to you since you joined the guild."
+       }
+      ]
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [
+       {
+        "name": "mana",
+        "level": 100,
+        "recovery_s": null
+       }
+      ],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 2,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 2,
+      "stealth": 2
+     },
+     "ladders": [
+      {
+       "ladder_id": "level-ladder",
+       "rung": 0,
+       "stage": "early",
+       "shown_rung": null,
+       "yearly_s": null
+      }
+     ],
+     "rungs_heard": [
+      {
+       "ladder_id": "level-ladder",
+       "rung": 1,
+       "heard_s": 0,
+       "known_s": 0,
+       "known_from": "jax"
+      }
+     ],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": [
+      {
+       "text": "You registered with the Oridell Adventurers Guild three weeks ago, only to find yourself static at Level 1 while others easily surpassed you.",
+       "turn": 0
+      },
+      {
+       "text": "Mocked by Jax and other iron-rank veterans, you were on the verge of despair until your System interface glitched, revealing your true, uncapped potential.",
+       "turn": 0
+      }
+     ]
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": 80,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   },
+   "guildmaster-vance": {
+    "id": "guildmaster-vance",
+    "name": "Guildmaster Vance",
+    "aliases": [],
+    "prominence": "key",
+    "description": "A battle-scarred veteran with a stern face and an artificial metal arm.",
+    "appearance": "Broad shoulders, short grey hair, wearing heavily worn chainmail.",
+    "look_version": 1,
+    "age": 52,
+    "people_id": "human",
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "adventurers-guild",
+    "personal_offset_s": 0,
+    "memberships": [
+     {
+      "faction_id": "adventurers-guild",
+      "rank": "Guildmaster",
+      "loyalty": 100
+     }
+    ],
+    "sheet": {
+     "attributes": {
+      "strength": 4,
+      "speed": 3,
+      "toughness": 4,
+      "wits": 4,
+      "knowledge": 4,
+      "willpower": 5,
+      "charm": 3,
+      "nerve": 4,
+      "bearing": 4
+     },
+     "skills": [
+      {
+       "name": "Greatsword Combat",
+       "level": "expert",
+       "notes": ""
+      }
+     ],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "cautious",
+        "just"
+       ],
+       "values": [
+        "discipline",
+        "survival"
+       ],
+       "loves": [],
+       "fears": [
+        "uncontrolled chaos"
+       ],
+       "wants": [
+        "Keep the town of Oridell secure"
+       ],
+       "voice": "Gravelly, direct, and authoritative."
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 0,
+        "fear": 0,
+        "trust": 0,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 6,
+      "influence": 5,
+      "wealth": 4,
+      "knowledge": 4,
+      "stealth": 2
+     },
+     "ladders": [
+      {
+       "ladder_id": "level-ladder",
+       "rung": 2,
+       "stage": "peak",
+       "shown_rung": null,
+       "yearly_s": null
+      }
+     ],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": true,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   },
+   "receptionist-lyra": {
+    "id": "receptionist-lyra",
+    "name": "Lyra",
+    "aliases": [],
+    "prominence": "key",
+    "description": "The cheerful and patient receptionist of the Oridell guild branch.",
+    "appearance": "Kind brown eyes, auburn hair tied back, wearing a neat green guild uniform.",
+    "look_version": 1,
+    "age": 24,
+    "people_id": "human",
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "adventurers-guild",
+    "personal_offset_s": 0,
+    "memberships": [
+     {
+      "faction_id": "adventurers-guild",
+      "rank": "Receptionist",
+      "loyalty": 80
+     }
+    ],
+    "sheet": {
+     "attributes": {
+      "strength": 2,
+      "speed": 3,
+      "toughness": 2,
+      "wits": 3,
+      "knowledge": 3,
+      "willpower": 3,
+      "charm": 4,
+      "nerve": 3,
+      "bearing": 3
+     },
+     "skills": [
+      {
+       "name": "Administration",
+       "level": "skilled",
+       "notes": ""
+      }
+     ],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "loyal",
+        "observant"
+       ],
+       "values": [
+        "fairness",
+        "kindness"
+       ],
+       "loves": [
+        "quiet afternoons"
+       ],
+       "fears": [
+        "violence inside the guildhall"
+       ],
+       "wants": [
+        "Help new recruits find their footing"
+       ],
+       "voice": "Soft, clear, and reassuring."
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 15,
+        "fear": 0,
+        "trust": 10,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 2,
+      "wealth": 2,
+      "knowledge": 3,
+      "stealth": 2
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": 0,
+    "near_s": null,
+    "met_s": null
+   },
+   "jax": {
+    "id": "jax",
+    "name": "Jax the Blade",
+    "aliases": [],
+    "prominence": "key",
+    "description": "An arrogant adventurer who enjoys flaunting his Iron-rank status.",
+    "appearance": "Smug grin, messy blond hair, wearing clean leather armor with iron spaulders.",
+    "look_version": 1,
+    "age": 21,
+    "people_id": "human",
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "adventurers-guild",
+    "personal_offset_s": 0,
+    "memberships": [
+     {
+      "faction_id": "iron-claws",
+      "rank": "Leader",
+      "loyalty": 90
+     }
+    ],
+    "sheet": {
+     "attributes": {
+      "strength": 3,
+      "speed": 3,
+      "toughness": 3,
+      "wits": 2,
+      "knowledge": 2,
+      "willpower": 2,
+      "charm": 2,
+      "nerve": 3,
+      "bearing": 3
+     },
+     "skills": [
+      {
+       "name": "One-Handed Sword",
+       "level": "fair",
+       "notes": ""
+      }
+     ],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "hot-headed",
+        "arrogant"
+       ],
+       "values": [
+        "strength",
+        "dominance"
+       ],
+       "loves": [
+        "easy gold",
+        "mocking novices"
+       ],
+       "fears": [
+        "humiliation"
+       ],
+       "wants": [
+        "Assert control over all low-level bounty boards"
+       ],
+       "voice": "Mocking, loud, and condescending."
+      },
+      "attitudes": {
+       "player": {
+        "affinity": -30,
+        "fear": 0,
+        "trust": -20,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 4,
+      "influence": 2,
+      "wealth": 3,
+      "knowledge": 1,
+      "stealth": 2
+     },
+     "ladders": [
+      {
+       "ladder_id": "level-ladder",
+       "rung": 1,
+       "stage": "early",
+       "shown_rung": null,
+       "yearly_s": null
+      }
+     ],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": {
+     "goal": "Force Kaelen to surrender his beginner's equipment or pay protection money.",
+     "method": "Cornering Kaelen outside the tavern to demand a cut of his hunting yields.",
+     "secret": "He lost his last guild mission due to cowardice, barely escaping with his life.",
+     "clock_id": "guild-evaluation"
+    },
+    "secrets": [
+     "Jax bribed a higher-ranking squad to carry him through his Iron-rank promotion quest."
+    ],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": 0,
+    "near_s": null,
+    "met_s": null
+   }
+  },
+  "factions": {
+   "adventurers-guild": {
+    "id": "adventurers-guild",
+    "name": "The Adventurers Guild",
+    "kind": "guild",
+    "description": "A continent-spanning organization that registers, ranks, and employs sellswords.",
+    "parent_id": null,
+    "status": "intact",
+    "status_history": [],
+    "activity": "active",
+    "leader_ids": [
+     "guildmaster-vance"
+    ],
+    "goal": "Maintain order on the frontiers and keep monsters at bay.",
+    "methods": "Issuing quests and offering bounties to adventurers.",
+    "strength": "A massive pool of trained fighters and seasoned spellcasters.",
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "threat": 0,
+    "relations": {},
+    "survivors": [],
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ]
+   },
+   "iron-claws": {
+    "id": "iron-claws",
+    "name": "The Iron Claws",
+    "kind": "crew",
+    "description": "A small group of low-level bullies who prey on weaker novices.",
+    "parent_id": "adventurers-guild",
+    "status": "intact",
+    "status_history": [],
+    "activity": "active",
+    "leader_ids": [
+     "jax"
+    ],
+    "goal": "Monopolize the easy quests near the town gates.",
+    "methods": "Intimidating level 1 recruits and extorting their earnings.",
+    "strength": "Three aggressive iron-rank fighters.",
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "threat": 0,
+    "relations": {},
+    "survivors": [],
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "places": {
+   "oridell-town": {
+    "id": "oridell-town",
+    "name": "Oridell Town",
+    "kind": "town",
+    "description": "A bustling frontier hub enclosed by sturdy wooden palisades.",
+    "parent_id": null,
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": "adventurers-guild",
+    "mood": "lively but tense",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "goblin-forest",
+      "travel_s": 7200,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "adventurers-guild": {
+    "id": "adventurers-guild",
+    "name": "Oridell Adventurers Guild",
+    "kind": "building",
+    "description": "A stone-and-timber hall filled with the clatter of tankards and armor.",
+    "parent_id": "oridell-town",
+    "setting": "indoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": "adventurers-guild",
+    "mood": "rowdy",
+    "stability": 70,
+    "routes": [],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [
+     "player"
+    ],
+    "judged": []
+   },
+   "goblin-forest": {
+    "id": "goblin-forest",
+    "name": "The Goblin Forest",
+    "kind": "wilds",
+    "description": "A dense, shadow-draped woodland bordering the town, crawling with pests.",
+    "parent_id": null,
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "dangerous",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "oridell-town",
+      "travel_s": 7200,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   }
+  },
+  "deeds": {},
+  "rumors": {},
+  "bonds": {},
+  "lives": {},
+  "aged_s": null,
+  "changes": {},
+  "strife_s": {},
+  "facts": {
+   "fact-1": {
+    "id": "fact-1",
+    "text": "You are currently Level 1, the lowest-ranking and weakest adventurer in the Oridell branch.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-2": {
+    "id": "fact-2",
+    "text": "Most mortals cannot progress past level 50, but your system interface displays a unique parameter: 'Level Cap: None'.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-3": {
+    "id": "fact-3",
+    "text": "Jax and his group frequently target Level 1 rookies at the town gates to extort their earnings.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   }
+  },
+  "goals": {},
+  "leads": {},
+  "threads": {
+   "license-survival": {
+    "id": "license-survival",
+    "title": "Survive the Evaluation",
+    "kind": "threat",
+    "stakes": "If Kaelen cannot level up or complete a high-enough rank quest, his license will be revoked, making him an outcast.",
+    "involved_ids": [
+     "player",
+     "guildmaster-vance"
+    ],
+    "clock_id": "guild-evaluation",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "status": "open",
+    "opened_turn": 0,
+    "last_active_turn": 0,
+    "taken_up_turn": null,
+    "closed_turn": null,
+    "arc": null,
+    "known_by": [
+     "player"
+    ]
+   },
+   "jax-rivalry": {
+    "id": "jax-rivalry",
+    "title": "Jax's Extortion",
+    "kind": "rivalry",
+    "stakes": "Overcoming the bully Jax who blockades the entrance to the goblin forest.",
+    "involved_ids": [
+     "player",
+     "jax"
+    ],
+    "clock_id": null,
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "status": "open",
+    "opened_turn": 0,
+    "last_active_turn": 0,
+    "taken_up_turn": null,
+    "closed_turn": null,
+    "arc": null,
+    "known_by": [
+     "player"
+    ]
+   },
+   "unlimited-potential-origin": {
+    "id": "unlimited-potential-origin",
+    "title": "Why does my System profile contain a glitched, uncapped growth parameter?",
+    "kind": "mystery",
+    "stakes": "",
+    "involved_ids": [
+     "player"
+    ],
+    "clock_id": null,
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "status": "open",
+    "opened_turn": 0,
+    "last_active_turn": 0,
+    "taken_up_turn": null,
+    "closed_turn": null,
+    "arc": null,
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "clocks": {
+   "guild-evaluation": {
+    "id": "guild-evaluation",
+    "name": "The Novice Evaluation",
+    "steps": [
+     "The guild posts the notice for the upcoming novice cleanup assessment.",
+     "Guild inspectors begin reviewing the quest logs of all level 1 adventurers.",
+     "The deadline arrives, and underperforming novices face license suspension."
+    ],
+    "filled": 0,
+    "advances_on": [],
+    "reverses_on": [],
+    "interval_s": 144000,
+    "next_step_s": 144000,
+    "owner_id": "guildmaster-vance",
+    "thread_id": "license-survival",
+    "status": "running",
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "pending_events": {
+   "event-1": {
+    "id": "event-1",
+    "kind": "world.clock_step",
+    "title": "The Novice Evaluation: The guild posts the notice for the upcoming novice cleanup assessment.",
+    "due_s": 144000,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [
+     "guildmaster-vance"
+    ],
+    "place_id": null,
+    "origin": {
+     "kind": "clock",
+     "ref_id": "guild-evaluation",
+     "text": ""
+    },
+    "payload": {
+     "clock_id": "guild-evaluation"
+    },
+    "seed": "story=play%2Fx-level/timeline=main/turn=1/world/schedule/event-1",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-2": {
+    "id": "event-2",
+    "kind": "world.old_age",
+    "title": "Your years run short",
+    "due_s": 1942752324,
+    "timeline_id": "main",
+    "needs_player": true,
+    "status": "pending",
+    "subject_ids": [
+     "player"
+    ],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "phase": "near",
+     "who": "player",
+     "span": 80,
+     "day_s": 1992668293
+    },
+    "seed": "story=play%2Fx-level/timeline=main/turn=1/world/schedule/event-2",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-3": {
+    "id": "event-3",
+    "kind": "world.tick",
+    "title": "The world moves on",
+    "due_s": 86400,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "last_s": 0,
+     "stride_s": 86400
+    },
+    "seed": "story=play%2Fx-level/timeline=main/turn=1/world/schedule/event-3",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   }
+  },
+  "transfers": [],
+  "time_effects": [],
+  "scene": {
+   "place_id": "adventurers-guild",
+   "present_ids": [
+    "receptionist-lyra",
+    "jax"
+   ],
+   "positions": [
+    "Kaelen stands near the bulletin board, holding the quest flier.",
+    "Jax stands a pace away from Kaelen, blocking his path.",
+    "Lyra is behind the reception counter, looking up toward them."
+   ],
+   "props": [
+    "rusted-sword",
+    "quest-flier"
+   ],
+   "ended_on": "Jax steps closer to you, blocking the path to the reception counter with a smug grin.",
+   "encounter": null
+  },
+  "director": {
+   "turns_without_stakes": 0,
+   "low_stakes_streak": 0,
+   "last_action_key": null,
+   "last_event_turn": null,
+   "last_event_size": null,
+   "last_event_s": {},
+   "last_small_s": null,
+   "recent_moments": [],
+   "recent_clock": [
+    0
+   ],
+   "frequency_drift": 0.0,
+   "recent_sources": [],
+   "auto_pictures": 1,
+   "picture_credit": 1.1,
+   "pictured": [
+    "portrait:player",
+    "portrait:player:v1"
+   ],
+   "fight": null,
+   "deck_draws": 0,
+   "road_stops": 0
+  },
+  "summary": "Kaelen is a Level 1 novice adventurer who is mocked as the weakest in the Oridell branch. However, he secretly possesses a unique, uncapped leveling system that bypasses all human limits. With the upcoming novice evaluation threatening to revoke his license, he must venture out to power up.",
+  "chapters": [],
+  "id_counters": {
+   "fact": 3,
+   "goal": 0,
+   "bond": 0,
+   "event": 3
+  },
+  "fallen": [],
+  "opening_due": false,
+  "misses_in_a_row": 0,
+  "openings": [],
+  "journey": null,
+  "untold": [
+   "person:guildmaster-vance",
+   "thread:jax-rivalry",
+   "thread:unlimited-potential-origin"
+  ]
+ },
+ "scenes": [
+  {
+   "turn": 1,
+   "narration": "You stand before the Guild bulletin board, clutching a low-paying goblin-hunting request while Jax laughs at your Level 1 status, unaware of the glitched golden runes flickering in your vision. Your fingers tighten against the rough parchment of the flier, the paper crinkling under your touch. The Oridell Guildhall is rowdy this morning, smelling of stale ale, roasted mutton, and the damp leather of veterans who have actually earned their keep. Behind the wooden reception counter nearby, Lyra is focused on cataloging potion orders, though her brow furrows slightly at the rising volume of Jax's voice.\n\n\"Level 1,\" Jax sneers, pushing off from the support pillar. His clean leather armor creaks, the iron spaulders catching the torchlight. \"Three weeks and you're still a novice. You're going to get yourself killed in the Goblin Forest, Kaelen, and then who's going to pay for my drinks? Leave the hunting to real adventurers.\"\n\nBeside the bulletin board, the monthly evaluation warning board looms—a reminder that your time is running out. Yet, as you stare at the parchment, a shimmering notification only you can see hovers in your peripheral vision, its golden letters steady and absolute: *Level Cap: None.*",
+   "player_action": null
+  }
+ ],
+ "choices": [
+  "Tell Jax you're taking the quest anyway and step past him.",
+  "Ask Lyra to register the goblin-hunting flier for you.",
+  "Examine the glitched system screen to understand the uncapped status."
+ ],
+ "cost_usd": 0.12114765,
+ "draft": {
+  "premise": "A level 1 adventurer, the weakest in the guild, with a unique skill that lets him keep leveling up without any limit.",
+  "proposal": {
+   "world": {
+    "title": "Limitless Horizon",
+    "genre": "LitRPG Fantasy",
+    "tone": "determined",
+    "era": "Oridell, a medieval frontier town: swords, bows, basic magic, and carriage transit",
+    "extraordinary": [
+     {
+      "id": "adventurer-system",
+      "kind": "The Adventurer System",
+      "prevalence": "common",
+      "reach": "Grants visible levels, attributes, and skills to registered adventurers up to the mortal limit of level 50."
+     },
+     {
+      "id": "magic",
+      "kind": "elemental magic",
+      "prevalence": "common",
+      "reach": "Allows manipulation of fire, water, wind, and earth through mana consumption."
+     }
+    ],
+    "rules": [
+     {
+      "id": "system-law",
+      "text": "The Adventurer System governs growth, measuring power through visible levels and attributes.",
+      "fixed": true,
+      "topic": "nature",
+      "about": [
+       "adventurer-system"
+      ]
+     },
+     {
+      "id": "mortal-limit",
+      "text": "Ordinary mortals face an absolute level cap at Level 50.",
+      "fixed": false,
+      "topic": "limits",
+      "about": [
+       "adventurer-system"
+      ]
+     },
+     {
+      "id": "magic-needs-mana",
+      "text": "Spells require active focus and draw directly from an adventurer's internal mana pool.",
+      "fixed": true,
+      "topic": "nature",
+      "about": [
+       "magic"
+      ]
+     }
+    ],
+    "dropped_rule_ids": [],
+    "peoples": [
+     {
+      "id": "human",
+      "name": "Human",
+      "description": "",
+      "lifespan_years": 80,
+      "gifts": [],
+      "culture": "Hardworking and adaptable, dominant in frontier towns like Oridell.",
+      "relations": [],
+      "path": ""
+     }
+    ],
+    "creatures": [
+     {
+      "id": "forest-goblin",
+      "name": "Forest Goblin",
+      "description": "Small, green-skinned thieves that ambush travelers in packs.",
+      "rung": "Level 1: Novice",
+      "habitat": "The Goblin Forest",
+      "worth": "Goblin ears, copper coins",
+      "can_be_tamed": false
+     }
+    ],
+    "nature": [],
+    "ladders": [
+     {
+      "id": "level-ladder",
+      "name": "Adventurer Levels",
+      "axis": "might",
+      "rungs": [
+       {
+        "name": "Level 1: Novice",
+        "description": "The starting point. Physically weak and inexperienced.",
+        "lifespan_years": 80
+       },
+       {
+        "name": "Level 10: Iron-rank",
+        "description": "Capable of handling basic monsters and wild beasts.",
+        "lifespan_years": 80
+       },
+       {
+        "name": "Level 30: Silver-rank",
+        "description": "Veterans who lead regional operations.",
+        "lifespan_years": 100
+       },
+       {
+        "name": "Level 50: Gold-rank",
+        "description": "The peak of ordinary human achievement.",
+        "lifespan_years": 120
+       },
+       {
+        "name": "Level 80: Legend",
+        "description": "Beings of myth who transcend mortal limits.",
+        "lifespan_years": 200
+       }
+      ],
+      "known_to_all": 4,
+      "sensing": true,
+      "standing_follows": true,
+      "lengthens_life": true
+     }
+    ],
+    "calendar": {
+     "style": "day_count",
+     "clock_time": false,
+     "epoch": "",
+     "start_hour": 8,
+     "months": [],
+     "start_year": 1,
+     "start_month": 1,
+     "start_day": 1,
+     "era": ""
+    },
+    "travel": {
+     "description": "Travel is done on foot or by horse-drawn cart along dirt roads.",
+     "instant_messages": false
+    },
+    "medicine": {
+     "healing": "Minor wounds are healed with poultices or low-tier light magic.",
+     "resurrection": "none",
+     "resurrection_means": ""
+    },
+    "laws": [
+     {
+      "id": "guild-accord",
+      "text": "Adventurers must not turn their blades against fellow guild members within town limits.",
+      "enforcer": "The Guild Peacekeepers",
+      "enforcer_faction_id": "adventurers-guild",
+      "zeal": "high",
+      "corruptible": false
+     }
+    ],
+    "norms": [],
+    "several_partners": false,
+    "unions": "held",
+    "places": [
+     {
+      "id": "oridell-town",
+      "name": "Oridell Town",
+      "kind": "town",
+      "description": "A bustling frontier hub enclosed by sturdy wooden palisades.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "adventurers-guild",
+      "mood": "lively but tense",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "goblin-forest",
+        "travel_hours": 2.0,
+        "mode": "on foot"
+       }
+      ]
+     },
+     {
+      "id": "adventurers-guild",
+      "name": "Oridell Adventurers Guild",
+      "kind": "building",
+      "description": "A stone-and-timber hall filled with the clatter of tankards and armor.",
+      "parent_id": "oridell-town",
+      "setting": "indoors",
+      "controller_id": "adventurers-guild",
+      "mood": "rowdy",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "goblin-forest",
+      "name": "The Goblin Forest",
+      "kind": "wilds",
+      "description": "A dense, shadow-draped woodland bordering the town, crawling with pests.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "dangerous",
+      "known_to_player": true,
+      "routes": []
+     }
+    ],
+    "factions": [
+     {
+      "id": "adventurers-guild",
+      "name": "The Adventurers Guild",
+      "kind": "guild",
+      "description": "A continent-spanning organization that registers, ranks, and employs sellswords.",
+      "parent_id": "",
+      "leader_ids": [
+       "guildmaster-vance"
+      ],
+      "goal": "Maintain order on the frontiers and keep monsters at bay.",
+      "methods": "Issuing quests and offering bounties to adventurers.",
+      "strength": "A massive pool of trained fighters and seasoned spellcasters.",
+      "relations": [],
+      "secrets": [],
+      "known_to_player": true
+     },
+     {
+      "id": "iron-claws",
+      "name": "The Iron Claws",
+      "kind": "crew",
+      "description": "A small group of low-level bullies who prey on weaker novices.",
+      "parent_id": "adventurers-guild",
+      "leader_ids": [
+       "jax"
+      ],
+      "goal": "Monopolize the easy quests near the town gates.",
+      "methods": "Intimidating level 1 recruits and extorting their earnings.",
+      "strength": "Three aggressive iron-rank fighters.",
+      "relations": [],
+      "secrets": [],
+      "known_to_player": true
+     }
+    ],
+    "npcs": [
+     {
+      "id": "guildmaster-vance",
+      "name": "Guildmaster Vance",
+      "aliases": [],
+      "description": "A battle-scarred veteran with a stern face and an artificial metal arm.",
+      "appearance": "Broad shoulders, short grey hair, wearing heavily worn chainmail.",
+      "age": 52,
+      "people_id": "human",
+      "location_id": "adventurers-guild",
+      "memberships": [
+       {
+        "faction_id": "adventurers-guild",
+        "rank": "Guildmaster",
+        "loyalty": 100
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "cautious",
+        "just"
+       ],
+       "values": [
+        "discipline",
+        "survival"
+       ],
+       "loves": [],
+       "fears": [
+        "uncontrolled chaos"
+       ],
+       "wants": [
+        "Keep the town of Oridell secure"
+       ],
+       "voice": "Gravelly, direct, and authoritative."
+      },
+      "attributes": {
+       "strength": 4,
+       "speed": 3,
+       "toughness": 4,
+       "wits": 4,
+       "knowledge": 4,
+       "willpower": 5,
+       "charm": 3,
+       "nerve": 4,
+       "bearing": 4
+      },
+      "skills": [
+       {
+        "name": "Greatsword Combat",
+        "level": "expert",
+        "notes": ""
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [
+       {
+        "ladder_id": "level-ladder",
+        "rung": "Level 30: Silver-rank",
+        "stage": "peak"
+       }
+      ],
+      "axes": {
+       "might": 8,
+       "influence": 5,
+       "wealth": 4,
+       "knowledge": 4,
+       "stealth": 2
+      },
+      "attitude_to_player": {
+       "affinity": 0,
+       "fear": 0,
+       "trust": 0,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": true,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "heard_of"
+     },
+     {
+      "id": "receptionist-lyra",
+      "name": "Lyra",
+      "aliases": [],
+      "description": "The cheerful and patient receptionist of the Oridell guild branch.",
+      "appearance": "Kind brown eyes, auburn hair tied back, wearing a neat green guild uniform.",
+      "age": 24,
+      "people_id": "human",
+      "location_id": "adventurers-guild",
+      "memberships": [
+       {
+        "faction_id": "adventurers-guild",
+        "rank": "Receptionist",
+        "loyalty": 80
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "loyal",
+        "observant"
+       ],
+       "values": [
+        "fairness",
+        "kindness"
+       ],
+       "loves": [
+        "quiet afternoons"
+       ],
+       "fears": [
+        "violence inside the guildhall"
+       ],
+       "wants": [
+        "Help new recruits find their footing"
+       ],
+       "voice": "Soft, clear, and reassuring."
+      },
+      "attributes": {
+       "strength": 2,
+       "speed": 3,
+       "toughness": 2,
+       "wits": 3,
+       "knowledge": 3,
+       "willpower": 3,
+       "charm": 4,
+       "nerve": 3,
+       "bearing": 3
+      },
+      "skills": [
+       {
+        "name": "Administration",
+        "level": "skilled",
+        "notes": ""
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 2,
+       "wealth": 2,
+       "knowledge": 3,
+       "stealth": 2
+      },
+      "attitude_to_player": {
+       "affinity": 15,
+       "fear": 0,
+       "trust": 10,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "met"
+     },
+     {
+      "id": "jax",
+      "name": "Jax the Blade",
+      "aliases": [],
+      "description": "An arrogant adventurer who enjoys flaunting his Iron-rank status.",
+      "appearance": "Smug grin, messy blond hair, wearing clean leather armor with iron spaulders.",
+      "age": 21,
+      "people_id": "human",
+      "location_id": "adventurers-guild",
+      "memberships": [
+       {
+        "faction_id": "iron-claws",
+        "rank": "Leader",
+        "loyalty": 90
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "hot-headed",
+        "arrogant"
+       ],
+       "values": [
+        "strength",
+        "dominance"
+       ],
+       "loves": [
+        "easy gold",
+        "mocking novices"
+       ],
+       "fears": [
+        "humiliation"
+       ],
+       "wants": [
+        "Assert control over all low-level bounty boards"
+       ],
+       "voice": "Mocking, loud, and condescending."
+      },
+      "attributes": {
+       "strength": 3,
+       "speed": 3,
+       "toughness": 3,
+       "wits": 2,
+       "knowledge": 2,
+       "willpower": 2,
+       "charm": 2,
+       "nerve": 3,
+       "bearing": 3
+      },
+      "skills": [
+       {
+        "name": "One-Handed Sword",
+        "level": "fair",
+        "notes": ""
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [
+       {
+        "ladder_id": "level-ladder",
+        "rung": "Level 10: Iron-rank",
+        "stage": "early"
+       }
+      ],
+      "axes": {
+       "might": 3,
+       "influence": 2,
+       "wealth": 3,
+       "knowledge": 1,
+       "stealth": 2
+      },
+      "attitude_to_player": {
+       "affinity": -30,
+       "fear": 0,
+       "trust": -20,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": {
+       "goal": "Force Kaelen to surrender his beginner's equipment or pay protection money.",
+       "method": "Cornering Kaelen outside the tavern to demand a cut of his hunting yields.",
+       "secret": "He lost his last guild mission due to cowardice, barely escaping with his life.",
+       "clock_id": "guild-evaluation"
+      },
+      "secrets": [
+       "Jax bribed a higher-ranking squad to carry him through his Iron-rank promotion quest."
+      ],
+      "player_knows": "met"
+     }
+    ],
+    "clocks": [
+     {
+      "id": "guild-evaluation",
+      "name": "The Novice Evaluation",
+      "steps": [
+       "The guild posts the notice for the upcoming novice cleanup assessment.",
+       "Guild inspectors begin reviewing the quest logs of all level 1 adventurers.",
+       "The deadline arrives, and underperforming novices face license suspension."
+      ],
+      "step_every_hours": 40.0,
+      "owner_id": "guildmaster-vance",
+      "thread_id": "license-survival",
+      "known_to_player": true
+     }
+    ],
+    "threads": [
+     {
+      "id": "license-survival",
+      "title": "Survive the Evaluation",
+      "kind": "threat",
+      "stakes": "If Kaelen cannot level up or complete a high-enough rank quest, his license will be revoked, making him an outcast.",
+      "involved_ids": [
+       "player",
+       "guildmaster-vance"
+      ],
+      "clock_id": "guild-evaluation",
+      "known_to_player": true
+     },
+     {
+      "id": "jax-rivalry",
+      "title": "Jax's Extortion",
+      "kind": "rivalry",
+      "stakes": "Overcoming the bully Jax who blockades the entrance to the goblin forest.",
+      "involved_ids": [
+       "player",
+       "jax"
+      ],
+      "clock_id": "",
+      "known_to_player": true
+     }
+    ],
+    "mysteries": [
+     {
+      "id": "unlimited-potential-origin",
+      "question": "Why does my System profile contain a glitched, uncapped growth parameter?",
+      "answer": "Kaelen's soul matrix was fused with a tiny shard of the cosmic Star of Beginnings during a meteor shower when he was a child, allowing him to bypass the mortal level-50 limit entirely.",
+      "clues": [
+       "A strange, star-shaped birthmark on his chest that occasionally pulses with silver light.",
+       "An old leather-bound journal found in his family home describing a brilliant falling star on the night of his birth.",
+       "The unique golden color of his level-up notifications, unlike the standard blue of the System."
+      ],
+      "thread_id": "",
+      "known_to_player": true
+     }
+    ],
+    "known_facts": [
+     "You are currently Level 1, the lowest-ranking and weakest adventurer in the Oridell branch.",
+     "Most mortals cannot progress past level 50, but your system interface displays a unique parameter: 'Level Cap: None'.",
+     "Jax and his group frequently target Level 1 rookies at the town gates to extort their earnings."
+    ],
+    "opening": {
+     "place_id": "adventurers-guild",
+     "present_ids": [
+      "receptionist-lyra",
+      "jax"
+     ],
+     "positions": [
+      "Kaelen stands near the bulletin board, holding a cheap copper quest flier.",
+      "Lyra is behind the wooden reception counter, cataloging potion orders.",
+      "Jax leans against a support pillar nearby, watching Kaelen with a smug sneer."
+     ],
+     "props": [
+      "A rusted practice iron sword strapped to Kaelen's waist.",
+      "The monthly evaluation warning board posted prominently on the stone wall."
+     ],
+     "situation": "You stand before the Guild bulletin board, clutching a low-paying goblin-hunting request while Jax laughs at your Level 1 status, unaware of the glitched golden runes flickering in your vision."
+    },
+    "summary": "Kaelen is a Level 1 novice adventurer who is mocked as the weakest in the Oridell branch. However, he secretly possesses a unique, uncapped leveling system that bypasses all human limits. With the upcoming novice evaluation threatening to revoke his license, he must venture out to power up."
+   },
+   "character": {
+    "name": "Kaelen",
+    "aliases": [
+     "The Uncapped",
+     "The Weakest Novice"
+    ],
+    "age": 18,
+    "lifespan_years": 80,
+    "people_id": "human",
+    "description": "A quiet, determined youth who hides a sharp spark of ambition behind an ordinary exterior.",
+    "appearance": "Lean build, messy dark hair, pale grey eyes. Wears a frayed tunic, tattered leather jerkin, and a standard-issue copper guild badge on his chest.",
+    "location_id": "adventurers-guild",
+    "attributes": {
+     "strength": 2,
+     "speed": 3,
+     "toughness": 2,
+     "wits": 4,
+     "knowledge": 3,
+     "willpower": 5,
+     "charm": 3,
+     "nerve": 4,
+     "bearing": 2
+    },
+    "skills": [
+     {
+      "name": "One-Handed Sword",
+      "level": "novice",
+      "notes": "Basic slashes learned from training dummies."
+     },
+     {
+      "name": "Wilderness Survival",
+      "level": "novice",
+      "notes": "Knowledge of simple herbs and basic tracking."
+     }
+    ],
+    "traits": [
+     {
+      "name": "Fragile Frame",
+      "kind": "flaw",
+      "description": "Due to your lack of levels, your physical endurance starts significantly lower than active veterans."
+     }
+    ],
+    "talents": [
+     {
+      "said": "a unique skill that lets him keep leveling up without any limit",
+      "name": "Limitless Uncapping",
+      "covers": "the accumulation of experience points and the enhancement of personal parameters through the system",
+      "strength": "one_of_a_kind",
+      "general": false,
+      "reason": "His soul matrix is permanently fused with a cosmic star shard, allowing infinite energy storage."
+     }
+    ],
+    "powers": [
+     {
+      "id": "uncapped-potential",
+      "name": "Limitless Growth",
+      "description": "Bypasses the absolute level-50 cap of mortal beings, allowing the user to level up and accumulate attributes indefinitely.",
+      "kind_id": "adventurer-system",
+      "gift": true,
+      "strength": "overpowered",
+      "limits": [
+       "Requires the standard acquisition of experience points through battles or quests."
+      ],
+      "costs": [],
+      "secret": false,
+      "time": null
+     }
+    ],
+    "techniques": [],
+    "temperament": {
+     "traits": [
+      "cautious",
+      "determined",
+      "observant"
+     ],
+     "values": [
+      "self-reliance",
+      "limitless progress"
+     ],
+     "loves": [
+      "quiet breakthroughs",
+      "the sound of a level-up notification"
+     ],
+     "fears": [
+      "confinement",
+      "losing his adventurer license"
+     ],
+     "wants": [],
+     "voice": "Soft-spoken, polite, but backed by unyielding resolve."
+    },
+    "items": [
+     {
+      "name": "Rusted Sword",
+      "kind": "weapon",
+      "description": "A chipped, dull iron sword that has seen far better days.",
+      "quantity": 1,
+      "carried": true
+     },
+     {
+      "name": "Tattered Leather Jerkin",
+      "kind": "armour",
+      "description": "Scuffed armor that provides minimal protection against monster claws.",
+      "quantity": 1,
+      "carried": true
+     }
+    ],
+    "money": 15,
+    "currency": "copper coins",
+    "title": "Novice",
+    "rank": "F-Rank",
+    "family_name": "",
+    "connections": [
+     {
+      "name": "Lyra",
+      "kind": "trusts_them",
+      "character_id": "receptionist-lyra",
+      "note": "She has consistently been kind and helpful to you since you joined the guild."
+     }
+    ],
+    "parent_ids": [],
+    "memberships": [
+     {
+      "faction_id": "adventurers-guild",
+      "rank": "Level 1 Novice",
+      "loyalty": 40
+     }
+    ],
+    "ladders": [
+     {
+      "ladder_id": "level-ladder",
+      "rung": "Level 1: Novice",
+      "stage": "early"
+     }
+    ],
+    "axes": {
+     "might": 1,
+     "influence": 1,
+     "wealth": 1,
+     "knowledge": 2,
+     "stealth": 2
+    },
+    "reserves": [
+     {
+      "name": "mana",
+      "level": 100
+     }
+    ],
+    "goals": [],
+    "backstory": [
+     "You registered with the Oridell Adventurers Guild three weeks ago, only to find yourself static at Level 1 while others easily surpassed you.",
+     "Mocked by Jax and other iron-rank veterans, you were on the verge of despair until your System interface glitched, revealing your true, uncapped potential."
+    ],
+    "hidden_past": []
+   }
+  },
+  "rating": "teen",
+  "premise_id": null,
+  "physics": "fun_first",
+  "gift": null,
+  "released_rules": [],
+  "language": "en",
+  "told": []
+ }
+}

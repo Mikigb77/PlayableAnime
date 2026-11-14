@@ -1,0 +1,1836 @@
+{
+ "premise": "I'm the strongest sorcerer alive. Nobody has ever beaten me. I teach at a school for young sorcerers in modern Tokyo.",
+ "language": "en",
+ "rating": "teen",
+ "settings": {
+  "narration_length": "medium",
+  "tone": null,
+  "difficulty": "balanced",
+  "event_frequency": "normal",
+  "images": "key_moments",
+  "suggestions": true,
+  "language": "en",
+  "accent": null
+ },
+ "seed": "play/x-strongest",
+ "state": {
+  "schema_version": 1,
+  "turn": 1,
+  "timeline_id": "main",
+  "world_s": 0,
+  "bible": {
+   "title": "The Undefeated Apex",
+   "genre": "urban fantasy",
+   "tone": "cool and modern",
+   "era": "Modern Tokyo: high-speed trains, smartphones, neon lights, and hidden sorcery",
+   "extraordinary": [
+    {
+     "id": "sorcery",
+     "kind": "sorcery",
+     "prevalence": "hidden",
+     "reach": "Bending space, manipulating elements, and deploying absolute domains.",
+     "rule_ids": [
+      "sorcery-is-secret",
+      "pinnacle-power",
+      "sorcery-exists"
+     ]
+    }
+   ],
+   "peoples": [
+    {
+     "id": "human",
+     "name": "Human",
+     "description": "",
+     "lifespan_years": 80,
+     "gifts": [],
+     "culture": "Modern metropolitan Japanese society combined with secretive clan traditions.",
+     "relations": [],
+     "path": ""
+    }
+   ],
+   "creatures": [
+    {
+     "id": "curse",
+     "name": "Cursed Spirit",
+     "description": "Monstrous entities born from the pooled negative emotions of humanity.",
+     "tier": 1,
+     "habitat": "Dark alleys, abandoned buildings, and subterranean tunnels beneath Tokyo.",
+     "worth": "Cursed cores used for crafting magical grade weapons.",
+     "can_be_tamed": false
+    }
+   ],
+   "nature": [],
+   "physics": "fun_first",
+   "force": {
+    "tier1_joules": 10000.0,
+    "per_tier": 10.0
+   },
+   "ladders": [
+    {
+     "id": "sorcerer-ranks",
+     "name": "Sorcerer Ranks",
+     "axis": "might",
+     "rungs": [
+      {
+       "name": "Fourth Grade",
+       "tier": 2,
+       "description": "Novices and fresh initiates.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 0,
+       "added_s": null
+      },
+      {
+       "name": "Third Grade",
+       "tier": 4,
+       "description": "Capable students who can handle minor spirits.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 0,
+       "added_s": null
+      },
+      {
+       "name": "Second Grade",
+       "tier": 6,
+       "description": "Competent professional sorcerers.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 0,
+       "added_s": null
+      },
+      {
+       "name": "First Grade",
+       "tier": 8,
+       "description": "The elite guard who lead the society.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 0,
+       "added_s": null
+      },
+      {
+       "name": "Special Grade",
+       "tier": 10,
+       "description": "Anomalies of immense power, capable of taking on entire armies.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 0,
+       "added_s": null
+      }
+     ],
+     "standing_follows": true,
+     "sensing": true,
+     "rung_levels": 1,
+     "shrugs_off": 3,
+     "known_to_all": 5
+    }
+   ],
+   "calendar": {
+    "style": "gregorian",
+    "time_of_day": "clock",
+    "epoch": "2024-04-15T08:00",
+    "start_second_of_day": 28800,
+    "months": [],
+    "start_year": 1,
+    "start_month": 1,
+    "start_day": 1,
+    "era": ""
+   },
+   "travel": {
+    "description": "Sorcerers use the Tokyo subway system, bullet trains, or private tactical sedans.",
+    "instant_messages": true
+   },
+   "medicine": {
+    "healing": "Advanced modern hospitals supplemented by specialized positive-energy reverse sorcery.",
+    "resurrection": "none",
+    "resurrection_means": ""
+   },
+   "laws": [
+    {
+     "id": "masquerade-law",
+     "text": "Revealing magic to a non-sorcerer is strictly forbidden and punishable by exile or execution.",
+     "enforcer": "The Sorcerer Council Executioners",
+     "enforcer_faction_id": null,
+     "zeal": "high",
+     "corruptible": false
+    }
+   ],
+   "norms": [],
+   "several_partners": false,
+   "unions": "held",
+   "rules": [
+    {
+     "id": "sorcery-is-secret",
+     "text": "The existence of sorcery must be kept hidden from ordinary citizens to maintain public order.",
+     "fixed": true,
+     "topic": "law"
+    },
+    {
+     "id": "pinnacle-power",
+     "text": "The strongest sorcerer possesses power that defies natural laws, but even they cannot resurrect the dead.",
+     "fixed": false,
+     "topic": "limits"
+    },
+    {
+     "id": "sorcery-exists",
+     "text": "Sorcery: real, and hidden from most people.",
+     "fixed": true,
+     "topic": "existence"
+    }
+   ],
+   "mysteries": [
+    {
+     "id": "who-is-weakening-the-seals",
+     "question": "Who is sabotaging the ancient barriers protecting Tokyo?",
+     "answer": "An extremist faction within the Sorcerer Council, seeking to trigger a crisis to force a return to militaristic traditionalism.",
+     "clues": [
+      "Traces of a rare Council-exclusive barrier-dissolving ink found at the Shibuya seal site.",
+      "A suspicious directive from the Council delaying the reinforcement of the city's defenses."
+     ],
+     "thread_id": "investigating-the-seal",
+     "solved": false
+    }
+   ]
+  },
+  "player_id": "player",
+  "characters": {
+   "player": {
+    "id": "player",
+    "name": "Shinji Gojo",
+    "aliases": [
+     "The Apex Sorcerer",
+     "The Undefeated Teacher"
+    ],
+    "prominence": "key",
+    "description": "An effortlessly handsome, cool, and laid-back young man who radiates an aura of absolute confidence.",
+    "appearance": "Tall, lean build, with messy silver hair falling over dark glasses. Wearing a customized dark-blue high-collared teacher's uniform.",
+    "look_version": 1,
+    "age": 28,
+    "people_id": null,
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "tokyo-academy-courtyard",
+    "personal_offset_s": 0,
+    "memberships": [
+     {
+      "faction_id": "tokyo-academy-faction",
+      "rank": "Lead Instructor",
+      "loyalty": 90
+     }
+    ],
+    "sheet": {
+     "attributes": {
+      "strength": 5,
+      "speed": 5,
+      "toughness": 5,
+      "wits": 5,
+      "knowledge": 5,
+      "willpower": 5,
+      "charm": 5,
+      "nerve": 5,
+      "bearing": 5
+     },
+     "skills": [
+      {
+       "name": "Spatial Sorcery",
+       "level": "master",
+       "notes": "Absolute command over the space surrounding you."
+      },
+      {
+       "name": "Hand-to-Hand Combat",
+       "level": "master",
+       "notes": "Unmatched speed and precision in close quarters."
+      },
+      {
+       "name": "Teaching",
+       "level": "skilled",
+       "notes": "Unorthodox but highly effective mentorship."
+      }
+     ],
+     "traits": [
+      {
+       "name": "Undefeated",
+       "kind": "gift",
+       "description": "A profound psychological edge; you have never known defeat, and others feel the weight of your unbroken streak."
+      },
+      {
+       "name": "Playful Detachment",
+       "kind": "quirk",
+       "description": "Because no threat can truly harm you, you rarely take tense situations seriously."
+      }
+     ],
+     "talents": [],
+     "powers": [
+      {
+       "id": "absolute-infinity",
+       "name": "Spatial Infinity Barrier",
+       "description": "You bring the concept of infinity into reality, creating an invisible barrier that slows down any incoming attack infinitely, preventing it from ever touching you.",
+       "strength": "overpowered",
+       "limits": [
+        "Requires passive subconscious concentration to filter non-harmful elements like air and light."
+       ],
+       "costs": [],
+       "secret": false,
+       "time": null,
+       "settings": {},
+       "ready_at_personal_s": null
+      },
+      {
+       "id": "vacuum-collapse",
+       "name": "Vacuum Spatial Collapse",
+       "description": "You pinch space together, creating a localized singularity of immense destructive force that pulls in and crushes anything in its path.",
+       "strength": null,
+       "limits": [
+        "Causes brief visual distortion in the surrounding area."
+       ],
+       "costs": [
+        {
+         "kind": "fatigue",
+         "text": "Requires a brief moment of hand-sign focus."
+        }
+       ],
+       "secret": false,
+       "time": null,
+       "settings": {},
+       "ready_at_personal_s": null
+      }
+     ],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "confident",
+        "eccentric",
+        "protective"
+       ],
+       "values": [
+        "freedom",
+        "protecting the youth",
+        "testing your limits"
+       ],
+       "loves": [],
+       "fears": [
+        "boredom",
+        "failing to protect your students"
+       ],
+       "wants": [],
+       "voice": "Casual, teasing, and effortlessly relaxed, even in the face of immense danger."
+      },
+      "attitudes": {}
+     },
+     "resources": {
+      "items": [
+       {
+        "id": "academy-teacher-id",
+        "name": "Academy Teacher ID",
+        "kind": "document",
+        "description": "",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       },
+       {
+        "id": "dark-sunglasses",
+        "name": "Dark Sunglasses",
+        "kind": "gear",
+        "description": "",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       },
+       {
+        "id": "canned-coffee",
+        "name": "Canned Coffee",
+        "kind": "consumable",
+        "description": "",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       }
+      ],
+      "money": 850000,
+      "currency": "yen",
+      "title": "Special Grade Sorcerer",
+      "rank": "Teacher",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [
+       {
+        "name": "Cursed Energy",
+        "level": 100,
+        "recovery_s": null
+       }
+      ],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 10,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [
+      {
+       "ladder_id": "sorcerer-ranks",
+       "rung": 4,
+       "stage": "peak",
+       "shown_rung": null,
+       "yearly_s": null
+      }
+     ],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": [
+      {
+       "text": "Born into an era of rising cursed spirits, your awakening to spatial sorcery shattered all records of magical potential.",
+       "turn": 0
+      },
+      {
+       "text": "After easily defeating every challenger, rival, and curse that came your way, you found the traditional sorcery world stifling and took a job teaching to foster a new generation of allies.",
+       "turn": 0
+      }
+     ]
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": 80,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   },
+   "principal-masamune": {
+    "id": "principal-masamune",
+    "name": "Principal Masamune",
+    "aliases": [],
+    "prominence": "key",
+    "description": "A stern, traditionalist veteran sorcerer who deeply respects your unmatched power but constantly stresses over your unorthodox teaching methods.",
+    "appearance": "A tall man in his fifties with graying hair slicked back, wearing a formal high-collared black dark uniform.",
+    "look_version": 1,
+    "age": 54,
+    "people_id": null,
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "tokyo-academy",
+    "personal_offset_s": 0,
+    "memberships": [
+     {
+      "faction_id": "tokyo-academy-faction",
+      "rank": "Principal",
+      "loyalty": 100
+     }
+    ],
+    "sheet": {
+     "attributes": {
+      "strength": 4,
+      "speed": 4,
+      "toughness": 4,
+      "wits": 4,
+      "knowledge": 4,
+      "willpower": 5,
+      "charm": 3,
+      "nerve": 4,
+      "bearing": 5
+     },
+     "skills": [
+      {
+       "name": "Barrier Sorcery",
+       "level": "expert",
+       "notes": ""
+      },
+      {
+       "name": "Administration",
+       "level": "expert",
+       "notes": ""
+      }
+     ],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "stern",
+        "traditional",
+        "responsible"
+       ],
+       "values": [
+        "duty",
+        "discipline",
+        "protecting students"
+       ],
+       "loves": [],
+       "fears": [],
+       "wants": [
+        "Maintain order at the Academy",
+        "Keep the conservative Council off the school's back"
+       ],
+       "voice": ""
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 30,
+        "fear": 20,
+        "trust": 80,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 8,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [
+      {
+       "ladder_id": "sorcerer-ranks",
+       "rung": 3,
+       "stage": "",
+       "shown_rung": null,
+       "yearly_s": null
+      }
+     ],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   },
+   "akari-sato": {
+    "id": "akari-sato",
+    "name": "Akari Sato",
+    "aliases": [],
+    "prominence": "key",
+    "description": "An exceptionally talented, hot-headed student who is determined to learn your secrets and eventually challenge you to a duel.",
+    "appearance": "A short, athletic teenager with bright dyed-red hair, wearing a heavily customized academy uniform with combat boots.",
+    "look_version": 1,
+    "age": 16,
+    "people_id": null,
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "tokyo-academy-courtyard",
+    "personal_offset_s": 0,
+    "memberships": [
+     {
+      "faction_id": "tokyo-academy-faction",
+      "rank": "Student",
+      "loyalty": 70
+     }
+    ],
+    "sheet": {
+     "attributes": {
+      "strength": 3,
+      "speed": 4,
+      "toughness": 3,
+      "wits": 4,
+      "knowledge": 2,
+      "willpower": 4,
+      "charm": 3,
+      "nerve": 5,
+      "bearing": 3
+     },
+     "skills": [
+      {
+       "name": "Fistfighting",
+       "level": "fair",
+       "notes": ""
+      },
+      {
+       "name": "Offensive Sorcery",
+       "level": "skilled",
+       "notes": ""
+      }
+     ],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "hot-headed",
+        "determined",
+        "competitive"
+       ],
+       "values": [
+        "strength",
+        "independence"
+       ],
+       "loves": [],
+       "fears": [],
+       "wants": [
+        "Surpass the undefeated teacher",
+        "Master high-grade combat magic"
+       ],
+       "voice": ""
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 40,
+        "fear": 10,
+        "trust": 60,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 4,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [
+      {
+       "ladder_id": "sorcerer-ranks",
+       "rung": 1,
+       "stage": "",
+       "shown_rung": null,
+       "yearly_s": null
+      }
+     ],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": 0,
+    "near_s": null,
+    "met_s": null
+   }
+  },
+  "factions": {
+   "tokyo-academy-faction": {
+    "id": "tokyo-academy-faction",
+    "name": "Tokyo Jujutsu Academy",
+    "kind": "sect",
+    "description": "An elite institution dedicated to training the next generation of sorcerers to defend humanity.",
+    "parent_id": null,
+    "status": "intact",
+    "status_history": [],
+    "activity": "active",
+    "leader_ids": [
+     "principal-masamune"
+    ],
+    "goal": "",
+    "methods": "",
+    "strength": "",
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "threat": 0,
+    "relations": {},
+    "survivors": [],
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ]
+   },
+   "sorcerer-council": {
+    "id": "sorcerer-council",
+    "name": "The Sorcerer Council",
+    "kind": "court",
+    "description": "An ancient, highly conservative governing body that regulates all sorcerers across Japan.",
+    "parent_id": null,
+    "status": "intact",
+    "status_history": [],
+    "activity": "active",
+    "leader_ids": [],
+    "goal": "",
+    "methods": "",
+    "strength": "",
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "threat": 0,
+    "relations": {},
+    "survivors": [],
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "places": {
+   "tokyo-academy": {
+    "id": "tokyo-academy",
+    "name": "Tokyo Jujutsu Academy",
+    "kind": "building",
+    "description": "A sprawling, traditional wooden estate hidden behind a powerful optical illusion barrier in the forested hills of western Tokyo.",
+    "parent_id": "tokyo-region",
+    "setting": "indoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "shibuya-district",
+      "travel_s": 1800,
+      "mode": "by train"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "tokyo-academy-courtyard": {
+    "id": "tokyo-academy-courtyard",
+    "name": "Academy Courtyard",
+    "kind": "wilds",
+    "description": "A gravel-lined open space framed by ancient cherry blossom trees, used for student assembly and training.",
+    "parent_id": "tokyo-academy",
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [
+     "player"
+    ],
+    "judged": []
+   },
+   "shibuya-district": {
+    "id": "shibuya-district",
+    "name": "Shibuya District",
+    "kind": "city",
+    "description": "A neon-drenched, bustling commercial hub of Tokyo, teeming with crowds, underground clubs, and occasional hidden curses.",
+    "parent_id": "tokyo-region",
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "tokyo-academy",
+      "travel_s": 1800,
+      "mode": "by train"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "tokyo-region": {
+    "id": "tokyo-region",
+    "name": "Tokyo",
+    "kind": "region",
+    "description": "The massive, sprawling metropolis of Tokyo, blending ultra-modern high-rises with ancient shrines.",
+    "parent_id": null,
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   }
+  },
+  "deeds": {},
+  "rumors": {},
+  "bonds": {},
+  "lives": {},
+  "aged_s": null,
+  "changes": {},
+  "strife_s": {},
+  "facts": {
+   "fact-1": {
+    "id": "fact-1",
+    "text": "You are the strongest sorcerer alive, possessing absolute spatial manipulation techniques that have kept you completely undefeated.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-2": {
+    "id": "fact-2",
+    "text": "The Tokyo Jujutsu Academy is currently experiencing a strange uptick in cursed spirit activity, linked to deteriorating underground seals.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   }
+  },
+  "goals": {},
+  "leads": {},
+  "threads": {
+   "the-undefeated-streak": {
+    "id": "the-undefeated-streak",
+    "title": "Maintaining the Legend",
+    "kind": "rivalry",
+    "stakes": "The balance of power in the sorcery world relies on your absolute invincibility.",
+    "involved_ids": [
+     "player",
+     "akari-sato"
+    ],
+    "clock_id": null,
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "status": "open",
+    "opened_turn": 0,
+    "last_active_turn": 0,
+    "taken_up_turn": null,
+    "closed_turn": null,
+    "arc": null,
+    "known_by": [
+     "player"
+    ]
+   },
+   "investigating-the-seal": {
+    "id": "investigating-the-seal",
+    "title": "The Decaying Seals",
+    "kind": "mystery",
+    "stakes": "Preventing a massive catastrophe in the middle of Tokyo.",
+    "involved_ids": [
+     "player",
+     "principal-masamune"
+    ],
+    "clock_id": "shibuya-seal-collapse",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "status": "open",
+    "opened_turn": 0,
+    "last_active_turn": 0,
+    "taken_up_turn": null,
+    "closed_turn": null,
+    "arc": null,
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "clocks": {
+   "shibuya-seal-collapse": {
+    "id": "shibuya-seal-collapse",
+    "name": "The Shibuya Seal Decay",
+    "steps": [
+     "Unusual spirit sightings spike in the Shibuya subway stations.",
+     "Magical wards surrounding the central district begin to crack and flicker.",
+     "A localized spatial rift opens, pouring out ancient, hostile cursed spirits.",
+     "The Shibuya District is consumed by a massive barrier, trapping thousands inside with high-grade curses."
+    ],
+    "filled": 0,
+    "advances_on": [],
+    "reverses_on": [],
+    "interval_s": 86400,
+    "next_step_s": 86400,
+    "owner_id": null,
+    "thread_id": "investigating-the-seal",
+    "status": "running",
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "pending_events": {
+   "event-1": {
+    "id": "event-1",
+    "kind": "world.clock_step",
+    "title": "The Shibuya Seal Decay: Unusual spirit sightings spike in the Shibuya subway stations.",
+    "due_s": 86400,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": {
+     "kind": "clock",
+     "ref_id": "shibuya-seal-collapse",
+     "text": ""
+    },
+    "payload": {
+     "clock_id": "shibuya-seal-collapse"
+    },
+    "seed": "story=play%2Fx-strongest/timeline=main/turn=1/world/schedule/event-1",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-2": {
+    "id": "event-2",
+    "kind": "world.old_age",
+    "title": "Your years run short",
+    "due_s": 1956275288,
+    "timeline_id": "main",
+    "needs_player": true,
+    "status": "pending",
+    "subject_ids": [
+     "player"
+    ],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "phase": "near",
+     "who": "player",
+     "span": 80,
+     "day_s": 2006221202
+    },
+    "seed": "story=play%2Fx-strongest/timeline=main/turn=1/world/schedule/event-2",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-3": {
+    "id": "event-3",
+    "kind": "world.tick",
+    "title": "The world moves on",
+    "due_s": 86400,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "last_s": 0,
+     "stride_s": 86400
+    },
+    "seed": "story=play%2Fx-strongest/timeline=main/turn=1/world/schedule/event-3",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   }
+  },
+  "transfers": [],
+  "time_effects": [],
+  "scene": {
+   "place_id": "tokyo-academy-courtyard",
+   "present_ids": [
+    "player",
+    "akari-sato"
+   ],
+   "positions": [
+    "leaning casually against an ancient cherry blossom tree",
+    "standing on the gravel path with her arms crossed"
+   ],
+   "props": [
+    "a warm cup of canned coffee"
+   ],
+   "ended_on": "Akari crosses her arms and waits for your response while the subtle disturbance in the wards fades.",
+   "encounter": null
+  },
+  "director": {
+   "turns_without_stakes": 0,
+   "low_stakes_streak": 0,
+   "last_action_key": null,
+   "last_event_turn": null,
+   "last_event_size": null,
+   "last_event_s": {},
+   "last_small_s": null,
+   "recent_moments": [],
+   "recent_clock": [
+    0
+   ],
+   "frequency_drift": 0.0,
+   "recent_sources": [],
+   "auto_pictures": 1,
+   "picture_credit": 1.1,
+   "pictured": [
+    "portrait:player",
+    "portrait:player:v1"
+   ],
+   "fight": null,
+   "deck_draws": 0,
+   "road_stops": 0
+  },
+  "summary": "As the strongest sorcerer alive, you balance teaching young initiates at the Tokyo Jujutsu Academy with maintaining your undefeated legend. However, a mysterious degradation of the ancient wards beneath Shibuya threatens to plunge Tokyo into chaos.",
+  "chapters": [],
+  "id_counters": {
+   "fact": 2,
+   "goal": 0,
+   "bond": 0,
+   "event": 3
+  },
+  "fallen": [],
+  "opening_due": false,
+  "misses_in_a_row": 0,
+  "openings": [],
+  "journey": null,
+  "untold": [
+   "person:principal-masamune",
+   "thread:the-undefeated-streak"
+  ]
+ },
+ "scenes": [
+  {
+   "turn": 1,
+   "narration": "Morning sunlight filters through the gnarled branches of ancient cherry blossom trees, casting dappled shadows across the gravel path of the Tokyo Jujutsu Academy courtyard. You lean casually against a thick trunk, silver hair falling over your dark sunglasses as you take a relaxed sip of warm canned coffee. Before you stands Akari Sato, her bright dyed-red hair practically glowing in the morning light. She crosses her arms over her customized uniform, tapping a combat boot impatiently.\n\n\"Just one sparring match, Gojo-sensei!\" she demands, her competitive spirit burning. \"I want to see if I can even graze that invisible barrier of yours.\"\n\nBefore you can tease your hot-headed student, a sudden, cold shiver ripples through the air. The ancient wards protecting the Academy grounds flicker, just for a fraction of a second, before stabilizing. Something is definitely wrong with the seals beneath Tokyo, but Akari is still staring at you, waiting for your answer.",
+   "player_action": null
+  }
+ ],
+ "choices": [
+  "Accept her challenge to show her the gap between your strengths.",
+  "Tease her playfully and finish your canned coffee first.",
+  "Decline the match to investigate the flickering academy barrier."
+ ],
+ "cost_usd": 0.1283355,
+ "draft": {
+  "premise": "I'm the strongest sorcerer alive. Nobody has ever beaten me. I teach at a school for young sorcerers in modern Tokyo.",
+  "proposal": {
+   "world": {
+    "title": "The Undefeated Apex",
+    "genre": "urban fantasy",
+    "tone": "cool and modern",
+    "era": "Modern Tokyo: high-speed trains, smartphones, neon lights, and hidden sorcery",
+    "extraordinary": [
+     {
+      "id": "sorcery",
+      "kind": "sorcery",
+      "prevalence": "hidden",
+      "reach": "Bending space, manipulating elements, and deploying absolute domains."
+     }
+    ],
+    "rules": [
+     {
+      "id": "sorcery-is-secret",
+      "text": "The existence of sorcery must be kept hidden from ordinary citizens to maintain public order.",
+      "fixed": true,
+      "topic": "law",
+      "about": [
+       "sorcery"
+      ]
+     },
+     {
+      "id": "pinnacle-power",
+      "text": "The strongest sorcerer possesses power that defies natural laws, but even they cannot resurrect the dead.",
+      "fixed": false,
+      "topic": "limits",
+      "about": [
+       "sorcery"
+      ]
+     }
+    ],
+    "dropped_rule_ids": [],
+    "peoples": [
+     {
+      "id": "human",
+      "name": "Human",
+      "description": "",
+      "lifespan_years": 80,
+      "gifts": [],
+      "culture": "Modern metropolitan Japanese society combined with secretive clan traditions.",
+      "relations": [],
+      "path": ""
+     }
+    ],
+    "creatures": [
+     {
+      "id": "curse",
+      "name": "Cursed Spirit",
+      "description": "Monstrous entities born from the pooled negative emotions of humanity.",
+      "rung": "",
+      "habitat": "Dark alleys, abandoned buildings, and subterranean tunnels beneath Tokyo.",
+      "worth": "Cursed cores used for crafting magical grade weapons.",
+      "can_be_tamed": false
+     }
+    ],
+    "nature": [],
+    "ladders": [
+     {
+      "id": "sorcerer-ranks",
+      "name": "Sorcerer Ranks",
+      "axis": "might",
+      "rungs": [
+       {
+        "name": "Fourth Grade",
+        "description": "Novices and fresh initiates.",
+        "lifespan_years": null
+       },
+       {
+        "name": "Third Grade",
+        "description": "Capable students who can handle minor spirits.",
+        "lifespan_years": null
+       },
+       {
+        "name": "Second Grade",
+        "description": "Competent professional sorcerers.",
+        "lifespan_years": null
+       },
+       {
+        "name": "First Grade",
+        "description": "The elite guard who lead the society.",
+        "lifespan_years": null
+       },
+       {
+        "name": "Special Grade",
+        "description": "Anomalies of immense power, capable of taking on entire armies.",
+        "lifespan_years": null
+       }
+      ],
+      "known_to_all": 5,
+      "sensing": true,
+      "standing_follows": true,
+      "lengthens_life": false
+     }
+    ],
+    "calendar": {
+     "style": "gregorian",
+     "clock_time": true,
+     "epoch": "2024-04-15T08:00",
+     "start_hour": 8,
+     "months": [],
+     "start_year": 1,
+     "start_month": 1,
+     "start_day": 1,
+     "era": ""
+    },
+    "travel": {
+     "description": "Sorcerers use the Tokyo subway system, bullet trains, or private tactical sedans.",
+     "instant_messages": true
+    },
+    "medicine": {
+     "healing": "Advanced modern hospitals supplemented by specialized positive-energy reverse sorcery.",
+     "resurrection": "none",
+     "resurrection_means": ""
+    },
+    "laws": [
+     {
+      "id": "masquerade-law",
+      "text": "Revealing magic to a non-sorcerer is strictly forbidden and punishable by exile or execution.",
+      "enforcer": "The Sorcerer Council Executioners",
+      "enforcer_faction_id": "",
+      "zeal": "high",
+      "corruptible": false
+     }
+    ],
+    "norms": [],
+    "several_partners": false,
+    "unions": "held",
+    "places": [
+     {
+      "id": "tokyo-academy",
+      "name": "Tokyo Jujutsu Academy",
+      "kind": "building",
+      "description": "A sprawling, traditional wooden estate hidden behind a powerful optical illusion barrier in the forested hills of western Tokyo.",
+      "parent_id": "tokyo-region",
+      "setting": "indoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "shibuya-district",
+        "travel_hours": 0.5,
+        "mode": "by train"
+       }
+      ]
+     },
+     {
+      "id": "tokyo-academy-courtyard",
+      "name": "Academy Courtyard",
+      "kind": "wilds",
+      "description": "A gravel-lined open space framed by ancient cherry blossom trees, used for student assembly and training.",
+      "parent_id": "tokyo-academy",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "shibuya-district",
+      "name": "Shibuya District",
+      "kind": "city",
+      "description": "A neon-drenched, bustling commercial hub of Tokyo, teeming with crowds, underground clubs, and occasional hidden curses.",
+      "parent_id": "tokyo-region",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "tokyo-region",
+      "name": "Tokyo",
+      "kind": "region",
+      "description": "The massive, sprawling metropolis of Tokyo, blending ultra-modern high-rises with ancient shrines.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     }
+    ],
+    "factions": [
+     {
+      "id": "tokyo-academy-faction",
+      "name": "Tokyo Jujutsu Academy",
+      "kind": "sect",
+      "description": "An elite institution dedicated to training the next generation of sorcerers to defend humanity.",
+      "parent_id": "",
+      "leader_ids": [
+       "principal-masamune"
+      ],
+      "goal": "",
+      "methods": "",
+      "strength": "",
+      "relations": [],
+      "secrets": [],
+      "known_to_player": true
+     },
+     {
+      "id": "sorcerer-council",
+      "name": "The Sorcerer Council",
+      "kind": "court",
+      "description": "An ancient, highly conservative governing body that regulates all sorcerers across Japan.",
+      "parent_id": "",
+      "leader_ids": [],
+      "goal": "",
+      "methods": "",
+      "strength": "",
+      "relations": [],
+      "secrets": [],
+      "known_to_player": true
+     }
+    ],
+    "npcs": [
+     {
+      "id": "principal-masamune",
+      "name": "Principal Masamune",
+      "aliases": [],
+      "description": "A stern, traditionalist veteran sorcerer who deeply respects your unmatched power but constantly stresses over your unorthodox teaching methods.",
+      "appearance": "A tall man in his fifties with graying hair slicked back, wearing a formal high-collared black dark uniform.",
+      "age": 54,
+      "people_id": "",
+      "location_id": "tokyo-academy",
+      "memberships": [
+       {
+        "faction_id": "tokyo-academy-faction",
+        "rank": "Principal",
+        "loyalty": 100
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "stern",
+        "traditional",
+        "responsible"
+       ],
+       "values": [
+        "duty",
+        "discipline",
+        "protecting students"
+       ],
+       "loves": [],
+       "fears": [],
+       "wants": [
+        "Maintain order at the Academy",
+        "Keep the conservative Council off the school's back"
+       ],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 4,
+       "speed": 4,
+       "toughness": 4,
+       "wits": 4,
+       "knowledge": 4,
+       "willpower": 5,
+       "charm": 3,
+       "nerve": 4,
+       "bearing": 5
+      },
+      "skills": [
+       {
+        "name": "Barrier Sorcery",
+        "level": "expert",
+        "notes": ""
+       },
+       {
+        "name": "Administration",
+        "level": "expert",
+        "notes": ""
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [
+       {
+        "ladder_id": "sorcerer-ranks",
+        "rung": "First Grade",
+        "stage": ""
+       }
+      ],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 30,
+       "fear": 20,
+       "trust": 80,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "met"
+     },
+     {
+      "id": "akari-sato",
+      "name": "Akari Sato",
+      "aliases": [],
+      "description": "An exceptionally talented, hot-headed student who is determined to learn your secrets and eventually challenge you to a duel.",
+      "appearance": "A short, athletic teenager with bright dyed-red hair, wearing a heavily customized academy uniform with combat boots.",
+      "age": 16,
+      "people_id": "",
+      "location_id": "tokyo-academy-courtyard",
+      "memberships": [
+       {
+        "faction_id": "tokyo-academy-faction",
+        "rank": "Student",
+        "loyalty": 70
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "hot-headed",
+        "determined",
+        "competitive"
+       ],
+       "values": [
+        "strength",
+        "independence"
+       ],
+       "loves": [],
+       "fears": [],
+       "wants": [
+        "Surpass the undefeated teacher",
+        "Master high-grade combat magic"
+       ],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 3,
+       "speed": 4,
+       "toughness": 3,
+       "wits": 4,
+       "knowledge": 2,
+       "willpower": 4,
+       "charm": 3,
+       "nerve": 5,
+       "bearing": 3
+      },
+      "skills": [
+       {
+        "name": "Fistfighting",
+        "level": "fair",
+        "notes": ""
+       },
+       {
+        "name": "Offensive Sorcery",
+        "level": "skilled",
+        "notes": ""
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [
+       {
+        "ladder_id": "sorcerer-ranks",
+        "rung": "Third Grade",
+        "stage": ""
+       }
+      ],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 40,
+       "fear": 10,
+       "trust": 60,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "met"
+     }
+    ],
+    "clocks": [
+     {
+      "id": "shibuya-seal-collapse",
+      "name": "The Shibuya Seal Decay",
+      "steps": [
+       "Unusual spirit sightings spike in the Shibuya subway stations.",
+       "Magical wards surrounding the central district begin to crack and flicker.",
+       "A localized spatial rift opens, pouring out ancient, hostile cursed spirits.",
+       "The Shibuya District is consumed by a massive barrier, trapping thousands inside with high-grade curses."
+      ],
+      "step_every_hours": 24.0,
+      "owner_id": "",
+      "thread_id": "",
+      "known_to_player": true
+     }
+    ],
+    "threads": [
+     {
+      "id": "the-undefeated-streak",
+      "title": "Maintaining the Legend",
+      "kind": "rivalry",
+      "stakes": "The balance of power in the sorcery world relies on your absolute invincibility.",
+      "involved_ids": [
+       "player",
+       "akari-sato"
+      ],
+      "clock_id": "",
+      "known_to_player": true
+     },
+     {
+      "id": "investigating-the-seal",
+      "title": "The Decaying Seals",
+      "kind": "mystery",
+      "stakes": "Preventing a massive catastrophe in the middle of Tokyo.",
+      "involved_ids": [
+       "player",
+       "principal-masamune"
+      ],
+      "clock_id": "shibuya-seal-collapse",
+      "known_to_player": true
+     }
+    ],
+    "mysteries": [
+     {
+      "id": "who-is-weakening-the-seals",
+      "question": "Who is sabotaging the ancient barriers protecting Tokyo?",
+      "answer": "An extremist faction within the Sorcerer Council, seeking to trigger a crisis to force a return to militaristic traditionalism.",
+      "clues": [
+       "Traces of a rare Council-exclusive barrier-dissolving ink found at the Shibuya seal site.",
+       "A suspicious directive from the Council delaying the reinforcement of the city's defenses."
+      ],
+      "thread_id": "investigating-the-seal",
+      "known_to_player": true
+     }
+    ],
+    "known_facts": [
+     "You are the strongest sorcerer alive, possessing absolute spatial manipulation techniques that have kept you completely undefeated.",
+     "The Tokyo Jujutsu Academy is currently experiencing a strange uptick in cursed spirit activity, linked to deteriorating underground seals."
+    ],
+    "opening": {
+     "place_id": "tokyo-academy-courtyard",
+     "present_ids": [
+      "akari-sato"
+     ],
+     "positions": [
+      "leaning casually against an ancient cherry blossom tree",
+      "standing on the gravel path with her arms crossed"
+     ],
+     "props": [
+      "a warm cup of canned coffee"
+     ],
+     "situation": "You stand in the sunlit courtyard of Tokyo Jujutsu Academy, casually sipping your canned coffee while your eager student, Akari Sato, demands a sparring match."
+    },
+    "summary": "As the strongest sorcerer alive, you balance teaching young initiates at the Tokyo Jujutsu Academy with maintaining your undefeated legend. However, a mysterious degradation of the ancient wards beneath Shibuya threatens to plunge Tokyo into chaos."
+   },
+   "character": {
+    "name": "Shinji Gojo",
+    "aliases": [
+     "The Apex Sorcerer",
+     "The Undefeated Teacher"
+    ],
+    "age": 28,
+    "lifespan_years": 80,
+    "people_id": "",
+    "description": "An effortlessly handsome, cool, and laid-back young man who radiates an aura of absolute confidence.",
+    "appearance": "Tall, lean build, with messy silver hair falling over dark glasses. Wearing a customized dark-blue high-collared teacher's uniform.",
+    "location_id": "tokyo-academy-courtyard",
+    "attributes": {
+     "strength": 5,
+     "speed": 5,
+     "toughness": 5,
+     "wits": 5,
+     "knowledge": 5,
+     "willpower": 5,
+     "charm": 5,
+     "nerve": 5,
+     "bearing": 5
+    },
+    "skills": [
+     {
+      "name": "Spatial Sorcery",
+      "level": "master",
+      "notes": "Absolute command over the space surrounding you."
+     },
+     {
+      "name": "Hand-to-Hand Combat",
+      "level": "master",
+      "notes": "Unmatched speed and precision in close quarters."
+     },
+     {
+      "name": "Teaching",
+      "level": "skilled",
+      "notes": "Unorthodox but highly effective mentorship."
+     }
+    ],
+    "traits": [
+     {
+      "name": "Undefeated",
+      "kind": "gift",
+      "description": "A profound psychological edge; you have never known defeat, and others feel the weight of your unbroken streak."
+     },
+     {
+      "name": "Playful Detachment",
+      "kind": "quirk",
+      "description": "Because no threat can truly harm you, you rarely take tense situations seriously."
+     }
+    ],
+    "talents": [],
+    "powers": [
+     {
+      "id": "absolute-infinity",
+      "name": "Spatial Infinity Barrier",
+      "description": "You bring the concept of infinity into reality, creating an invisible barrier that slows down any incoming attack infinitely, preventing it from ever touching you.",
+      "kind_id": "sorcery",
+      "gift": true,
+      "strength": "overpowered",
+      "limits": [
+       "Requires passive subconscious concentration to filter non-harmful elements like air and light."
+      ],
+      "costs": [],
+      "secret": false,
+      "time": null
+     },
+     {
+      "id": "vacuum-collapse",
+      "name": "Vacuum Spatial Collapse",
+      "description": "You pinch space together, creating a localized singularity of immense destructive force that pulls in and crushes anything in its path.",
+      "kind_id": "sorcery",
+      "gift": false,
+      "strength": null,
+      "limits": [
+       "Causes brief visual distortion in the surrounding area."
+      ],
+      "costs": [
+       {
+        "kind": "fatigue",
+        "text": "Requires a brief moment of hand-sign focus."
+       }
+      ],
+      "secret": false,
+      "time": null
+     }
+    ],
+    "techniques": [],
+    "temperament": {
+     "traits": [
+      "confident",
+      "eccentric",
+      "protective"
+     ],
+     "values": [
+      "freedom",
+      "protecting the youth",
+      "testing your limits"
+     ],
+     "loves": [],
+     "fears": [
+      "boredom",
+      "failing to protect your students"
+     ],
+     "wants": [
+      "Foster strong sorcerers who can stand beside you as equals"
+     ],
+     "voice": "Casual, teasing, and effortlessly relaxed, even in the face of immense danger."
+    },
+    "items": [
+     {
+      "name": "Academy Teacher ID",
+      "kind": "document",
+      "description": "",
+      "quantity": 1,
+      "carried": true
+     },
+     {
+      "name": "Dark Sunglasses",
+      "kind": "gear",
+      "description": "",
+      "quantity": 1,
+      "carried": true
+     },
+     {
+      "name": "Canned Coffee",
+      "kind": "consumable",
+      "description": "",
+      "quantity": 1,
+      "carried": true
+     }
+    ],
+    "money": 850000,
+    "currency": "yen",
+    "title": "Special Grade Sorcerer",
+    "rank": "Teacher",
+    "family_name": "",
+    "connections": [],
+    "parent_ids": [],
+    "memberships": [
+     {
+      "faction_id": "tokyo-academy-faction",
+      "rank": "Lead Instructor",
+      "loyalty": 90
+     }
+    ],
+    "ladders": [
+     {
+      "ladder_id": "sorcerer-ranks",
+      "rung": "Special Grade",
+      "stage": "peak"
+     }
+    ],
+    "axes": {
+     "might": 1,
+     "influence": 1,
+     "wealth": 1,
+     "knowledge": 1,
+     "stealth": 1
+    },
+    "reserves": [
+     {
+      "name": "Cursed Energy",
+      "level": 100
+     }
+    ],
+    "goals": [],
+    "backstory": [
+     "Born into an era of rising cursed spirits, your awakening to spatial sorcery shattered all records of magical potential.",
+     "After easily defeating every challenger, rival, and curse that came your way, you found the traditional sorcery world stifling and took a job teaching to foster a new generation of allies."
+    ],
+    "hidden_past": []
+   }
+  },
+  "rating": "teen",
+  "premise_id": null,
+  "physics": "fun_first",
+  "gift": null,
+  "released_rules": [],
+  "language": "en",
+  "told": []
+ }
+}

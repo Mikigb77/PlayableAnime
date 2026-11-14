@@ -1,0 +1,1799 @@
+{
+ "premise": "I get hit by a truck and wake up in a fantasy world as a hero with an overpowered cheat skill.",
+ "language": "en",
+ "rating": "teen",
+ "settings": {
+  "narration_length": "medium",
+  "tone": null,
+  "difficulty": "balanced",
+  "event_frequency": "normal",
+  "images": "key_moments",
+  "suggestions": true,
+  "language": "en",
+  "accent": null
+ },
+ "seed": "play/x-cheat",
+ "state": {
+  "schema_version": 1,
+  "turn": 1,
+  "timeline_id": "main",
+  "world_s": 0,
+  "bible": {
+   "title": "Reborn with a Cheat Skill",
+   "genre": "Isekai Fantasy",
+   "tone": "wonder",
+   "era": "Medieval fantasy with a magical System governing reality",
+   "extraordinary": [
+    {
+     "id": "magic",
+     "kind": "Elemental Magic",
+     "prevalence": "common",
+     "reach": "Casters can summon storms, conjure fire, and heal deep wounds.",
+     "rule_ids": [
+      "mana-requirement",
+      "magic-exists"
+     ]
+    },
+    {
+     "id": "system",
+     "kind": "The System",
+     "prevalence": "common",
+     "reach": "Gives status screens, tracks levels, and bestows specialized skills to all living creatures.",
+     "rule_ids": [
+      "system-governance",
+      "mana-requirement",
+      "outworlder-cheat",
+      "system-exists"
+     ]
+    }
+   ],
+   "peoples": [
+    {
+     "id": "humans",
+     "name": "Humans",
+     "description": "",
+     "lifespan_years": 80,
+     "gifts": [
+      "Adaptability"
+     ],
+     "culture": "A medieval society focused on rank, leveling, and dungeon exploration.",
+     "relations": [],
+     "path": ""
+    }
+   ],
+   "creatures": [
+    {
+     "id": "goblin",
+     "name": "Goblin",
+     "description": "Green-skinned, vicious pests that gather in hordes and raid settlements.",
+     "tier": 2,
+     "habitat": "Caves and forests",
+     "worth": "Goblin ears can be turned in for guild bounties.",
+     "can_be_tamed": false
+    }
+   ],
+   "nature": [
+    "Dungeons spontaneously form across the land, producing monsters and treasure chests filled with System-sanctioned loot."
+   ],
+   "physics": "fun_first",
+   "force": {
+    "tier1_joules": 10000.0,
+    "per_tier": 10.0
+   },
+   "ladders": [
+    {
+     "id": "level-ladder",
+     "name": "Adventurer Levels",
+     "axis": "might",
+     "rungs": [
+      {
+       "name": "F-Rank (Level 1-10)",
+       "tier": 2,
+       "description": "Novice adventurers starting their journey.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 0,
+       "added_s": null
+      },
+      {
+       "name": "E-Rank (Level 11-25)",
+       "tier": 4,
+       "description": "Competent fighters capable of handling minor monsters.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 0,
+       "added_s": null
+      },
+      {
+       "name": "D-Rank (Level 26-40)",
+       "tier": 6,
+       "description": "Experienced mercenaries and local veterans.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 0,
+       "added_s": null
+      },
+      {
+       "name": "C-Rank (Level 41-60)",
+       "tier": 8,
+       "description": "Elite warriors respected in major towns.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 0,
+       "added_s": null
+      },
+      {
+       "name": "B-Rank (Level 61-80)",
+       "tier": 10,
+       "description": "Masters of their craft, capable of conquering dangerous dungeons.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 0,
+       "added_s": null
+      },
+      {
+       "name": "A-Rank (Level 81-95)",
+       "tier": 12,
+       "description": "Nationally renowned heroes and legendary commanders.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 0,
+       "added_s": null
+      },
+      {
+       "name": "S-Rank (Level 96-100+)",
+       "tier": 14,
+       "description": "The strongest beings in the world, matching demigods in power.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 0,
+       "added_s": null
+      }
+     ],
+     "standing_follows": true,
+     "sensing": true,
+     "rung_levels": 1,
+     "shrugs_off": 3,
+     "known_to_all": 7
+    }
+   ],
+   "calendar": {
+    "style": "day_count",
+    "time_of_day": "parts",
+    "epoch": null,
+    "start_second_of_day": 28800,
+    "months": [],
+    "start_year": 1,
+    "start_month": 1,
+    "start_day": 1,
+    "era": ""
+   },
+   "travel": {
+    "description": "People travel by foot, horse, or carriage. Major cities are linked by magical teleportation gates used only by the wealthy.",
+    "instant_messages": false
+   },
+   "medicine": {
+    "healing": "Minor wounds are cured with potions; high-level holy magic can heal lost limbs.",
+    "resurrection": "none",
+    "resurrection_means": ""
+   },
+   "laws": [
+    {
+     "id": "guild-law",
+     "text": "Monsters must be hunted under the authority of the Adventurers Guild.",
+     "enforcer": "Guild Enforcers",
+     "enforcer_faction_id": null,
+     "zeal": "high",
+     "corruptible": false
+    }
+   ],
+   "norms": [
+    "Leveling up is considered the ultimate pursuit of status and strength."
+   ],
+   "several_partners": false,
+   "unions": "held",
+   "rules": [
+    {
+     "id": "system-governance",
+     "text": "The System assigns levels, attributes, and skills to all living beings in this world.",
+     "fixed": true,
+     "topic": "nature"
+    },
+    {
+     "id": "mana-requirement",
+     "text": "Magic requires the expenditure of Mana, which is calculated and regulated by the System.",
+     "fixed": true,
+     "topic": "nature"
+    },
+    {
+     "id": "outworlder-cheat",
+     "text": "Outworlders who die and cross over into this world are granted a single unique cheat skill of incredible power.",
+     "fixed": true,
+     "topic": "peoples"
+    },
+    {
+     "id": "magic-exists",
+     "text": "Elemental Magic: real, and everywhere.",
+     "fixed": true,
+     "topic": "existence"
+    },
+    {
+     "id": "system-exists",
+     "text": "The System: real, and everywhere.",
+     "fixed": true,
+     "topic": "existence"
+    }
+   ],
+   "mysteries": [
+    {
+     "id": "reincarnation-mystery",
+     "question": "How did I end up in this world with this cheat skill?",
+     "answer": "A goddess of rebirth pulled the player's soul from Earth just as the truck struck them, granting them the ultimate cheat skill so they could defeat a rising threat to the System itself.",
+     "clues": [
+      "A strange, holy emblem carved into the status screen of your cheat skill.",
+      "Rumors of 'Outworlders' who historically saved the world from collapse.",
+      "A faint, divine voice whispering of a cosmic duty during level-ups."
+     ],
+     "thread_id": "reincarnation-mystery",
+     "solved": false
+    }
+   ]
+  },
+  "player_id": "player",
+  "characters": {
+   "player": {
+    "id": "player",
+    "name": "Leo",
+    "aliases": [],
+    "prominence": "key",
+    "description": "An average young man from Earth trying to adjust to his new life as a fantasy hero.",
+    "appearance": "Slightly messy dark hair, blue eyes, an average build, wearing basic starter leather armor and a plain tunic.",
+    "look_version": 1,
+    "age": 20,
+    "people_id": null,
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "guild-hall",
+    "personal_offset_s": 0,
+    "memberships": [
+     {
+      "faction_id": "adventurers-guild",
+      "rank": "F-Rank",
+      "loyalty": 50
+     }
+    ],
+    "sheet": {
+     "attributes": {
+      "strength": 3,
+      "speed": 3,
+      "toughness": 3,
+      "wits": 4,
+      "knowledge": 3,
+      "willpower": 4,
+      "charm": 3,
+      "nerve": 4,
+      "bearing": 3
+     },
+     "skills": [
+      {
+       "name": "Brawling",
+       "level": "novice",
+       "notes": ""
+      },
+      {
+       "name": "Survival",
+       "level": "novice",
+       "notes": ""
+      }
+     ],
+     "traits": [
+      {
+       "name": "Otherworlder",
+       "kind": "quirk",
+       "description": "Leo is from modern Earth, meaning he has no knowledge of local customs but possesses a unique worldview."
+      }
+     ],
+     "talents": [
+      {
+       "id": "cheat-skill-integration",
+       "name": "Cheat Skill Integration",
+       "covers": "mastering any magic or technique he attempts instantly",
+       "strength": "one_of_a_kind",
+       "general": false,
+       "reason": "Reincarnated by cosmic forces with an rule-breaking system ability."
+      }
+     ],
+     "powers": [
+      {
+       "id": "infinite-adaptability",
+       "name": "Infinite Adaptability",
+       "description": "An overpowered cheat skill that allows Leo to bypass System restrictions, instantly master any skill he witnesses, and gain experience at ten times the normal rate.",
+       "strength": "overpowered",
+       "limits": [
+        "Can only instantly learn skills that he physically witnesses being performed or reads in specialized grimoires."
+       ],
+       "costs": [],
+       "secret": false,
+       "time": null,
+       "settings": {},
+       "ready_at_personal_s": null
+      }
+     ],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "adaptable",
+        "curious",
+        "cautious"
+       ],
+       "values": [
+        "survival",
+        "exploring his new power"
+       ],
+       "loves": [
+        "leveling up",
+        "uncovering secrets"
+       ],
+       "fears": [
+        "dying again",
+        "getting exposed as an outworlder"
+       ],
+       "wants": [],
+       "voice": ""
+      },
+      "attitudes": {}
+     },
+     "resources": {
+      "items": [
+       {
+        "id": "rookie-iron-sword",
+        "name": "Rookie Iron Sword",
+        "kind": "weapon",
+        "description": "A basic, heavy iron sword issued to beginner adventurers.",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       }
+      ],
+      "money": 100,
+      "currency": "bronze coins",
+      "title": "",
+      "rank": "F-Rank Rookie",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 2,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [
+      {
+       "ladder_id": "level-ladder",
+       "rung": 0,
+       "stage": "early",
+       "shown_rung": null,
+       "yearly_s": null
+      }
+     ],
+     "rungs_heard": [
+      {
+       "ladder_id": "level-ladder",
+       "rung": 4,
+       "heard_s": 0,
+       "known_s": 0,
+       "known_from": "gideon"
+      }
+     ],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": 80,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   },
+   "gideon": {
+    "id": "gideon",
+    "name": "Guildmaster Gideon",
+    "aliases": [],
+    "prominence": "key",
+    "description": "A scarred, muscular veteran adventurer who retired to run the Oakhaven branch.",
+    "appearance": "Broad shoulders, a thick grey beard, a long scar across his left eye, wearing leather and chainmail.",
+    "look_version": 1,
+    "age": 48,
+    "people_id": null,
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "guild-hall",
+    "personal_offset_s": 0,
+    "memberships": [
+     {
+      "faction_id": "adventurers-guild",
+      "rank": "Guildmaster",
+      "loyalty": 90
+     }
+    ],
+    "sheet": {
+     "attributes": {
+      "strength": 4,
+      "speed": 3,
+      "toughness": 4,
+      "wits": 3,
+      "knowledge": 3,
+      "willpower": 4,
+      "charm": 3,
+      "nerve": 4,
+      "bearing": 4
+     },
+     "skills": [
+      {
+       "name": "Two-Handed Sword",
+       "level": "expert",
+       "notes": ""
+      },
+      {
+       "name": "Leadership",
+       "level": "expert",
+       "notes": ""
+      }
+     ],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "grizzled",
+        "stern",
+        "fair"
+       ],
+       "values": [
+        "discipline",
+        "protecting rookie adventurers"
+       ],
+       "loves": [
+        "strong ale",
+        "a good fight"
+       ],
+       "fears": [
+        "losing the town under his watch"
+       ],
+       "wants": [
+        "Maintain order and prepare Oakhaven for upcoming threats."
+       ],
+       "voice": ""
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 10,
+        "fear": 0,
+        "trust": 10,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 10,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [
+      {
+       "ladder_id": "level-ladder",
+       "rung": 4,
+       "stage": "middle",
+       "shown_rung": null,
+       "yearly_s": null
+      }
+     ],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": 0,
+    "near_s": null,
+    "met_s": null
+   },
+   "elara": {
+    "id": "elara",
+    "name": "Elara",
+    "aliases": [],
+    "prominence": "key",
+    "description": "The cheerful and efficient receptionist at the Oakhaven Guild Hall.",
+    "appearance": "Slender build, long blonde hair tied back, wearing a neat green-and-white guild uniform.",
+    "look_version": 1,
+    "age": 22,
+    "people_id": null,
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "guild-hall",
+    "personal_offset_s": 0,
+    "memberships": [
+     {
+      "faction_id": "adventurers-guild",
+      "rank": "Guild Receptionist",
+      "loyalty": 85
+     }
+    ],
+    "sheet": {
+     "attributes": {
+      "strength": 2,
+      "speed": 3,
+      "toughness": 2,
+      "wits": 4,
+      "knowledge": 3,
+      "willpower": 3,
+      "charm": 4,
+      "nerve": 3,
+      "bearing": 3
+     },
+     "skills": [
+      {
+       "name": "Bureaucracy",
+       "level": "skilled",
+       "notes": ""
+      },
+      {
+       "name": "First Aid",
+       "level": "novice",
+       "notes": ""
+      }
+     ],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "helpful",
+        "perceptive",
+        "patient"
+       ],
+       "values": [
+        "efficiency",
+        "safety"
+       ],
+       "loves": [
+        "organizing quests",
+        "hearing tales of adventure"
+       ],
+       "fears": [
+        "paperwork backlogs",
+        "monsters attacking the town"
+       ],
+       "wants": [
+        "Help new adventurers find their footing safely."
+       ],
+       "voice": ""
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 15,
+        "fear": 0,
+        "trust": 15,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": 0,
+    "near_s": null,
+    "met_s": null
+   }
+  },
+  "factions": {
+   "adventurers-guild": {
+    "id": "adventurers-guild",
+    "name": "Adventurers Guild",
+    "kind": "sect",
+    "description": "A continent-spanning organization that registers monster hunters and issues rewards.",
+    "parent_id": null,
+    "status": "intact",
+    "status_history": [],
+    "activity": "active",
+    "leader_ids": [],
+    "goal": "",
+    "methods": "",
+    "strength": "High-level guild champions and immense wealth accumulated from dungeon crawls.",
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "threat": 0,
+    "relations": {},
+    "survivors": [],
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "places": {
+   "oakhaven": {
+    "id": "oakhaven",
+    "name": "Oakhaven",
+    "kind": "village",
+    "description": "A peaceful border town surrounded by thick forests, popular with rookie adventurers.",
+    "parent_id": null,
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "whispering-woods",
+      "travel_s": 7200,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "guild-hall": {
+    "id": "guild-hall",
+    "name": "Oakhaven Guild Hall",
+    "kind": "building",
+    "description": "A lively wooden hall filled with adventurers drinking, boasting, and taking quests from the board.",
+    "parent_id": "oakhaven",
+    "setting": "indoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [
+     "player"
+    ],
+    "judged": []
+   },
+   "whispering-woods": {
+    "id": "whispering-woods",
+    "name": "Whispering Woods",
+    "kind": "wilds",
+    "description": "A dense, shadowy forest home to wild beasts and goblin scouting parties.",
+    "parent_id": null,
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "goblin-caves",
+      "travel_s": 14400,
+      "mode": "on foot"
+     },
+     {
+      "to_id": "oakhaven",
+      "travel_s": 7200,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "goblin-caves": {
+    "id": "goblin-caves",
+    "name": "Goblin Caves",
+    "kind": "wilds",
+    "description": "A damp, dark network of underground tunnels where the local goblin tribe nests.",
+    "parent_id": "whispering-woods",
+    "setting": "underground",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "whispering-woods",
+      "travel_s": 14400,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   }
+  },
+  "deeds": {},
+  "rumors": {},
+  "bonds": {},
+  "lives": {},
+  "aged_s": null,
+  "changes": {},
+  "strife_s": {},
+  "facts": {
+   "fact-1": {
+    "id": "fact-1",
+    "text": "You were hit by a truck in your past life.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-2": {
+    "id": "fact-2",
+    "text": "You have woken up in a fantasy world as a Level 1 hero.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-3": {
+    "id": "fact-3",
+    "text": "Your status screen displays a unique and incredibly overpowered cheat skill.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   }
+  },
+  "goals": {},
+  "leads": {},
+  "threads": {
+   "defend-oakhaven": {
+    "id": "defend-oakhaven",
+    "title": "Defend Oakhaven",
+    "kind": "threat",
+    "stakes": "The town will be overrun and destroyed by goblins if they aren't stopped.",
+    "involved_ids": [
+     "gideon",
+     "elara"
+    ],
+    "clock_id": "goblin-raid",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "status": "open",
+    "opened_turn": 0,
+    "last_active_turn": 0,
+    "taken_up_turn": null,
+    "closed_turn": null,
+    "arc": null,
+    "known_by": [
+     "player"
+    ]
+   },
+   "reincarnation-mystery": {
+    "id": "reincarnation-mystery",
+    "title": "How did I end up in this world with this cheat skill?",
+    "kind": "mystery",
+    "stakes": "",
+    "involved_ids": [
+     "player"
+    ],
+    "clock_id": null,
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "status": "open",
+    "opened_turn": 0,
+    "last_active_turn": 0,
+    "taken_up_turn": null,
+    "closed_turn": null,
+    "arc": null,
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "clocks": {
+   "goblin-raid": {
+    "id": "goblin-raid",
+    "name": "The Goblin Horde attacks Oakhaven",
+    "steps": [
+     "Scouts report goblin war parties gathering in the Whispering Woods.",
+     "Goblin vanguard scouts approach the town walls, cutting off Oakhaven's roads.",
+     "The horde launches a full assault on the Oakhaven gates."
+    ],
+    "filled": 0,
+    "advances_on": [],
+    "reverses_on": [],
+    "interval_s": 86400,
+    "next_step_s": 86400,
+    "owner_id": null,
+    "thread_id": "defend-oakhaven",
+    "status": "running",
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "pending_events": {
+   "event-1": {
+    "id": "event-1",
+    "kind": "world.clock_step",
+    "title": "The Goblin Horde attacks Oakhaven: Scouts report goblin war parties gathering in the Whispering Woods.",
+    "due_s": 86400,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": {
+     "kind": "clock",
+     "ref_id": "goblin-raid",
+     "text": ""
+    },
+    "payload": {
+     "clock_id": "goblin-raid"
+    },
+    "seed": "story=play%2Fx-cheat/timeline=main/turn=1/world/schedule/event-1",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-2": {
+    "id": "event-2",
+    "kind": "world.old_age",
+    "title": "Your years run short",
+    "due_s": 2041946270,
+    "timeline_id": "main",
+    "needs_player": true,
+    "status": "pending",
+    "subject_ids": [
+     "player"
+    ],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "phase": "near",
+     "who": "player",
+     "span": 80,
+     "day_s": 2093148608
+    },
+    "seed": "story=play%2Fx-cheat/timeline=main/turn=1/world/schedule/event-2",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-3": {
+    "id": "event-3",
+    "kind": "world.tick",
+    "title": "The world moves on",
+    "due_s": 86400,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "last_s": 0,
+     "stride_s": 86400
+    },
+    "seed": "story=play%2Fx-cheat/timeline=main/turn=1/world/schedule/event-3",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   }
+  },
+  "transfers": [],
+  "time_effects": [],
+  "scene": {
+   "place_id": "guild-hall",
+   "present_ids": [
+    "player",
+    "gideon",
+    "elara"
+   ],
+   "positions": [
+    "Leo stands before the main counter.",
+    "Gideon stands behind the counter.",
+    "Elara stands behind the counter."
+   ],
+   "props": [
+    "wooden registration plaque"
+   ],
+   "ended_on": "Gideon and Elara wait behind the counter for you to step forward and speak.",
+   "encounter": null
+  },
+  "director": {
+   "turns_without_stakes": 0,
+   "low_stakes_streak": 0,
+   "last_action_key": null,
+   "last_event_turn": null,
+   "last_event_size": null,
+   "last_event_s": {},
+   "last_small_s": null,
+   "recent_moments": [],
+   "recent_clock": [
+    0
+   ],
+   "frequency_drift": 0.0,
+   "recent_sources": [],
+   "auto_pictures": 1,
+   "picture_credit": 1.1,
+   "pictured": [
+    "portrait:player",
+    "portrait:player:v1"
+   ],
+   "fight": null,
+   "deck_draws": 0,
+   "road_stops": 0
+  },
+  "summary": "After a sudden truck accident on Earth, the player is reincarnated into a fantasy world governed by a video-game-like System. Starting as a Level 1 novice in the town of Oakhaven, they possess an overpowered cheat skill and must quickly grow stronger before a nearby goblin horde threatens the town.",
+  "chapters": [],
+  "id_counters": {
+   "fact": 3,
+   "goal": 0,
+   "bond": 0,
+   "event": 3
+  },
+  "fallen": [],
+  "opening_due": false,
+  "misses_in_a_row": 0,
+  "openings": [],
+  "journey": null,
+  "untold": [
+   "thread:defend-oakhaven"
+  ]
+ },
+ "scenes": [
+  {
+   "turn": 1,
+   "narration": "You blink, and the cold metal of the truck on Earth is replaced by the warmth of polished wood and the smell of roasted meat. You are standing in the Oakhaven Guild Hall, where chatter, clinking tankards, and the scraping of benches create a lively din. Right before your eyes, a translucent, blue holographic window floats in the air, glowing with crisp, golden text: [System Notification: Cheat Skill 'Infinite Adaptability' Integrated. Bypassing standard limitations... Experience gain increased tenfold.] You stare at the screen, your heart hammering against your leather starter armor. It is real. You actually reincarnated.\n\n\"First time seeing a System screen, lad?\" a booming, gravelly voice chuckles. \n\nBehind the heavy oak counter stands Guildmaster Gideon, a broad-shouldered veteran with a thick grey beard and a formidable scar running down his left eye. Beside him, Elara, the cheerful blonde receptionist in a neat green guild uniform, smiles warmly. She taps a blank wooden registration plaque on the counter. \"Don't worry, the dizzy spell always passes. Once you're ready, we can get your F-Rank rookie plate registered. What is your name, adventurer?\"",
+   "player_action": null
+  }
+ ],
+ "choices": [
+  "Introduce yourself as Leo and ask about your first quest.",
+  "Examine the floating System screen to learn more about your cheat.",
+  "Ask Gideon and Elara about Oakhaven and the whispering woods."
+ ],
+ "cost_usd": 0.110307,
+ "draft": {
+  "premise": "I get hit by a truck and wake up in a fantasy world as a hero with an overpowered cheat skill.",
+  "proposal": {
+   "world": {
+    "title": "Reborn with a Cheat Skill",
+    "genre": "Isekai Fantasy",
+    "tone": "wonder",
+    "era": "Medieval fantasy with a magical System governing reality",
+    "extraordinary": [
+     {
+      "id": "magic",
+      "kind": "Elemental Magic",
+      "prevalence": "common",
+      "reach": "Casters can summon storms, conjure fire, and heal deep wounds."
+     },
+     {
+      "id": "system",
+      "kind": "The System",
+      "prevalence": "common",
+      "reach": "Gives status screens, tracks levels, and bestows specialized skills to all living creatures."
+     }
+    ],
+    "rules": [
+     {
+      "id": "system-governance",
+      "text": "The System assigns levels, attributes, and skills to all living beings in this world.",
+      "fixed": true,
+      "topic": "nature",
+      "about": [
+       "system"
+      ]
+     },
+     {
+      "id": "mana-requirement",
+      "text": "Magic requires the expenditure of Mana, which is calculated and regulated by the System.",
+      "fixed": true,
+      "topic": "nature",
+      "about": [
+       "magic",
+       "system"
+      ]
+     },
+     {
+      "id": "outworlder-cheat",
+      "text": "Outworlders who die and cross over into this world are granted a single unique cheat skill of incredible power.",
+      "fixed": true,
+      "topic": "peoples",
+      "about": [
+       "system"
+      ]
+     }
+    ],
+    "dropped_rule_ids": [],
+    "peoples": [
+     {
+      "id": "humans",
+      "name": "Humans",
+      "description": "",
+      "lifespan_years": 80,
+      "gifts": [
+       "Adaptability"
+      ],
+      "culture": "A medieval society focused on rank, leveling, and dungeon exploration.",
+      "relations": [],
+      "path": ""
+     }
+    ],
+    "creatures": [
+     {
+      "id": "goblin",
+      "name": "Goblin",
+      "description": "Green-skinned, vicious pests that gather in hordes and raid settlements.",
+      "rung": "F-Rank (Level 1-10)",
+      "habitat": "Caves and forests",
+      "worth": "Goblin ears can be turned in for guild bounties.",
+      "can_be_tamed": false
+     }
+    ],
+    "nature": [
+     "Dungeons spontaneously form across the land, producing monsters and treasure chests filled with System-sanctioned loot."
+    ],
+    "ladders": [
+     {
+      "id": "level-ladder",
+      "name": "Adventurer Levels",
+      "axis": "might",
+      "rungs": [
+       {
+        "name": "F-Rank (Level 1-10)",
+        "description": "Novice adventurers starting their journey.",
+        "lifespan_years": null
+       },
+       {
+        "name": "E-Rank (Level 11-25)",
+        "description": "Competent fighters capable of handling minor monsters.",
+        "lifespan_years": null
+       },
+       {
+        "name": "D-Rank (Level 26-40)",
+        "description": "Experienced mercenaries and local veterans.",
+        "lifespan_years": null
+       },
+       {
+        "name": "C-Rank (Level 41-60)",
+        "description": "Elite warriors respected in major towns.",
+        "lifespan_years": null
+       },
+       {
+        "name": "B-Rank (Level 61-80)",
+        "description": "Masters of their craft, capable of conquering dangerous dungeons.",
+        "lifespan_years": null
+       },
+       {
+        "name": "A-Rank (Level 81-95)",
+        "description": "Nationally renowned heroes and legendary commanders.",
+        "lifespan_years": null
+       },
+       {
+        "name": "S-Rank (Level 96-100+)",
+        "description": "The strongest beings in the world, matching demigods in power.",
+        "lifespan_years": null
+       }
+      ],
+      "known_to_all": 7,
+      "sensing": true,
+      "standing_follows": true,
+      "lengthens_life": false
+     }
+    ],
+    "calendar": {
+     "style": "day_count",
+     "clock_time": false,
+     "epoch": "",
+     "start_hour": 8,
+     "months": [],
+     "start_year": 1,
+     "start_month": 1,
+     "start_day": 1,
+     "era": ""
+    },
+    "travel": {
+     "description": "People travel by foot, horse, or carriage. Major cities are linked by magical teleportation gates used only by the wealthy.",
+     "instant_messages": false
+    },
+    "medicine": {
+     "healing": "Minor wounds are cured with potions; high-level holy magic can heal lost limbs.",
+     "resurrection": "none",
+     "resurrection_means": ""
+    },
+    "laws": [
+     {
+      "id": "guild-law",
+      "text": "Monsters must be hunted under the authority of the Adventurers Guild.",
+      "enforcer": "Guild Enforcers",
+      "enforcer_faction_id": "",
+      "zeal": "high",
+      "corruptible": false
+     }
+    ],
+    "norms": [
+     "Leveling up is considered the ultimate pursuit of status and strength."
+    ],
+    "several_partners": false,
+    "unions": "held",
+    "places": [
+     {
+      "id": "oakhaven",
+      "name": "Oakhaven",
+      "kind": "village",
+      "description": "A peaceful border town surrounded by thick forests, popular with rookie adventurers.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "whispering-woods",
+        "travel_hours": 2.0,
+        "mode": "on foot"
+       }
+      ]
+     },
+     {
+      "id": "guild-hall",
+      "name": "Oakhaven Guild Hall",
+      "kind": "building",
+      "description": "A lively wooden hall filled with adventurers drinking, boasting, and taking quests from the board.",
+      "parent_id": "oakhaven",
+      "setting": "indoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "whispering-woods",
+      "name": "Whispering Woods",
+      "kind": "wilds",
+      "description": "A dense, shadowy forest home to wild beasts and goblin scouting parties.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "goblin-caves",
+        "travel_hours": 4.0,
+        "mode": "on foot"
+       }
+      ]
+     },
+     {
+      "id": "goblin-caves",
+      "name": "Goblin Caves",
+      "kind": "wilds",
+      "description": "A damp, dark network of underground tunnels where the local goblin tribe nests.",
+      "parent_id": "whispering-woods",
+      "setting": "underground",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     }
+    ],
+    "factions": [
+     {
+      "id": "adventurers-guild",
+      "name": "Adventurers Guild",
+      "kind": "sect",
+      "description": "A continent-spanning organization that registers monster hunters and issues rewards.",
+      "parent_id": "",
+      "leader_ids": [],
+      "goal": "",
+      "methods": "",
+      "strength": "High-level guild champions and immense wealth accumulated from dungeon crawls.",
+      "relations": [],
+      "secrets": [],
+      "known_to_player": true
+     }
+    ],
+    "npcs": [
+     {
+      "id": "gideon",
+      "name": "Guildmaster Gideon",
+      "aliases": [],
+      "description": "A scarred, muscular veteran adventurer who retired to run the Oakhaven branch.",
+      "appearance": "Broad shoulders, a thick grey beard, a long scar across his left eye, wearing leather and chainmail.",
+      "age": 48,
+      "people_id": "",
+      "location_id": "guild-hall",
+      "memberships": [
+       {
+        "faction_id": "adventurers-guild",
+        "rank": "Guildmaster",
+        "loyalty": 90
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "grizzled",
+        "stern",
+        "fair"
+       ],
+       "values": [
+        "discipline",
+        "protecting rookie adventurers"
+       ],
+       "loves": [
+        "strong ale",
+        "a good fight"
+       ],
+       "fears": [
+        "losing the town under his watch"
+       ],
+       "wants": [
+        "Maintain order and prepare Oakhaven for upcoming threats."
+       ],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 4,
+       "speed": 3,
+       "toughness": 4,
+       "wits": 3,
+       "knowledge": 3,
+       "willpower": 4,
+       "charm": 3,
+       "nerve": 4,
+       "bearing": 4
+      },
+      "skills": [
+       {
+        "name": "Two-Handed Sword",
+        "level": "expert",
+        "notes": ""
+       },
+       {
+        "name": "Leadership",
+        "level": "expert",
+        "notes": ""
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [
+       {
+        "ladder_id": "level-ladder",
+        "rung": "B-Rank (Level 61-80)",
+        "stage": "middle"
+       }
+      ],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 10,
+       "fear": 0,
+       "trust": 10,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "met"
+     },
+     {
+      "id": "elara",
+      "name": "Elara",
+      "aliases": [],
+      "description": "The cheerful and efficient receptionist at the Oakhaven Guild Hall.",
+      "appearance": "Slender build, long blonde hair tied back, wearing a neat green-and-white guild uniform.",
+      "age": 22,
+      "people_id": "",
+      "location_id": "guild-hall",
+      "memberships": [
+       {
+        "faction_id": "adventurers-guild",
+        "rank": "Guild Receptionist",
+        "loyalty": 85
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "helpful",
+        "perceptive",
+        "patient"
+       ],
+       "values": [
+        "efficiency",
+        "safety"
+       ],
+       "loves": [
+        "organizing quests",
+        "hearing tales of adventure"
+       ],
+       "fears": [
+        "paperwork backlogs",
+        "monsters attacking the town"
+       ],
+       "wants": [
+        "Help new adventurers find their footing safely."
+       ],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 2,
+       "speed": 3,
+       "toughness": 2,
+       "wits": 4,
+       "knowledge": 3,
+       "willpower": 3,
+       "charm": 4,
+       "nerve": 3,
+       "bearing": 3
+      },
+      "skills": [
+       {
+        "name": "Bureaucracy",
+        "level": "skilled",
+        "notes": ""
+       },
+       {
+        "name": "First Aid",
+        "level": "novice",
+        "notes": ""
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 15,
+       "fear": 0,
+       "trust": 15,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "met"
+     }
+    ],
+    "clocks": [
+     {
+      "id": "goblin-raid",
+      "name": "The Goblin Horde attacks Oakhaven",
+      "steps": [
+       "Scouts report goblin war parties gathering in the Whispering Woods.",
+       "Goblin vanguard scouts approach the town walls, cutting off Oakhaven's roads.",
+       "The horde launches a full assault on the Oakhaven gates."
+      ],
+      "step_every_hours": 24.0,
+      "owner_id": "",
+      "thread_id": "",
+      "known_to_player": true
+     }
+    ],
+    "threads": [
+     {
+      "id": "defend-oakhaven",
+      "title": "Defend Oakhaven",
+      "kind": "threat",
+      "stakes": "The town will be overrun and destroyed by goblins if they aren't stopped.",
+      "involved_ids": [
+       "gideon",
+       "elara"
+      ],
+      "clock_id": "goblin-raid",
+      "known_to_player": true
+     }
+    ],
+    "mysteries": [
+     {
+      "id": "reincarnation-mystery",
+      "question": "How did I end up in this world with this cheat skill?",
+      "answer": "A goddess of rebirth pulled the player's soul from Earth just as the truck struck them, granting them the ultimate cheat skill so they could defeat a rising threat to the System itself.",
+      "clues": [
+       "A strange, holy emblem carved into the status screen of your cheat skill.",
+       "Rumors of 'Outworlders' who historically saved the world from collapse.",
+       "A faint, divine voice whispering of a cosmic duty during level-ups."
+      ],
+      "thread_id": "",
+      "known_to_player": true
+     }
+    ],
+    "known_facts": [
+     "You were hit by a truck in your past life.",
+     "You have woken up in a fantasy world as a Level 1 hero.",
+     "Your status screen displays a unique and incredibly overpowered cheat skill."
+    ],
+    "opening": {
+     "place_id": "guild-hall",
+     "present_ids": [
+      "gideon",
+      "elara"
+     ],
+     "positions": [],
+     "props": [],
+     "situation": "You open your eyes in a bustling, wooden fantasy guild hall, a blue holographic System screen floating before you highlighting your new overpowered cheat skill."
+    },
+    "summary": "After a sudden truck accident on Earth, the player is reincarnated into a fantasy world governed by a video-game-like System. Starting as a Level 1 novice in the town of Oakhaven, they possess an overpowered cheat skill and must quickly grow stronger before a nearby goblin horde threatens the town."
+   },
+   "character": {
+    "name": "Leo",
+    "aliases": [],
+    "age": 20,
+    "lifespan_years": 80,
+    "people_id": "",
+    "description": "An average young man from Earth trying to adjust to his new life as a fantasy hero.",
+    "appearance": "Slightly messy dark hair, blue eyes, an average build, wearing basic starter leather armor and a plain tunic.",
+    "location_id": "guild-hall",
+    "attributes": {
+     "strength": 3,
+     "speed": 3,
+     "toughness": 3,
+     "wits": 4,
+     "knowledge": 3,
+     "willpower": 4,
+     "charm": 3,
+     "nerve": 4,
+     "bearing": 3
+    },
+    "skills": [
+     {
+      "name": "Brawling",
+      "level": "novice",
+      "notes": ""
+     },
+     {
+      "name": "Survival",
+      "level": "novice",
+      "notes": ""
+     }
+    ],
+    "traits": [
+     {
+      "name": "Otherworlder",
+      "kind": "quirk",
+      "description": "Leo is from modern Earth, meaning he has no knowledge of local customs but possesses a unique worldview."
+     }
+    ],
+    "talents": [
+     {
+      "said": "an overpowered cheat skill",
+      "name": "Cheat Skill Integration",
+      "covers": "mastering any magic or technique he attempts instantly",
+      "strength": "one_of_a_kind",
+      "general": false,
+      "reason": "Reincarnated by cosmic forces with an rule-breaking system ability."
+     }
+    ],
+    "powers": [
+     {
+      "id": "infinite-adaptability",
+      "name": "Infinite Adaptability",
+      "description": "An overpowered cheat skill that allows Leo to bypass System restrictions, instantly master any skill he witnesses, and gain experience at ten times the normal rate.",
+      "kind_id": "system",
+      "gift": true,
+      "strength": "overpowered",
+      "limits": [
+       "Can only instantly learn skills that he physically witnesses being performed or reads in specialized grimoires."
+      ],
+      "costs": [],
+      "secret": false,
+      "time": null
+     }
+    ],
+    "techniques": [],
+    "temperament": {
+     "traits": [
+      "adaptable",
+      "curious",
+      "cautious"
+     ],
+     "values": [
+      "survival",
+      "exploring his new power"
+     ],
+     "loves": [
+      "leveling up",
+      "uncovering secrets"
+     ],
+     "fears": [
+      "dying again",
+      "getting exposed as an outworlder"
+     ],
+     "wants": [],
+     "voice": ""
+    },
+    "items": [
+     {
+      "name": "Rookie Iron Sword",
+      "kind": "weapon",
+      "description": "A basic, heavy iron sword issued to beginner adventurers.",
+      "quantity": 1,
+      "carried": true
+     }
+    ],
+    "money": 100,
+    "currency": "bronze coins",
+    "title": "",
+    "rank": "F-Rank Rookie",
+    "family_name": "",
+    "connections": [],
+    "parent_ids": [],
+    "memberships": [
+     {
+      "faction_id": "adventurers-guild",
+      "rank": "F-Rank",
+      "loyalty": 50
+     }
+    ],
+    "ladders": [
+     {
+      "ladder_id": "level-ladder",
+      "rung": "F-Rank (Level 1-10)",
+      "stage": "early"
+     }
+    ],
+    "axes": {
+     "might": 1,
+     "influence": 1,
+     "wealth": 1,
+     "knowledge": 1,
+     "stealth": 1
+    },
+    "reserves": [],
+    "goals": [],
+    "backstory": [],
+    "hidden_past": []
+   }
+  },
+  "rating": "teen",
+  "premise_id": null,
+  "physics": "fun_first",
+  "gift": null,
+  "released_rules": [],
+  "language": "en",
+  "told": []
+ }
+}

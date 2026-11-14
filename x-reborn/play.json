@@ -1,0 +1,1820 @@
+{
+ "premise": "A shy girl at a magic academy who is the reincarnation of the greatest mage in history, but she doesn't know it yet.",
+ "language": "en",
+ "rating": "teen",
+ "settings": {
+  "narration_length": "medium",
+  "tone": null,
+  "difficulty": "balanced",
+  "event_frequency": "normal",
+  "images": "key_moments",
+  "suggestions": true,
+  "language": "en",
+  "accent": null
+ },
+ "seed": "play/x-reborn",
+ "state": {
+  "schema_version": 1,
+  "turn": 1,
+  "timeline_id": "main",
+  "world_s": 0,
+  "bible": {
+   "title": "Saga of the Silent Archmage",
+   "genre": "academic fantasy",
+   "tone": "wonder",
+   "era": "Aetherius Era: quill pens, magical carriages, steam-powered lamps, and runes",
+   "extraordinary": [
+    {
+     "id": "magic",
+     "kind": "elemental and runic magic",
+     "prevalence": "common",
+     "reach": "Mages of the high circles can manipulate weather and rewrite physical laws, while novices struggle to light a candle.",
+     "rule_ids": [
+      "magic-focus",
+      "dormant-memories",
+      "academy-dueling",
+      "magic-exists"
+     ]
+    },
+    {
+     "id": "reincarnation",
+     "kind": "soul reincarnation",
+     "prevalence": "hidden",
+     "reach": "The souls of truly legendary beings can cross the boundary of death, carrying their immense potential into a new vessel.",
+     "rule_ids": [
+      "dormant-memories",
+      "reincarnation-exists"
+     ]
+    }
+   ],
+   "peoples": [
+    {
+     "id": "humans",
+     "name": "Humans",
+     "description": "",
+     "lifespan_years": 80,
+     "gifts": [],
+     "culture": "A highly stratified society driven by nobility and magical pedigree.",
+     "relations": [],
+     "path": ""
+    }
+   ],
+   "creatures": [],
+   "nature": [
+    "Magic currents, or ley lines, run underground and can drastically amplify spells cast nearby."
+   ],
+   "physics": "fun_first",
+   "force": {
+    "tier1_joules": 10000.0,
+    "per_tier": 10.0
+   },
+   "ladders": [
+    {
+     "id": "magic-circles",
+     "name": "Magic Circles",
+     "axis": "might",
+     "rungs": [
+      {
+       "name": "First Circle (Novice)",
+       "tier": 2,
+       "description": "",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 0,
+       "added_s": null
+      },
+      {
+       "name": "Second Circle (Apprentice)",
+       "tier": 4,
+       "description": "",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 0,
+       "added_s": null
+      },
+      {
+       "name": "Third Circle (Adept)",
+       "tier": 6,
+       "description": "",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 0,
+       "added_s": null
+      },
+      {
+       "name": "Fourth Circle (Mage)",
+       "tier": 8,
+       "description": "",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 0,
+       "added_s": null
+      },
+      {
+       "name": "Fifth Circle (Master)",
+       "tier": 10,
+       "description": "",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 0,
+       "added_s": null
+      },
+      {
+       "name": "Sixth Circle (Grandmaster)",
+       "tier": 12,
+       "description": "",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 0,
+       "added_s": null
+      },
+      {
+       "name": "Seventh Circle (Archmage)",
+       "tier": 14,
+       "description": "",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 0,
+       "added_s": null
+      }
+     ],
+     "standing_follows": true,
+     "sensing": true,
+     "rung_levels": 1,
+     "shrugs_off": 3,
+     "known_to_all": 5
+    }
+   ],
+   "calendar": {
+    "style": "day_count",
+    "time_of_day": "parts",
+    "epoch": null,
+    "start_second_of_day": 32400,
+    "months": [],
+    "start_year": 1,
+    "start_month": 1,
+    "start_day": 1,
+    "era": ""
+   },
+   "travel": {
+    "description": "Travel is primarily done by foot or magical carriage, with messages sent via messenger owls.",
+    "instant_messages": false
+   },
+   "medicine": {
+    "healing": "Common injuries can be knit with intermediate restoration magic.",
+    "resurrection": "none",
+    "resurrection_means": ""
+   },
+   "laws": [
+    {
+     "id": "academy-code",
+     "text": "Unsanctioned spellcasting outside of designated training rooms is punishable by suspension.",
+     "enforcer": "The Academy Disciplinary Committee",
+     "enforcer_faction_id": null,
+     "zeal": "high",
+     "corruptible": false
+    }
+   ],
+   "norms": [],
+   "several_partners": false,
+   "unions": "held",
+   "rules": [
+    {
+     "id": "magic-focus",
+     "text": "All spellcasting requires a focusing medium, such as a wand or a runic array, to prevent destructive backfires.",
+     "fixed": true,
+     "topic": "nature"
+    },
+    {
+     "id": "dormant-memories",
+     "text": "A reincarnated soul does not retain its memories immediately, but its innate magical resonance remains unmatched.",
+     "fixed": true,
+     "topic": "nature"
+    },
+    {
+     "id": "academy-dueling",
+     "text": "Magical dueling within school grounds is strictly regulated and lethal force is absolutely prohibited.",
+     "fixed": true,
+     "topic": "law"
+    },
+    {
+     "id": "magic-exists",
+     "text": "Elemental and runic magic: real, and everywhere.",
+     "fixed": true,
+     "topic": "existence"
+    },
+    {
+     "id": "reincarnation-exists",
+     "text": "Soul reincarnation: real, and hidden from most people.",
+     "fixed": true,
+     "topic": "existence"
+    }
+   ],
+   "mysteries": [
+    {
+     "id": "surging-power",
+     "question": "Why does my mana spark with immense, ancient power when I panic?",
+     "answer": "You are the physical reincarnation of Archmage Eleanor, the greatest mage in history, and her centuries-old seal on your soul is starting to dissolve.",
+     "clues": [
+      "Ancient runic symbols appearing on your skin when you cast.",
+      "An extreme compatibility with forgotten, long-forbidden spells.",
+      "Flashbacks of a great battle fought five hundred years ago."
+     ],
+     "thread_id": "unawakened-soul",
+     "solved": false
+    }
+   ]
+  },
+  "player_id": "player",
+  "characters": {
+   "player": {
+    "id": "player",
+    "name": "Lyra Sterling",
+    "aliases": [
+     "The Silent Scholar"
+    ],
+    "prominence": "key",
+    "description": "A quiet, unassuming student who keeps her head down to avoid attention.",
+    "appearance": "Messy, shoulder-length brown hair that falls over her nervous amber eyes, wearing an oversized, slightly worn academy cloak.",
+    "look_version": 1,
+    "age": 16,
+    "people_id": null,
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "classroom-3b",
+    "personal_offset_s": 0,
+    "memberships": [],
+    "sheet": {
+     "attributes": {
+      "strength": 2,
+      "speed": 2,
+      "toughness": 2,
+      "wits": 4,
+      "knowledge": 4,
+      "willpower": 5,
+      "charm": 3,
+      "nerve": 2,
+      "bearing": 2
+     },
+     "skills": [
+      {
+       "name": "Magical Theory",
+       "level": "expert",
+       "notes": "You have flawless knowledge of ancient runic diagrams and magic circles."
+      },
+      {
+       "name": "Practical Evocation",
+       "level": "novice",
+       "notes": "Your hands shake when under pressure, causing simple spells to fizzle."
+      }
+     ],
+     "traits": [
+      {
+       "name": "Extremely Shy",
+       "kind": "flaw",
+       "description": "When called upon in public, your anxiety spikes, lowering your confidence and coordination."
+      }
+     ],
+     "talents": [],
+     "powers": [
+      {
+       "id": "unstable-surge",
+       "name": "Anomalous Mana Surge",
+       "description": "Under moments of pure, desperate panic, your dormant soul bypasses your wand to unleash a shocking burst of raw magical energy.",
+       "strength": "overpowered",
+       "limits": [
+        "Only triggers when your health or sanity is directly threatened.",
+        "Highly destructive and impossible to direct precisely."
+       ],
+       "costs": [
+        {
+         "kind": "fatigue",
+         "text": "Leaves you utterly exhausted and barely able to walk immediately after."
+        }
+       ],
+       "secret": false,
+       "time": null,
+       "settings": {},
+       "ready_at_personal_s": null
+      }
+     ],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "introverted",
+        "bookish",
+        "anxious"
+       ],
+       "values": [
+        "peace",
+        "knowledge",
+        "quiet"
+       ],
+       "loves": [
+        "dusty old libraries",
+        "peaceful gardens"
+       ],
+       "fears": [
+        "public speaking",
+        "disappointing those who count on her"
+       ],
+       "wants": [],
+       "voice": ""
+      },
+      "attitudes": {}
+     },
+     "resources": {
+      "items": [
+       {
+        "id": "standard-copper-wand",
+        "name": "Standard Copper Wand",
+        "kind": "weapon",
+        "description": "A cheap, beginner-level wand that barely handles your unstable magic flow.",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       },
+       {
+        "id": "chipped-inkwell-and-quill",
+        "name": "Chipped Inkwell and Quill",
+        "kind": "gear",
+        "description": "Well-loved tools for writing notes and copying complex runes.",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       }
+      ],
+      "money": 15,
+      "currency": "silver stars",
+      "title": "",
+      "rank": "F-Class Student",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 2,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [
+      {
+       "ladder_id": "magic-circles",
+       "rung": 0,
+       "stage": "",
+       "shown_rung": null,
+       "yearly_s": null
+      }
+     ],
+     "rungs_heard": [
+      {
+       "ladder_id": "magic-circles",
+       "rung": 1,
+       "heard_s": 0,
+       "known_s": 0,
+       "known_from": "elara-vane"
+      },
+      {
+       "ladder_id": "magic-circles",
+       "rung": 3,
+       "heard_s": 0,
+       "known_s": 0,
+       "known_from": "professor-vance"
+      }
+     ],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": [
+      {
+       "text": "You were raised in a humble town and somehow passed the written academy entrance exam with a perfect score.",
+       "turn": 0
+      },
+      {
+       "text": "Since arriving, you have struggled to cast even the basic light spell during live demonstrations.",
+       "turn": 0
+      }
+     ]
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": 80,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   },
+   "professor-vance": {
+    "id": "professor-vance",
+    "name": "Professor Vance",
+    "aliases": [],
+    "prominence": "key",
+    "description": "A stern, middle-aged theorist who has little patience for clumsy casting.",
+    "appearance": "Sharp glasses, salt-and-pepper hair, and dark embroidered robes.",
+    "look_version": 1,
+    "age": 45,
+    "people_id": null,
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "classroom-3b",
+    "personal_offset_s": 0,
+    "memberships": [
+     {
+      "faction_id": "aetheria-faculty",
+      "rank": "Senior Professor",
+      "loyalty": 50
+     }
+    ],
+    "sheet": {
+     "attributes": {
+      "strength": 3,
+      "speed": 3,
+      "toughness": 3,
+      "wits": 3,
+      "knowledge": 4,
+      "willpower": 4,
+      "charm": 3,
+      "nerve": 3,
+      "bearing": 3
+     },
+     "skills": [],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "strict",
+        "methodical"
+       ],
+       "values": [
+        "discipline",
+        "academic rigor"
+       ],
+       "loves": [],
+       "fears": [],
+       "wants": [
+        "to maintain the high standards of the academy"
+       ],
+       "voice": ""
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 0,
+        "fear": 10,
+        "trust": 0,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 8,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [
+      {
+       "ladder_id": "magic-circles",
+       "rung": 3,
+       "stage": "",
+       "shown_rung": null,
+       "yearly_s": null
+      }
+     ],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": 0,
+    "near_s": null,
+    "met_s": null
+   },
+   "elara-vane": {
+    "id": "elara-vane",
+    "name": "Elara Vane",
+    "aliases": [],
+    "prominence": "key",
+    "description": "A prodigal noble student who prides herself on her perfect spell manipulation.",
+    "appearance": "Piercing blue eyes, pristine uniform, and a sleek mahogany wand.",
+    "look_version": 1,
+    "age": 16,
+    "people_id": null,
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "classroom-3b",
+    "personal_offset_s": 0,
+    "memberships": [
+     {
+      "faction_id": "noble-scions",
+      "rank": "Vanguard",
+      "loyalty": 50
+     }
+    ],
+    "sheet": {
+     "attributes": {
+      "strength": 3,
+      "speed": 3,
+      "toughness": 3,
+      "wits": 3,
+      "knowledge": 3,
+      "willpower": 3,
+      "charm": 3,
+      "nerve": 3,
+      "bearing": 3
+     },
+     "skills": [],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "arrogant",
+        "competitive"
+       ],
+       "values": [
+        "nobility",
+        "perfection"
+       ],
+       "loves": [],
+       "fears": [],
+       "wants": [
+        "to be recognized as the top student of the generation"
+       ],
+       "voice": ""
+      },
+      "attitudes": {
+       "player": {
+        "affinity": -15,
+        "fear": 0,
+        "trust": -10,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 4,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [
+      {
+       "ladder_id": "magic-circles",
+       "rung": 1,
+       "stage": "",
+       "shown_rung": null,
+       "yearly_s": null
+      }
+     ],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": 0,
+    "near_s": null,
+    "met_s": null
+   }
+  },
+  "factions": {
+   "aetheria-faculty": {
+    "id": "aetheria-faculty",
+    "name": "The Aetheria Faculty",
+    "kind": "academic council",
+    "description": "A prestigious council of veteran mages dedicated to instructing the next generation.",
+    "parent_id": null,
+    "status": "intact",
+    "status_history": [],
+    "activity": "active",
+    "leader_ids": [],
+    "goal": "",
+    "methods": "",
+    "strength": "",
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "threat": 0,
+    "relations": {},
+    "survivors": [],
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ]
+   },
+   "noble-scions": {
+    "id": "noble-scions",
+    "name": "The Noble Scions",
+    "kind": "student clique",
+    "description": "A snobbish guild of students from high-ranking magical lineages who dominate academy politics.",
+    "parent_id": null,
+    "status": "intact",
+    "status_history": [],
+    "activity": "active",
+    "leader_ids": [],
+    "goal": "",
+    "methods": "",
+    "strength": "",
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "threat": 0,
+    "relations": {},
+    "survivors": [],
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "places": {
+   "aetheria-academy": {
+    "id": "aetheria-academy",
+    "name": "Aetheria Academy",
+    "kind": "academy grounds",
+    "description": "A sprawling gothic campus of towering spires and floating library wings.",
+    "parent_id": null,
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "classroom-3b": {
+    "id": "classroom-3b",
+    "name": "Classroom 3-B",
+    "kind": "lecture hall",
+    "description": "An amphitheater-style classroom lined with wooden desks and chalkboards covered in runic formulas.",
+    "parent_id": "aetheria-academy",
+    "setting": "indoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "dormitory",
+      "travel_s": 720,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [
+     "player"
+    ],
+    "judged": []
+   },
+   "dormitory": {
+    "id": "dormitory",
+    "name": "Oak Hall Dormitory",
+    "kind": "living quarters",
+    "description": "The cozy, wood-paneled dormitory where students rest and study.",
+    "parent_id": "aetheria-academy",
+    "setting": "indoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "grand-library",
+      "travel_s": 1080,
+      "mode": "on foot"
+     },
+     {
+      "to_id": "classroom-3b",
+      "travel_s": 720,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "grand-library": {
+    "id": "grand-library",
+    "name": "Grand Library of Aetheria",
+    "kind": "library",
+    "description": "An endless labyrinth of magical texts, where glowing ancient scriptures float near the ceiling.",
+    "parent_id": "aetheria-academy",
+    "setting": "indoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "academy-gardens",
+      "travel_s": 360,
+      "mode": "on foot"
+     },
+     {
+      "to_id": "dormitory",
+      "travel_s": 1080,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "academy-gardens": {
+    "id": "academy-gardens",
+    "name": "The Whispering Gardens",
+    "kind": "gardens",
+    "description": "An outdoor sanctuary filled with mana-sensitive flora that glow softly in the evening.",
+    "parent_id": "aetheria-academy",
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "grand-library",
+      "travel_s": 360,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   }
+  },
+  "deeds": {},
+  "rumors": {},
+  "bonds": {},
+  "lives": {},
+  "aged_s": null,
+  "changes": {},
+  "strife_s": {},
+  "facts": {
+   "fact-1": {
+    "id": "fact-1",
+    "text": "You are considered a below-average student because you fumble during physical spell tests.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-2": {
+    "id": "fact-2",
+    "text": "The Midterm Arcane Exams are fast approaching, and failure means expulsion.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-3": {
+    "id": "fact-3",
+    "text": "You were once Eleanor the Sun-Bringer, the legendary Archmage who sealed the world's deep dark rifts before dying of old age.",
+    "kind": "secret",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [
+     "player"
+    ],
+    "known_by": [],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   }
+  },
+  "goals": {},
+  "leads": {},
+  "threads": {
+   "unawakened-soul": {
+    "id": "unawakened-soul",
+    "title": "The Anomalous Surges",
+    "kind": "mystery",
+    "stakes": "The truth behind your overwhelming, uncontrollable magic leaks.",
+    "involved_ids": [
+     "player",
+     "professor-vance"
+    ],
+    "clock_id": null,
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "status": "open",
+    "opened_turn": 0,
+    "last_active_turn": 0,
+    "taken_up_turn": null,
+    "closed_turn": null,
+    "arc": null,
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "clocks": {
+   "midterm-exams": {
+    "id": "midterm-exams",
+    "name": "The Midterm Arcane Exams",
+    "steps": [
+     "Written Spell-Theory Exam",
+     "Practical Mana-Control Assessment",
+     "One-on-One Practical Dueling Test",
+     "The Final Grade Disclosures"
+    ],
+    "filled": 0,
+    "advances_on": [],
+    "reverses_on": [],
+    "interval_s": 108000,
+    "next_step_s": 108000,
+    "owner_id": null,
+    "thread_id": null,
+    "status": "running",
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "pending_events": {
+   "event-1": {
+    "id": "event-1",
+    "kind": "world.clock_step",
+    "title": "The Midterm Arcane Exams: Written Spell-Theory Exam",
+    "due_s": 108000,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": {
+     "kind": "clock",
+     "ref_id": "midterm-exams",
+     "text": ""
+    },
+    "payload": {
+     "clock_id": "midterm-exams"
+    },
+    "seed": "story=play%2Fx-reborn/timeline=main/turn=1/world/schedule/event-1",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-2": {
+    "id": "event-2",
+    "kind": "world.old_age",
+    "title": "Your years run short",
+    "due_s": 1953797923,
+    "timeline_id": "main",
+    "needs_player": true,
+    "status": "pending",
+    "subject_ids": [
+     "player"
+    ],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "phase": "near",
+     "who": "player",
+     "span": 80,
+     "day_s": 2039360761
+    },
+    "seed": "story=play%2Fx-reborn/timeline=main/turn=1/world/schedule/event-2",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-3": {
+    "id": "event-3",
+    "kind": "world.tick",
+    "title": "The world moves on",
+    "due_s": 86400,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "last_s": 0,
+     "stride_s": 86400
+    },
+    "seed": "story=play%2Fx-reborn/timeline=main/turn=1/world/schedule/event-3",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   }
+  },
+  "transfers": [],
+  "time_effects": [],
+  "scene": {
+   "place_id": "classroom-3b",
+   "present_ids": [
+    "player",
+    "professor-vance",
+    "elara-vane"
+   ],
+   "positions": [
+    "You are sitting at your wooden desk in the middle row.",
+    "Professor Vance stands by the iron brazier at the front.",
+    "Elara Vane sits in the front row, watching you."
+   ],
+   "props": [
+    "standard-copper-wand",
+    "chipped-inkwell-and-quill"
+   ],
+   "ended_on": "Professor Vance gestures toward the cold iron brazier at the front of the classroom, waiting for you to stand.",
+   "encounter": null
+  },
+  "director": {
+   "turns_without_stakes": 0,
+   "low_stakes_streak": 0,
+   "last_action_key": null,
+   "last_event_turn": null,
+   "last_event_size": null,
+   "last_event_s": {},
+   "last_small_s": null,
+   "recent_moments": [],
+   "recent_clock": [
+    0
+   ],
+   "frequency_drift": 0.0,
+   "recent_sources": [],
+   "auto_pictures": 1,
+   "picture_credit": 1.1,
+   "pictured": [
+    "portrait:player",
+    "portrait:player:v1"
+   ],
+   "fight": null,
+   "deck_draws": 0,
+   "road_stops": 0
+  },
+  "summary": "A shy girl struggling with her studies at a prestigious magic academy is unaware that she is the physical reincarnation of history's most powerful mage. As her sealed, titanic powers begin to crack, she must survive the school's harsh exams and the dangerous attention of her rivals.",
+  "chapters": [],
+  "id_counters": {
+   "fact": 3,
+   "goal": 0,
+   "bond": 0,
+   "event": 3
+  },
+  "fallen": [],
+  "opening_due": false,
+  "misses_in_a_row": 0,
+  "openings": [],
+  "journey": null,
+  "untold": [
+   "thread:unawakened-soul"
+  ]
+ },
+ "scenes": [
+  {
+   "turn": 1,
+   "narration": "You sit nervously at your desk, clutching your weak copper training wand, as Professor Vance clears his throat to begin the practical assessment. Dust motes dance in the golden light cutting through the tall windows of Classroom 3-B, drifting lazily over chalkboards covered in dense runic formulas. Your oversized academy cloak feels suffocatingly warm, and your heart drums a frantic beat against your ribs.\n\nFrom the front row, Elara Vane tosses her head, her piercing blue eyes flicking back to look at you with cold amusement. She lightly taps her sleek mahogany wand against her palm, a spark of perfect blue spark dancing off its tip without a single drop of sweat. She knows, as everyone does, that you are the bottom of the class—the girl whose hands shake too much to light a simple candle.\n\n\"Silence,\" Professor Vance's voice cuts through the whispers, sharp and dry as old parchment. He adjusts his spectacles and unrolls a heavy scroll. \"Today we test the basic ignition rune. One by one, you will step up and light the brazier. Miss Sterling, since you require the most practice, you shall begin.\"\n\nAll eyes turn to you.",
+   "player_action": null
+  }
+ ],
+ "choices": [
+  "Step up, focus your mind, and try to cast safely.",
+  "Stutter an excuse to buy yourself a moment to breathe.",
+  "Examine the brazier's runes from afar to find a shortcut."
+ ],
+ "cost_usd": 0.1149375,
+ "draft": {
+  "premise": "A shy girl at a magic academy who is the reincarnation of the greatest mage in history, but she doesn't know it yet.",
+  "proposal": {
+   "world": {
+    "title": "Saga of the Silent Archmage",
+    "genre": "academic fantasy",
+    "tone": "wonder",
+    "era": "Aetherius Era: quill pens, magical carriages, steam-powered lamps, and runes",
+    "extraordinary": [
+     {
+      "id": "magic",
+      "kind": "elemental and runic magic",
+      "prevalence": "common",
+      "reach": "Mages of the high circles can manipulate weather and rewrite physical laws, while novices struggle to light a candle."
+     },
+     {
+      "id": "reincarnation",
+      "kind": "soul reincarnation",
+      "prevalence": "hidden",
+      "reach": "The souls of truly legendary beings can cross the boundary of death, carrying their immense potential into a new vessel."
+     }
+    ],
+    "rules": [
+     {
+      "id": "magic-focus",
+      "text": "All spellcasting requires a focusing medium, such as a wand or a runic array, to prevent destructive backfires.",
+      "fixed": true,
+      "topic": "nature",
+      "about": [
+       "magic"
+      ]
+     },
+     {
+      "id": "dormant-memories",
+      "text": "A reincarnated soul does not retain its memories immediately, but its innate magical resonance remains unmatched.",
+      "fixed": true,
+      "topic": "nature",
+      "about": [
+       "reincarnation",
+       "magic"
+      ]
+     },
+     {
+      "id": "academy-dueling",
+      "text": "Magical dueling within school grounds is strictly regulated and lethal force is absolutely prohibited.",
+      "fixed": true,
+      "topic": "law",
+      "about": [
+       "magic"
+      ]
+     }
+    ],
+    "dropped_rule_ids": [],
+    "peoples": [
+     {
+      "id": "humans",
+      "name": "Humans",
+      "description": "",
+      "lifespan_years": 80,
+      "gifts": [],
+      "culture": "A highly stratified society driven by nobility and magical pedigree.",
+      "relations": [],
+      "path": ""
+     }
+    ],
+    "creatures": [],
+    "nature": [
+     "Magic currents, or ley lines, run underground and can drastically amplify spells cast nearby."
+    ],
+    "ladders": [
+     {
+      "id": "magic-circles",
+      "name": "Magic Circles",
+      "axis": "might",
+      "rungs": [
+       {
+        "name": "First Circle (Novice)",
+        "description": "",
+        "lifespan_years": null
+       },
+       {
+        "name": "Second Circle (Apprentice)",
+        "description": "",
+        "lifespan_years": null
+       },
+       {
+        "name": "Third Circle (Adept)",
+        "description": "",
+        "lifespan_years": null
+       },
+       {
+        "name": "Fourth Circle (Mage)",
+        "description": "",
+        "lifespan_years": null
+       },
+       {
+        "name": "Fifth Circle (Master)",
+        "description": "",
+        "lifespan_years": null
+       },
+       {
+        "name": "Sixth Circle (Grandmaster)",
+        "description": "",
+        "lifespan_years": null
+       },
+       {
+        "name": "Seventh Circle (Archmage)",
+        "description": "",
+        "lifespan_years": null
+       }
+      ],
+      "known_to_all": 5,
+      "sensing": true,
+      "standing_follows": true,
+      "lengthens_life": false
+     }
+    ],
+    "calendar": {
+     "style": "day_count",
+     "clock_time": false,
+     "epoch": "",
+     "start_hour": 9,
+     "months": [],
+     "start_year": 1,
+     "start_month": 1,
+     "start_day": 1,
+     "era": "Aetherius"
+    },
+    "travel": {
+     "description": "Travel is primarily done by foot or magical carriage, with messages sent via messenger owls.",
+     "instant_messages": false
+    },
+    "medicine": {
+     "healing": "Common injuries can be knit with intermediate restoration magic.",
+     "resurrection": "none",
+     "resurrection_means": ""
+    },
+    "laws": [
+     {
+      "id": "academy-code",
+      "text": "Unsanctioned spellcasting outside of designated training rooms is punishable by suspension.",
+      "enforcer": "The Academy Disciplinary Committee",
+      "enforcer_faction_id": "",
+      "zeal": "high",
+      "corruptible": false
+     }
+    ],
+    "norms": [],
+    "several_partners": false,
+    "unions": "held",
+    "places": [
+     {
+      "id": "aetheria-academy",
+      "name": "Aetheria Academy",
+      "kind": "academy grounds",
+      "description": "A sprawling gothic campus of towering spires and floating library wings.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "classroom-3b",
+      "name": "Classroom 3-B",
+      "kind": "lecture hall",
+      "description": "An amphitheater-style classroom lined with wooden desks and chalkboards covered in runic formulas.",
+      "parent_id": "aetheria-academy",
+      "setting": "indoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "dormitory",
+        "travel_hours": 0.2,
+        "mode": "on foot"
+       }
+      ]
+     },
+     {
+      "id": "dormitory",
+      "name": "Oak Hall Dormitory",
+      "kind": "living quarters",
+      "description": "The cozy, wood-paneled dormitory where students rest and study.",
+      "parent_id": "aetheria-academy",
+      "setting": "indoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "grand-library",
+        "travel_hours": 0.3,
+        "mode": "on foot"
+       }
+      ]
+     },
+     {
+      "id": "grand-library",
+      "name": "Grand Library of Aetheria",
+      "kind": "library",
+      "description": "An endless labyrinth of magical texts, where glowing ancient scriptures float near the ceiling.",
+      "parent_id": "aetheria-academy",
+      "setting": "indoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "academy-gardens",
+        "travel_hours": 0.1,
+        "mode": "on foot"
+       }
+      ]
+     },
+     {
+      "id": "academy-gardens",
+      "name": "The Whispering Gardens",
+      "kind": "gardens",
+      "description": "An outdoor sanctuary filled with mana-sensitive flora that glow softly in the evening.",
+      "parent_id": "aetheria-academy",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     }
+    ],
+    "factions": [
+     {
+      "id": "aetheria-faculty",
+      "name": "The Aetheria Faculty",
+      "kind": "academic council",
+      "description": "A prestigious council of veteran mages dedicated to instructing the next generation.",
+      "parent_id": "",
+      "leader_ids": [],
+      "goal": "",
+      "methods": "",
+      "strength": "",
+      "relations": [],
+      "secrets": [],
+      "known_to_player": true
+     },
+     {
+      "id": "noble-scions",
+      "name": "The Noble Scions",
+      "kind": "student clique",
+      "description": "A snobbish guild of students from high-ranking magical lineages who dominate academy politics.",
+      "parent_id": "",
+      "leader_ids": [],
+      "goal": "",
+      "methods": "",
+      "strength": "",
+      "relations": [],
+      "secrets": [],
+      "known_to_player": true
+     }
+    ],
+    "npcs": [
+     {
+      "id": "professor-vance",
+      "name": "Professor Vance",
+      "aliases": [],
+      "description": "A stern, middle-aged theorist who has little patience for clumsy casting.",
+      "appearance": "Sharp glasses, salt-and-pepper hair, and dark embroidered robes.",
+      "age": 45,
+      "people_id": "",
+      "location_id": "classroom-3b",
+      "memberships": [
+       {
+        "faction_id": "aetheria-faculty",
+        "rank": "Senior Professor",
+        "loyalty": 50
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "strict",
+        "methodical"
+       ],
+       "values": [
+        "discipline",
+        "academic rigor"
+       ],
+       "loves": [],
+       "fears": [],
+       "wants": [
+        "to maintain the high standards of the academy"
+       ],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 3,
+       "speed": 3,
+       "toughness": 3,
+       "wits": 3,
+       "knowledge": 4,
+       "willpower": 4,
+       "charm": 3,
+       "nerve": 3,
+       "bearing": 3
+      },
+      "skills": [],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [
+       {
+        "ladder_id": "magic-circles",
+        "rung": "Fourth Circle (Mage)",
+        "stage": ""
+       }
+      ],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 0,
+       "fear": 10,
+       "trust": 0,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "met"
+     },
+     {
+      "id": "elara-vane",
+      "name": "Elara Vane",
+      "aliases": [],
+      "description": "A prodigal noble student who prides herself on her perfect spell manipulation.",
+      "appearance": "Piercing blue eyes, pristine uniform, and a sleek mahogany wand.",
+      "age": 16,
+      "people_id": "",
+      "location_id": "classroom-3b",
+      "memberships": [
+       {
+        "faction_id": "noble-scions",
+        "rank": "Vanguard",
+        "loyalty": 50
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "arrogant",
+        "competitive"
+       ],
+       "values": [
+        "nobility",
+        "perfection"
+       ],
+       "loves": [],
+       "fears": [],
+       "wants": [
+        "to be recognized as the top student of the generation"
+       ],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 3,
+       "speed": 3,
+       "toughness": 3,
+       "wits": 3,
+       "knowledge": 3,
+       "willpower": 3,
+       "charm": 3,
+       "nerve": 3,
+       "bearing": 3
+      },
+      "skills": [],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [
+       {
+        "ladder_id": "magic-circles",
+        "rung": "Second Circle (Apprentice)",
+        "stage": ""
+       }
+      ],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": -15,
+       "fear": 0,
+       "trust": -10,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "met"
+     }
+    ],
+    "clocks": [
+     {
+      "id": "midterm-exams",
+      "name": "The Midterm Arcane Exams",
+      "steps": [
+       "Written Spell-Theory Exam",
+       "Practical Mana-Control Assessment",
+       "One-on-One Practical Dueling Test",
+       "The Final Grade Disclosures"
+      ],
+      "step_every_hours": 30.0,
+      "owner_id": "",
+      "thread_id": "",
+      "known_to_player": true
+     }
+    ],
+    "threads": [
+     {
+      "id": "unawakened-soul",
+      "title": "The Anomalous Surges",
+      "kind": "mystery",
+      "stakes": "The truth behind your overwhelming, uncontrollable magic leaks.",
+      "involved_ids": [
+       "player",
+       "professor-vance"
+      ],
+      "clock_id": "",
+      "known_to_player": true
+     }
+    ],
+    "mysteries": [
+     {
+      "id": "surging-power",
+      "question": "Why does my mana spark with immense, ancient power when I panic?",
+      "answer": "You are the physical reincarnation of Archmage Eleanor, the greatest mage in history, and her centuries-old seal on your soul is starting to dissolve.",
+      "clues": [
+       "Ancient runic symbols appearing on your skin when you cast.",
+       "An extreme compatibility with forgotten, long-forbidden spells.",
+       "Flashbacks of a great battle fought five hundred years ago."
+      ],
+      "thread_id": "unawakened-soul",
+      "known_to_player": true
+     }
+    ],
+    "known_facts": [
+     "You are considered a below-average student because you fumble during physical spell tests.",
+     "The Midterm Arcane Exams are fast approaching, and failure means expulsion."
+    ],
+    "opening": {
+     "place_id": "classroom-3b",
+     "present_ids": [
+      "professor-vance",
+      "elara-vane"
+     ],
+     "positions": [],
+     "props": [],
+     "situation": "You sit nervously at your desk, clutching your weak copper training wand, as Professor Vance clears his throat to begin the practical assessment."
+    },
+    "summary": "A shy girl struggling with her studies at a prestigious magic academy is unaware that she is the physical reincarnation of history's most powerful mage. As her sealed, titanic powers begin to crack, she must survive the school's harsh exams and the dangerous attention of her rivals."
+   },
+   "character": {
+    "name": "Lyra Sterling",
+    "aliases": [
+     "The Silent Scholar"
+    ],
+    "age": 16,
+    "lifespan_years": 80,
+    "people_id": "",
+    "description": "A quiet, unassuming student who keeps her head down to avoid attention.",
+    "appearance": "Messy, shoulder-length brown hair that falls over her nervous amber eyes, wearing an oversized, slightly worn academy cloak.",
+    "location_id": "classroom-3b",
+    "attributes": {
+     "strength": 2,
+     "speed": 2,
+     "toughness": 2,
+     "wits": 4,
+     "knowledge": 4,
+     "willpower": 5,
+     "charm": 3,
+     "nerve": 2,
+     "bearing": 2
+    },
+    "skills": [
+     {
+      "name": "Magical Theory",
+      "level": "expert",
+      "notes": "You have flawless knowledge of ancient runic diagrams and magic circles."
+     },
+     {
+      "name": "Practical Evocation",
+      "level": "novice",
+      "notes": "Your hands shake when under pressure, causing simple spells to fizzle."
+     }
+    ],
+    "traits": [
+     {
+      "name": "Extremely Shy",
+      "kind": "flaw",
+      "description": "When called upon in public, your anxiety spikes, lowering your confidence and coordination."
+     }
+    ],
+    "talents": [],
+    "powers": [
+     {
+      "id": "unstable-surge",
+      "name": "Anomalous Mana Surge",
+      "description": "Under moments of pure, desperate panic, your dormant soul bypasses your wand to unleash a shocking burst of raw magical energy.",
+      "kind_id": "magic",
+      "gift": true,
+      "strength": "overpowered",
+      "limits": [
+       "Only triggers when your health or sanity is directly threatened.",
+       "Highly destructive and impossible to direct precisely."
+      ],
+      "costs": [
+       {
+        "kind": "fatigue",
+        "text": "Leaves you utterly exhausted and barely able to walk immediately after."
+       }
+      ],
+      "secret": false,
+      "time": null
+     }
+    ],
+    "techniques": [],
+    "temperament": {
+     "traits": [
+      "introverted",
+      "bookish",
+      "anxious"
+     ],
+     "values": [
+      "peace",
+      "knowledge",
+      "quiet"
+     ],
+     "loves": [
+      "dusty old libraries",
+      "peaceful gardens"
+     ],
+     "fears": [
+      "public speaking",
+      "disappointing those who count on her"
+     ],
+     "wants": [],
+     "voice": ""
+    },
+    "items": [
+     {
+      "name": "Standard Copper Wand",
+      "kind": "weapon",
+      "description": "A cheap, beginner-level wand that barely handles your unstable magic flow.",
+      "quantity": 1,
+      "carried": true
+     },
+     {
+      "name": "Chipped Inkwell and Quill",
+      "kind": "gear",
+      "description": "Well-loved tools for writing notes and copying complex runes.",
+      "quantity": 1,
+      "carried": true
+     }
+    ],
+    "money": 15,
+    "currency": "silver stars",
+    "title": "",
+    "rank": "F-Class Student",
+    "family_name": "",
+    "connections": [],
+    "parent_ids": [],
+    "memberships": [
+     {
+      "faction_id": "aetheria-academy",
+      "rank": "First-Year Student",
+      "loyalty": 50
+     }
+    ],
+    "ladders": [
+     {
+      "ladder_id": "magic-circles",
+      "rung": "First Circle (Novice)",
+      "stage": ""
+     }
+    ],
+    "axes": {
+     "might": 1,
+     "influence": 1,
+     "wealth": 1,
+     "knowledge": 1,
+     "stealth": 1
+    },
+    "reserves": [],
+    "goals": [],
+    "backstory": [
+     "You were raised in a humble town and somehow passed the written academy entrance exam with a perfect score.",
+     "Since arriving, you have struggled to cast even the basic light spell during live demonstrations."
+    ],
+    "hidden_past": [
+     "You were once Eleanor the Sun-Bringer, the legendary Archmage who sealed the world's deep dark rifts before dying of old age."
+    ]
+   }
+  },
+  "rating": "teen",
+  "premise_id": null,
+  "physics": "fun_first",
+  "gift": null,
+  "released_rules": [],
+  "language": "en",
+  "told": []
+ }
+}

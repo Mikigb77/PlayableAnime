@@ -1,0 +1,1658 @@
+{
+ "premise": "Sóc un pescador vell de Cadaqués, de setanta-vuit anys. Un matí trobo una sirena ferida a la xarxa.",
+ "language": "ca",
+ "rating": "teen",
+ "settings": {
+  "narration_length": "medium",
+  "tone": null,
+  "difficulty": "balanced",
+  "event_frequency": "normal",
+  "images": "key_moments",
+  "suggestions": true,
+  "language": "ca",
+  "accent": null
+ },
+ "seed": "play/x-pescador",
+ "state": {
+  "schema_version": 1,
+  "turn": 1,
+  "timeline_id": "main",
+  "world_s": 0,
+  "bible": {
+   "title": "El Secret de la Mar de Cadaqués",
+   "genre": "realisme màgic mariner",
+   "tone": "melancòlic i misteriós",
+   "era": "Cadaqués, 1925: barques de pesca de fusta, llums de petroli i camins de carro.",
+   "extraordinary": [
+    {
+     "id": "sirenes",
+     "kind": "sirenes i criatures de la mar",
+     "prevalence": "hidden",
+     "reach": "La màgia de les sirenes pot calmar les tempestes i curar ferides, però també pot embruixar la ment dels humans.",
+     "rule_ids": [
+      "sirenes-amagades",
+      "el-cant-del-mar",
+      "sirenes-exists"
+     ]
+    }
+   ],
+   "peoples": [
+    {
+     "id": "humans",
+     "name": "Humans",
+     "description": "",
+     "lifespan_years": 80,
+     "gifts": [],
+     "culture": "Gent de mar treballadora, supersticiosa i molt lligada a les tradicions locals de Cadaqués.",
+     "relations": [],
+     "path": ""
+    },
+    {
+     "id": "sirenes-poble",
+     "name": "Sirenes",
+     "description": "",
+     "lifespan_years": 300,
+     "gifts": [],
+     "culture": "Criatures antigues de la mar que es comuniquen amb cants i protegeixen els secrets de l'abisme.",
+     "relations": [],
+     "path": ""
+    }
+   ],
+   "creatures": [],
+   "nature": [
+    "La mar de Cadaqués és traïdora i amaga corrents profunds i coves submarines desconegudes pels humans."
+   ],
+   "physics": "fun_first",
+   "force": {
+    "tier1_joules": 10000.0,
+    "per_tier": 10.0
+   },
+   "ladders": [],
+   "calendar": {
+    "style": "day_count",
+    "time_of_day": "parts",
+    "epoch": null,
+    "start_second_of_day": 21600,
+    "months": [],
+    "start_year": 1,
+    "start_month": 1,
+    "start_day": 1,
+    "era": ""
+   },
+   "travel": {
+    "description": "El transport es fa principalment a peu, en barca de vela o rem, o en carro pels camins pedregosos del Cap de Creus.",
+    "instant_messages": false
+   },
+   "medicine": {
+    "healing": "Medicina tradicional de poble, herbes remeieres i el metge local per a casos greus.",
+    "resurrection": "none",
+    "resurrection_means": ""
+   },
+   "laws": [
+    {
+     "id": "llei-pesca",
+     "text": "Totes les captures inusuals han de ser reportades a la Confraria de Pescadors i a les autoritats.",
+     "enforcer": "La Guàrdia Civil i el president de la Confraria",
+     "enforcer_faction_id": null,
+     "zeal": "medium",
+     "corruptible": true
+    }
+   ],
+   "norms": [
+    "La gent de Cadaqués considera que qualsevol monstre marí és un presagi de desgràcia o una creació del diable."
+   ],
+   "several_partners": false,
+   "unions": "for_life",
+   "rules": [
+    {
+     "id": "sirenes-amagades",
+     "text": "Les sirenes viuen en secret a les profunditats de la mar i eviten qualsevol contacte amb el món dels humans.",
+     "fixed": true,
+     "topic": "peoples"
+    },
+    {
+     "id": "el-cant-del-mar",
+     "text": "La sang i el cant d'una sirena tenen propietats curatives extraordinàries si es tracten amb respecte.",
+     "fixed": false,
+     "topic": "nature"
+    },
+    {
+     "id": "sirenes-exists",
+     "text": "Sirenes i criatures de la mar: existeix, i gairebé ningú no ho sap.",
+     "fixed": true,
+     "topic": "existence"
+    }
+   ],
+   "mysteries": [
+    {
+     "id": "origen-ferida",
+     "question": "Qui o què ha causat la ferida profunda a la Marina?",
+     "answer": "La ferida va ser causada per l'arpó de ferro d'un iot de luxe d'un col·leccionista ric de Barcelona que busca criatures estranyes.",
+     "clues": [
+      "Un tros de metall negre estrany i polit clavat prop de la ferida.",
+      "El rumor d'un gran iot blanc que ha estat navegant a prop del Cap de Creus aquests dies."
+     ],
+     "thread_id": "salvar-la",
+     "solved": false
+    }
+   ]
+  },
+  "player_id": "player",
+  "characters": {
+   "player": {
+    "id": "player",
+    "name": "Joan",
+    "aliases": [],
+    "prominence": "key",
+    "description": "Un pescador vell, de mans calloses i mirada cansada però sàvia, que ha passat tota la seva vida lligat a la mar.",
+    "appearance": "Home gran d'estatura mitjana, cabells blancs esbullats, barba de pocs dies també blanca, rostre profundament arrugat pel sol i el vent marí. Vesteix un jersei de llana gruixuda de color blau fosc i uns pantalons de treball gastats.",
+    "look_version": 1,
+    "age": 78,
+    "people_id": null,
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "mar-cadaques",
+    "personal_offset_s": 0,
+    "memberships": [
+     {
+      "faction_id": "confraria-cadaques",
+      "rank": "pescador veterà",
+      "loyalty": 50
+     }
+    ],
+    "sheet": {
+     "attributes": {
+      "strength": 2,
+      "speed": 2,
+      "toughness": 3,
+      "wits": 4,
+      "knowledge": 3,
+      "willpower": 4,
+      "charm": 3,
+      "nerve": 4,
+      "bearing": 3
+     },
+     "skills": [
+      {
+       "name": "Pesca tradicional",
+       "level": "expert",
+       "notes": "Coneixes els millors llocs per pescar i com llançar la xarxa fins i tot amb mala mar."
+      },
+      {
+       "name": "Navegació",
+       "level": "skilled",
+       "notes": "Saps governar la teva petita barca de fusta sota qualsevol tempesta."
+      },
+      {
+       "name": "Supervivència marina",
+       "level": "fair",
+       "notes": "Saps com curar petites ferides de peix i sobreviure al fred."
+      }
+     ],
+     "traits": [
+      {
+       "name": "Cames de mar",
+       "kind": "gift",
+       "description": "Tens un equilibri perfecte a sobre de qualsevol embarcació, sense importar com de brava estigui la mar."
+      },
+      {
+       "name": "Fatiga dels anys",
+       "kind": "flaw",
+       "description": "El teu cos de setanta-vuit anys es cansa ràpidament sota esforços físics intensos."
+      }
+     ],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "cautelós",
+        "compassiu",
+        "solitari"
+       ],
+       "values": [
+        "el respecte a la mar",
+        "la discreció",
+        "la independència"
+       ],
+       "loves": [
+        "el silenci de l'alba",
+        "el tabac de pipa",
+        "el soroll de les ones"
+       ],
+       "fears": [
+        "morir lluny de la mar",
+        "fer mal a un ésser indefens"
+       ],
+       "wants": [],
+       "voice": ""
+      },
+      "attitudes": {}
+     },
+     "resources": {
+      "items": [
+       {
+        "id": "ganivet-de-mariner",
+        "name": "Ganivet de mariner",
+        "kind": "weapon",
+        "description": "Un ganivet vell però ben esmolat, essencial per tallar cordes i netejar peix.",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       },
+       {
+        "id": "pipa-de-fusta",
+        "name": "Pipa de fusta",
+        "kind": "gear",
+        "description": "Una pipa de fusta fosca amb una mica de tabac sec.",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       }
+      ],
+      "money": 45,
+      "currency": "pessetes",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": [
+       {
+        "name": "Mateu",
+        "kind": "other",
+        "character_id": "mateu",
+        "note": "El teu company de pesca de tota la vida, encara que de vegades és massa xerraire."
+       }
+      ]
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": [
+      {
+       "text": "Has viscut a Cadaqués des que vas néixer, treballant a la mar des dels deu anys.",
+       "turn": 0
+      },
+      {
+       "text": "Vas perdre la teva dona fa molts anys i des d'aleshores vius sol a la teva petita cabana de la platja.",
+       "turn": 0
+      },
+      {
+       "text": "Coneixes totes les llegendes sobre els secrets de la mar, però mai hauries pensat que una d'elles fos real.",
+       "turn": 0
+      }
+     ]
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": 80,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   },
+   "marina": {
+    "id": "marina",
+    "name": "Marina",
+    "aliases": [],
+    "prominence": "key",
+    "description": "Una jove sirena amb una cua d'escates platejades i uns ulls profunds com l'oceà. Està ferida i espantada.",
+    "appearance": "Cabells llargs de color daurat pàl·lid, pell molt blanca, braços esvelts i una ferida sagnant al costat esquerre. Cua de peix platejada.",
+    "look_version": 1,
+    "age": 25,
+    "people_id": null,
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "mar-cadaques",
+    "personal_offset_s": 0,
+    "memberships": [],
+    "sheet": {
+     "attributes": {
+      "strength": 2,
+      "speed": 4,
+      "toughness": 2,
+      "wits": 3,
+      "knowledge": 3,
+      "willpower": 4,
+      "charm": 5,
+      "nerve": 3,
+      "bearing": 4
+     },
+     "skills": [
+      {
+       "name": "Nedar",
+       "level": "master",
+       "notes": ""
+      },
+      {
+       "name": "Cant de sirena",
+       "level": "expert",
+       "notes": ""
+      }
+     ],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "desconfiada",
+        "orgullosa",
+        "agraïda"
+       ],
+       "values": [
+        "la llibertat",
+        "la mar",
+        "la veritat"
+       ],
+       "loves": [],
+       "fears": [],
+       "wants": [
+        "Curar-se i tornar a les profunditats de la mar sense ser capturada."
+       ],
+       "voice": ""
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 10,
+        "fear": 40,
+        "trust": 10,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": 0,
+    "near_s": null,
+    "met_s": null
+   },
+   "mateu": {
+    "id": "mateu",
+    "name": "Mateu",
+    "aliases": [],
+    "prominence": "key",
+    "description": "Un pescador vell de Cadaqués, amic de la infància de Joan, però una mica envejós i xerraire.",
+    "appearance": "Home fort, geperut pels anys, rostre cremat pel sol i la sal, amb una gorra de llana sempre posada.",
+    "look_version": 1,
+    "age": 75,
+    "people_id": null,
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "cadaques",
+    "personal_offset_s": 0,
+    "memberships": [],
+    "sheet": {
+     "attributes": {
+      "strength": 3,
+      "speed": 2,
+      "toughness": 3,
+      "wits": 3,
+      "knowledge": 3,
+      "willpower": 2,
+      "charm": 2,
+      "nerve": 2,
+      "bearing": 2
+     },
+     "skills": [
+      {
+       "name": "Pesca",
+       "level": "skilled",
+       "notes": ""
+      }
+     ],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "curiós",
+        "supersticiós",
+        "avar"
+       ],
+       "values": [
+        "els diners",
+        "la bona pesca",
+        "l'amistat"
+       ],
+       "loves": [],
+       "fears": [],
+       "wants": [
+        "Trobar una gran captura que el jubili amb riqueses."
+       ],
+       "voice": ""
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 30,
+        "fear": 0,
+        "trust": 40,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   }
+  },
+  "factions": {
+   "confraria-cadaques": {
+    "id": "confraria-cadaques",
+    "name": "Confraria de Pescadors de Cadaqués",
+    "kind": "sect",
+    "description": "El gremi local que regula la pesca i protegeix els interessos dels mariners del poble.",
+    "parent_id": null,
+    "status": "intact",
+    "status_history": [],
+    "activity": "active",
+    "leader_ids": [],
+    "goal": "Mantenir l'ordre a la mar i assegurar que ningú trenqui les regles de pesca tradicionals.",
+    "methods": "",
+    "strength": "Molta influència sobre els vilatans i accés a totes les barques del port.",
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "threat": 0,
+    "relations": {},
+    "survivors": [],
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ]
+   },
+   "guardia-civil": {
+    "id": "guardia-civil",
+    "name": "Guàrdia Civil",
+    "kind": "court",
+    "description": "La força de la llei de l'Estat, poc acostumada als secrets de la gent de mar i molt estricta.",
+    "parent_id": null,
+    "status": "intact",
+    "status_history": [],
+    "activity": "active",
+    "leader_ids": [],
+    "goal": "Mantenir el control fiscal, evitar el contraban i fer complir les lleis estatals.",
+    "methods": "",
+    "strength": "Armes de foc, autoritat oficial i cel·les a la caserna.",
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "threat": 0,
+    "relations": {},
+    "survivors": [],
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "places": {
+   "cadaques": {
+    "id": "cadaques",
+    "name": "Cadaqués",
+    "kind": "village",
+    "description": "Un aïllat i bell poble de pescadors de cases blanques, encerclat per les muntanyes i la mar.",
+    "parent_id": null,
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "portlligat",
+      "travel_s": 1800,
+      "mode": "a peu"
+     },
+     {
+      "to_id": "mar-cadaques",
+      "travel_s": 3600,
+      "mode": "en barca"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "casa-joan": {
+    "id": "casa-joan",
+    "name": "Casa d'en Joan",
+    "kind": "building",
+    "description": "Una casa petita i humil vora la platja, plena de xarxes velles, olor de sal i records d'una vida a la mar.",
+    "parent_id": "cadaques",
+    "setting": "indoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "portlligat": {
+    "id": "portlligat",
+    "name": "Portlligat",
+    "kind": "wilds",
+    "description": "Una cala tranquil·la i arrecerada, ideal per amagar coses lluny de les mirades curioses del poble.",
+    "parent_id": null,
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "cadaques",
+      "travel_s": 1800,
+      "mode": "a peu"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "mar-cadaques": {
+    "id": "mar-cadaques",
+    "name": "La Mar Ampla",
+    "kind": "wilds",
+    "description": "Les aigües profundes i blaves del Cap de Creus, on la tramuntana bufa amb força.",
+    "parent_id": null,
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "cadaques",
+      "travel_s": 3600,
+      "mode": "en barca"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [
+     "player"
+    ],
+    "judged": []
+   }
+  },
+  "deeds": {},
+  "rumors": {},
+  "bonds": {},
+  "lives": {},
+  "aged_s": null,
+  "changes": {},
+  "strife_s": {},
+  "facts": {
+   "fact-1": {
+    "id": "fact-1",
+    "text": "Ets un pescador vell que coneix cada racó d'aquesta mar.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-2": {
+    "id": "fact-2",
+    "text": "La gent del poble no creu en sirenes, les consideren només contes per a nens o dimonis de la mar.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-3": {
+    "id": "fact-3",
+    "text": "Si algú descobreix la sirena, la seva vida correrà un perill immens.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   }
+  },
+  "goals": {},
+  "leads": {},
+  "threads": {
+   "salvar-la": {
+    "id": "salvar-la",
+    "title": "Salvar la sirena ferida",
+    "kind": "quest",
+    "stakes": "Si aconsegueixes curar-la i tornar-la a l'aigua, salvaràs una criatura llegendària; si falles, podria morir o ser capturada per a ser exposada com un monstre.",
+    "involved_ids": [
+     "player",
+     "marina",
+     "mateu"
+    ],
+    "clock_id": "ferida-marina",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "status": "open",
+    "opened_turn": 0,
+    "last_active_turn": 0,
+    "taken_up_turn": null,
+    "closed_turn": null,
+    "arc": null,
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "clocks": {
+   "ferida-marina": {
+    "id": "ferida-marina",
+    "name": "La infecció de la Marina",
+    "steps": [
+     "La sirena perd força a causa de la ferida oberta i la falta d'aigua salada neta.",
+     "La ferida comença a infectar-se; necessita medina o cures urgents.",
+     "Marina entra en un estat de deliri i comença a cantar inconscientment.",
+     "Marina mor a causa de les ferides o la debilitat extrema."
+    ],
+    "filled": 0,
+    "advances_on": [],
+    "reverses_on": [],
+    "interval_s": 86400,
+    "next_step_s": 86400,
+    "owner_id": null,
+    "thread_id": "salvar-la",
+    "status": "running",
+    "known_by": [
+     "player"
+    ]
+   },
+   "sospita-poble": {
+    "id": "sospita-poble",
+    "name": "Les sospites del poble",
+    "steps": [
+     "En Mateu nota que en Joan actua de manera estranya i no ven les seves captures habituals.",
+     "Es comença a rumorejar al port que en Joan amaga alguna cosa a la seva cabana.",
+     "La Guàrdia Civil decideix fer una inspecció rutinària a la casa de platja de Joan."
+    ],
+    "filled": 0,
+    "advances_on": [],
+    "reverses_on": [],
+    "interval_s": 129600,
+    "next_step_s": 129600,
+    "owner_id": null,
+    "thread_id": null,
+    "status": "running",
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "pending_events": {
+   "event-1": {
+    "id": "event-1",
+    "kind": "world.clock_step",
+    "title": "La infecció de la Marina: La sirena perd força a causa de la ferida oberta i la falta d'aigua salada neta.",
+    "due_s": 86400,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": {
+     "kind": "clock",
+     "ref_id": "ferida-marina",
+     "text": ""
+    },
+    "payload": {
+     "clock_id": "ferida-marina"
+    },
+    "seed": "story=play%2Fx-pescador/timeline=main/turn=1/world/schedule/event-1",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-2": {
+    "id": "event-2",
+    "kind": "world.clock_step",
+    "title": "Les sospites del poble: En Mateu nota que en Joan actua de manera estranya i no ven les seves captures habituals.",
+    "due_s": 129600,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": {
+     "kind": "clock",
+     "ref_id": "sospita-poble",
+     "text": ""
+    },
+    "payload": {
+     "clock_id": "sospita-poble"
+    },
+    "seed": "story=play%2Fx-pescador/timeline=main/turn=1/world/schedule/event-2",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-3": {
+    "id": "event-3",
+    "kind": "world.old_age",
+    "title": "Your years run short",
+    "due_s": 86400,
+    "timeline_id": "main",
+    "needs_player": true,
+    "status": "pending",
+    "subject_ids": [
+     "player"
+    ],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "phase": "near",
+     "who": "player",
+     "span": 80,
+     "day_s": 21040825
+    },
+    "seed": "story=play%2Fx-pescador/timeline=main/turn=1/world/schedule/event-3",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-4": {
+    "id": "event-4",
+    "kind": "world.tick",
+    "title": "The world moves on",
+    "due_s": 86400,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "last_s": 0,
+     "stride_s": 86400
+    },
+    "seed": "story=play%2Fx-pescador/timeline=main/turn=1/world/schedule/event-4",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   }
+  },
+  "transfers": [],
+  "time_effects": [],
+  "scene": {
+   "place_id": "mar-cadaques",
+   "present_ids": [
+    "player",
+    "marina"
+   ],
+   "positions": [
+    "En Joan és a la seva barca de fusta, subjectant les xarxes.",
+    "La Marina està atrapada entre les cordes de la xarxa, sagnant i mirant-te amb terror."
+   ],
+   "props": [
+    "xarxa de pesca",
+    "ganivet de mariner",
+    "ferida oberta"
+   ],
+   "ended_on": "La Marina et mira amb terror des de la xarxa sagnant mentre tu sostens les cordes.",
+   "encounter": null
+  },
+  "director": {
+   "turns_without_stakes": 0,
+   "low_stakes_streak": 0,
+   "last_action_key": null,
+   "last_event_turn": null,
+   "last_event_size": null,
+   "last_event_s": {},
+   "last_small_s": null,
+   "recent_moments": [],
+   "recent_clock": [
+    0
+   ],
+   "frequency_drift": 0.0,
+   "recent_sources": [],
+   "auto_pictures": 1,
+   "picture_credit": 1.1,
+   "pictured": [
+    "portrait:player",
+    "portrait:player:v1"
+   ],
+   "fight": null,
+   "deck_draws": 0,
+   "road_stops": 0
+  },
+  "summary": "En Joan, un pescador de setanta-vuit anys de Cadaqués, troba una sirena ferida i atrapada a la seva xarxa de pesca durant una alba freda a la Mar Ampla.",
+  "chapters": [],
+  "id_counters": {
+   "fact": 3,
+   "goal": 1,
+   "bond": 0,
+   "event": 4
+  },
+  "fallen": [],
+  "opening_due": false,
+  "misses_in_a_row": 0,
+  "openings": [],
+  "journey": null,
+  "untold": [
+   "person:marina",
+   "person:mateu"
+  ]
+ },
+ "scenes": [
+  {
+   "turn": 1,
+   "narration": "La fredor de l'alba se't clava als ossos vells mentre estires la xarxa de cànem, pesant i xopa de salnitre. Però avui la mar de Cadaqués no et torna sards ni molls. Entre les cordes aspres, sota la llum tènue de la llanterna, batega una criatura que mai hauries cregut veure fora de les rondalles de taverna.\n\nÉs una noia de pell blanca com l'escuma de les ones, amb uns llargs cabells daurats que s'enreden entre els ploms de la xarxa. En lloc de cames, una cua d'escates platejades batega feblement, brillants sota l'aigua de mar que inunda el fons de la barca. Està ferida; un fil de sang vermella i espessa li banya el costat esquerre. Ella et mira fixament amb uns ulls profunds com l'abisme, tremolant de fred i de terror pur, bloquejada entre les cordes. El silenci de la Mar Ampla només el trenca el xiuxiueig de l'aigua contra la fusta.\n\nTens el ganivet de mariner al cinturó i les mans et tremolen una mica per la fatiga dels anys i la sorpresa. Cadaqués és lluny, rere la boira de l'alba, però aviat sortiran altres barques.",
+   "player_action": null
+  }
+ ],
+ "choices": [
+  "Tallar la xarxa amb el ganivet per alliberar-la",
+  "Parlar-li amb veu suau per intentar calmar el seu terror",
+  "Examinar la seva ferida abans de fer res més"
+ ],
+ "cost_usd": 0.1273515,
+ "draft": {
+  "premise": "Sóc un pescador vell de Cadaqués, de setanta-vuit anys. Un matí trobo una sirena ferida a la xarxa.",
+  "proposal": {
+   "world": {
+    "title": "El Secret de la Mar de Cadaqués",
+    "genre": "realisme màgic mariner",
+    "tone": "melancòlic i misteriós",
+    "era": "Cadaqués, 1925: barques de pesca de fusta, llums de petroli i camins de carro.",
+    "extraordinary": [
+     {
+      "id": "sirenes",
+      "kind": "sirenes i criatures de la mar",
+      "prevalence": "hidden",
+      "reach": "La màgia de les sirenes pot calmar les tempestes i curar ferides, però també pot embruixar la ment dels humans."
+     }
+    ],
+    "rules": [
+     {
+      "id": "sirenes-amagades",
+      "text": "Les sirenes viuen en secret a les profunditats de la mar i eviten qualsevol contacte amb el món dels humans.",
+      "fixed": true,
+      "topic": "peoples",
+      "about": [
+       "sirenes"
+      ]
+     },
+     {
+      "id": "el-cant-del-mar",
+      "text": "La sang i el cant d'una sirena tenen propietats curatives extraordinàries si es tracten amb respecte.",
+      "fixed": false,
+      "topic": "nature",
+      "about": [
+       "sirenes"
+      ]
+     }
+    ],
+    "dropped_rule_ids": [],
+    "peoples": [
+     {
+      "id": "humans",
+      "name": "Humans",
+      "description": "",
+      "lifespan_years": 80,
+      "gifts": [],
+      "culture": "Gent de mar treballadora, supersticiosa i molt lligada a les tradicions locals de Cadaqués.",
+      "relations": [],
+      "path": ""
+     },
+     {
+      "id": "sirenes-poble",
+      "name": "Sirenes",
+      "description": "",
+      "lifespan_years": 300,
+      "gifts": [],
+      "culture": "Criatures antigues de la mar que es comuniquen amb cants i protegeixen els secrets de l'abisme.",
+      "relations": [],
+      "path": ""
+     }
+    ],
+    "creatures": [],
+    "nature": [
+     "La mar de Cadaqués és traïdora i amaga corrents profunds i coves submarines desconegudes pels humans."
+    ],
+    "ladders": [],
+    "calendar": {
+     "style": "day_count",
+     "clock_time": false,
+     "epoch": "",
+     "start_hour": 6,
+     "months": [],
+     "start_year": 1925,
+     "start_month": 10,
+     "start_day": 12,
+     "era": "d.C."
+    },
+    "travel": {
+     "description": "El transport es fa principalment a peu, en barca de vela o rem, o en carro pels camins pedregosos del Cap de Creus.",
+     "instant_messages": false
+    },
+    "medicine": {
+     "healing": "Medicina tradicional de poble, herbes remeieres i el metge local per a casos greus.",
+     "resurrection": "none",
+     "resurrection_means": ""
+    },
+    "laws": [
+     {
+      "id": "llei-pesca",
+      "text": "Totes les captures inusuals han de ser reportades a la Confraria de Pescadors i a les autoritats.",
+      "enforcer": "La Guàrdia Civil i el president de la Confraria",
+      "enforcer_faction_id": "",
+      "zeal": "medium",
+      "corruptible": true
+     }
+    ],
+    "norms": [
+     "La gent de Cadaqués considera que qualsevol monstre marí és un presagi de desgràcia o una creació del diable."
+    ],
+    "several_partners": false,
+    "unions": "for_life",
+    "places": [
+     {
+      "id": "cadaques",
+      "name": "Cadaqués",
+      "kind": "village",
+      "description": "Un aïllat i bell poble de pescadors de cases blanques, encerclat per les muntanyes i la mar.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "portlligat",
+        "travel_hours": 0.5,
+        "mode": "a peu"
+       },
+       {
+        "to_id": "mar-cadaques",
+        "travel_hours": 1.0,
+        "mode": "en barca"
+       }
+      ]
+     },
+     {
+      "id": "casa-joan",
+      "name": "Casa d'en Joan",
+      "kind": "building",
+      "description": "Una casa petita i humil vora la platja, plena de xarxes velles, olor de sal i records d'una vida a la mar.",
+      "parent_id": "cadaques",
+      "setting": "indoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "portlligat",
+      "name": "Portlligat",
+      "kind": "wilds",
+      "description": "Una cala tranquil·la i arrecerada, ideal per amagar coses lluny de les mirades curioses del poble.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "mar-cadaques",
+      "name": "La Mar Ampla",
+      "kind": "wilds",
+      "description": "Les aigües profundes i blaves del Cap de Creus, on la tramuntana bufa amb força.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     }
+    ],
+    "factions": [
+     {
+      "id": "confraria-cadaques",
+      "name": "Confraria de Pescadors de Cadaqués",
+      "kind": "sect",
+      "description": "El gremi local que regula la pesca i protegeix els interessos dels mariners del poble.",
+      "parent_id": "",
+      "leader_ids": [],
+      "goal": "Mantenir l'ordre a la mar i assegurar que ningú trenqui les regles de pesca tradicionals.",
+      "methods": "",
+      "strength": "Molta influència sobre els vilatans i accés a totes les barques del port.",
+      "relations": [],
+      "secrets": [],
+      "known_to_player": true
+     },
+     {
+      "id": "guardia-civil",
+      "name": "Guàrdia Civil",
+      "kind": "court",
+      "description": "La força de la llei de l'Estat, poc acostumada als secrets de la gent de mar i molt estricta.",
+      "parent_id": "",
+      "leader_ids": [],
+      "goal": "Mantenir el control fiscal, evitar el contraban i fer complir les lleis estatals.",
+      "methods": "",
+      "strength": "Armes de foc, autoritat oficial i cel·les a la caserna.",
+      "relations": [],
+      "secrets": [],
+      "known_to_player": true
+     }
+    ],
+    "npcs": [
+     {
+      "id": "marina",
+      "name": "Marina",
+      "aliases": [],
+      "description": "Una jove sirena amb una cua d'escates platejades i uns ulls profunds com l'oceà. Està ferida i espantada.",
+      "appearance": "Cabells llargs de color daurat pàl·lid, pell molt blanca, braços esvelts i una ferida sagnant al costat esquerre. Cua de peix platejada.",
+      "age": 25,
+      "people_id": "",
+      "location_id": "mar-cadaques",
+      "memberships": [],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "desconfiada",
+        "orgullosa",
+        "agraïda"
+       ],
+       "values": [
+        "la llibertat",
+        "la mar",
+        "la veritat"
+       ],
+       "loves": [],
+       "fears": [],
+       "wants": [
+        "Curar-se i tornar a les profunditats de la mar sense ser capturada."
+       ],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 2,
+       "speed": 4,
+       "toughness": 2,
+       "wits": 3,
+       "knowledge": 3,
+       "willpower": 4,
+       "charm": 5,
+       "nerve": 3,
+       "bearing": 4
+      },
+      "skills": [
+       {
+        "name": "Nedar",
+        "level": "master",
+        "notes": ""
+       },
+       {
+        "name": "Cant de sirena",
+        "level": "expert",
+        "notes": ""
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 10,
+       "fear": 40,
+       "trust": 10,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "met"
+     },
+     {
+      "id": "mateu",
+      "name": "Mateu",
+      "aliases": [],
+      "description": "Un pescador vell de Cadaqués, amic de la infància de Joan, però una mica envejós i xerraire.",
+      "appearance": "Home fort, geperut pels anys, rostre cremat pel sol i la sal, amb una gorra de llana sempre posada.",
+      "age": 75,
+      "people_id": "",
+      "location_id": "cadaques",
+      "memberships": [],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "curiós",
+        "supersticiós",
+        "avar"
+       ],
+       "values": [
+        "els diners",
+        "la bona pesca",
+        "l'amistat"
+       ],
+       "loves": [],
+       "fears": [],
+       "wants": [
+        "Trobar una gran captura que el jubili amb riqueses."
+       ],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 3,
+       "speed": 2,
+       "toughness": 3,
+       "wits": 3,
+       "knowledge": 3,
+       "willpower": 2,
+       "charm": 2,
+       "nerve": 2,
+       "bearing": 2
+      },
+      "skills": [
+       {
+        "name": "Pesca",
+        "level": "skilled",
+        "notes": ""
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 30,
+       "fear": 0,
+       "trust": 40,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "met"
+     }
+    ],
+    "clocks": [
+     {
+      "id": "ferida-marina",
+      "name": "La infecció de la Marina",
+      "steps": [
+       "La sirena perd força a causa de la ferida oberta i la falta d'aigua salada neta.",
+       "La ferida comença a infectar-se; necessita medina o cures urgents.",
+       "Marina entra en un estat de deliri i comença a cantar inconscientment.",
+       "Marina mor a causa de les ferides o la debilitat extrema."
+      ],
+      "step_every_hours": 24.0,
+      "owner_id": "",
+      "thread_id": "",
+      "known_to_player": true
+     },
+     {
+      "id": "sospita-poble",
+      "name": "Les sospites del poble",
+      "steps": [
+       "En Mateu nota que en Joan actua de manera estranya i no ven les seves captures habituals.",
+       "Es comença a rumorejar al port que en Joan amaga alguna cosa a la seva cabana.",
+       "La Guàrdia Civil decideix fer una inspecció rutinària a la casa de platja de Joan."
+      ],
+      "step_every_hours": 36.0,
+      "owner_id": "",
+      "thread_id": "",
+      "known_to_player": true
+     }
+    ],
+    "threads": [
+     {
+      "id": "salvar-la",
+      "title": "Salvar la sirena ferida",
+      "kind": "quest",
+      "stakes": "Si aconsegueixes curar-la i tornar-la a l'aigua, salvaràs una criatura llegendària; si falles, podria morir o ser capturada per a ser exposada com un monstre.",
+      "involved_ids": [
+       "player",
+       "marina",
+       "mateu"
+      ],
+      "clock_id": "ferida-marina",
+      "known_to_player": true
+     }
+    ],
+    "mysteries": [
+     {
+      "id": "origen-ferida",
+      "question": "Qui o què ha causat la ferida profunda a la Marina?",
+      "answer": "La ferida va ser causada per l'arpó de ferro d'un iot de luxe d'un col·leccionista ric de Barcelona que busca criatures estranyes.",
+      "clues": [
+       "Un tros de metall negre estrany i polit clavat prop de la ferida.",
+       "El rumor d'un gran iot blanc que ha estat navegant a prop del Cap de Creus aquests dies."
+      ],
+      "thread_id": "salvar-la",
+      "known_to_player": true
+     }
+    ],
+    "known_facts": [
+     "Ets un pescador vell que coneix cada racó d'aquesta mar.",
+     "La gent del poble no creu en sirenes, les consideren només contes per a nens o dimonis de la mar.",
+     "Si algú descobreix la sirena, la seva vida correrà un perill immens."
+    ],
+    "opening": {
+     "place_id": "mar-cadaques",
+     "present_ids": [
+      "player",
+      "marina"
+     ],
+     "positions": [
+      "En Joan és a la seva barca de fusta, subjectant les xarxes.",
+      "La Marina està atrapada entre les cordes de la xarxa, sagnant i mirant-te amb terror."
+     ],
+     "props": [
+      "xarxa de pesca",
+      "ganivet de mariner",
+      "ferida oberta"
+     ],
+     "situation": "A l'alba freda de Cadaqués, mentre estires les xarxes sobre la teva barca de fusta, un ble de cabells daurats i unes escates brillants revelen que has pescat una sirena ferida."
+    },
+    "summary": "Un pescador de setanta-vuit anys troba una sirena ferida a la seva xarxa a les aigües de Cadaqués. Ha de decidir si ajudar-la en secret o lliurar-la, enfrontant-se a les sospites dels seus veïns i de les autoritats en un poble tradicional de l'any 1925."
+   },
+   "character": {
+    "name": "Joan",
+    "aliases": [],
+    "age": 78,
+    "lifespan_years": 80,
+    "people_id": "",
+    "description": "Un pescador vell, de mans calloses i mirada cansada però sàvia, que ha passat tota la seva vida lligat a la mar.",
+    "appearance": "Home gran d'estatura mitjana, cabells blancs esbullats, barba de pocs dies també blanca, rostre profundament arrugat pel sol i el vent marí. Vesteix un jersei de llana gruixuda de color blau fosc i uns pantalons de treball gastats.",
+    "location_id": "mar-cadaques",
+    "attributes": {
+     "strength": 2,
+     "speed": 2,
+     "toughness": 3,
+     "wits": 4,
+     "knowledge": 3,
+     "willpower": 4,
+     "charm": 3,
+     "nerve": 4,
+     "bearing": 3
+    },
+    "skills": [
+     {
+      "name": "Pesca tradicional",
+      "level": "expert",
+      "notes": "Coneixes els millors llocs per pescar i com llançar la xarxa fins i tot amb mala mar."
+     },
+     {
+      "name": "Navegació",
+      "level": "skilled",
+      "notes": "Saps governar la teva petita barca de fusta sota qualsevol tempesta."
+     },
+     {
+      "name": "Supervivència marina",
+      "level": "fair",
+      "notes": "Saps com curar petites ferides de peix i sobreviure al fred."
+     }
+    ],
+    "traits": [
+     {
+      "name": "Cames de mar",
+      "kind": "gift",
+      "description": "Tens un equilibri perfecte a sobre de qualsevol embarcació, sense importar com de brava estigui la mar."
+     },
+     {
+      "name": "Fatiga dels anys",
+      "kind": "flaw",
+      "description": "El teu cos de setanta-vuit anys es cansa ràpidament sota esforços físics intensos."
+     }
+    ],
+    "talents": [],
+    "powers": [],
+    "techniques": [],
+    "temperament": {
+     "traits": [
+      "cautelós",
+      "compassiu",
+      "solitari"
+     ],
+     "values": [
+      "el respecte a la mar",
+      "la discreció",
+      "la independència"
+     ],
+     "loves": [
+      "el silenci de l'alba",
+      "el tabac de pipa",
+      "el soroll de les ones"
+     ],
+     "fears": [
+      "morir lluny de la mar",
+      "fer mal a un ésser indefens"
+     ],
+     "wants": [
+      "Ajudar la sirena a curar-se i retornar-la sana i estàlvia a la mar."
+     ],
+     "voice": ""
+    },
+    "items": [
+     {
+      "name": "Ganivet de mariner",
+      "kind": "weapon",
+      "description": "Un ganivet vell però ben esmolat, essencial per tallar cordes i netejar peix.",
+      "quantity": 1,
+      "carried": true
+     },
+     {
+      "name": "Pipa de fusta",
+      "kind": "gear",
+      "description": "Una pipa de fusta fosca amb una mica de tabac sec.",
+      "quantity": 1,
+      "carried": true
+     }
+    ],
+    "money": 45,
+    "currency": "pessetes",
+    "title": "",
+    "rank": "",
+    "family_name": "",
+    "connections": [
+     {
+      "name": "Mateu",
+      "kind": "other",
+      "character_id": "mateu",
+      "note": "El teu company de pesca de tota la vida, encara que de vegades és massa xerraire."
+     }
+    ],
+    "parent_ids": [],
+    "memberships": [
+     {
+      "faction_id": "confraria-cadaques",
+      "rank": "pescador veterà",
+      "loyalty": 50
+     }
+    ],
+    "ladders": [],
+    "axes": {
+     "might": 1,
+     "influence": 1,
+     "wealth": 1,
+     "knowledge": 1,
+     "stealth": 1
+    },
+    "reserves": [],
+    "goals": [
+     "Salvar la sirena ferida i tornar-la a la mar"
+    ],
+    "backstory": [
+     "Has viscut a Cadaqués des que vas néixer, treballant a la mar des dels deu anys.",
+     "Vas perdre la teva dona fa molts anys i des d'aleshores vius sol a la teva petita cabana de la platja.",
+     "Coneixes totes les llegendes sobre els secrets de la mar, però mai hauries pensat que una d'elles fos real."
+    ],
+    "hidden_past": []
+   }
+  },
+  "rating": "teen",
+  "premise_id": null,
+  "physics": "fun_first",
+  "gift": null,
+  "released_rules": [],
+  "language": "ca",
+  "told": []
+ }
+}

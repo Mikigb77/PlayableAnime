@@ -1,0 +1,1861 @@
+{
+ "premise": "The Demon King was killed by the hero. She wakes up reincarnated as a ten-year-old village girl, with all her memories and none of her power.",
+ "language": "en",
+ "rating": "teen",
+ "settings": {
+  "narration_length": "medium",
+  "tone": null,
+  "difficulty": "balanced",
+  "event_frequency": "normal",
+  "images": "key_moments",
+  "suggestions": true,
+  "language": "en",
+  "accent": null
+ },
+ "seed": "play/x-demonking",
+ "state": {
+  "schema_version": 1,
+  "turn": 1,
+  "timeline_id": "main",
+  "world_s": 0,
+  "bible": {
+   "title": "Rebirth of the Demon King",
+   "genre": "Fantasy Reincarnation",
+   "tone": "mysterious and dramatic",
+   "era": "A classic fantasy medieval world of swords, magic, and rustic villages.",
+   "extraordinary": [
+    {
+     "id": "magic",
+     "kind": "mana magic",
+     "prevalence": "common",
+     "reach": "Mages can conjure elements, erect barriers, and at the highest levels, level cities.",
+     "rule_ids": [
+      "magic-needs-mana",
+      "hero-aura-detection",
+      "magic-exists"
+     ]
+    },
+    {
+     "id": "reincarnation",
+     "kind": "soul transmigration",
+     "prevalence": "hidden",
+     "reach": "A dying soul of immense willpower can occasionally bind itself to a newborn or young vessel, preserving memories but losing all accumulated power.",
+     "rule_ids": [
+      "reincarnation-resets-strength",
+      "reincarnation-exists"
+     ]
+    }
+   ],
+   "peoples": [
+    {
+     "id": "humans",
+     "name": "Humans",
+     "description": "The dominant inhabitants of the kingdom, versatile and widespread.",
+     "lifespan_years": 80,
+     "gifts": [
+      "adaptability"
+     ],
+     "culture": "They live in structured feudal societies governed by lords and the Church of Light.",
+     "relations": [],
+     "path": ""
+    },
+    {
+     "id": "demons",
+     "name": "Demons",
+     "description": "Powerful beings of dark mana, currently scattered and leaderless after the death of the Demon King.",
+     "lifespan_years": 300,
+     "gifts": [
+      "dark-vision",
+      "mana-affinity"
+     ],
+     "culture": "A strictly hierarchical society based on raw power and magic circles.",
+     "relations": [],
+     "path": ""
+    }
+   ],
+   "creatures": [
+    {
+     "id": "direwolf",
+     "name": "Direwolf",
+     "description": "Large, aggressive wolves infused with wild mana that roam the outskirts of civilization.",
+     "tier": 1,
+     "habitat": "forests and mountains",
+     "worth": "mana-infused pelt and fangs",
+     "can_be_tamed": true
+    }
+   ],
+   "nature": [
+    "Mana flows through the earth like ley lines, occasionally pooling to create magical beasts or rare herbs."
+   ],
+   "physics": "fun_first",
+   "force": {
+    "tier1_joules": 10000.0,
+    "per_tier": 10.0
+   },
+   "ladders": [
+    {
+     "id": "magic-circles",
+     "name": "Magic Circles",
+     "axis": "might",
+     "rungs": [
+      {
+       "name": "Apprentice",
+       "tier": 2,
+       "description": "Can light small fires or create tiny drops of water.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 0,
+       "added_s": null
+      },
+      {
+       "name": "Mage",
+       "tier": 4,
+       "description": "Capable of casting offensive elemental spells and basic wards.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 0,
+       "added_s": null
+      },
+      {
+       "name": "Archmage",
+       "tier": 6,
+       "description": "Commanding regional-scale spells, highly respected by kings.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 0,
+       "added_s": null
+      },
+      {
+       "name": "Grandmaster",
+       "tier": 8,
+       "description": "Living legends who can alter the terrain of a battlefield.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 0,
+       "added_s": null
+      },
+      {
+       "name": "Sovereign",
+       "tier": 10,
+       "description": "The ultimate peak of magic, once held only by the Demon King.",
+       "needs": [],
+       "loud": false,
+       "lifespan_years": 0,
+       "added_s": null
+      }
+     ],
+     "standing_follows": true,
+     "sensing": true,
+     "rung_levels": 1,
+     "shrugs_off": 3,
+     "known_to_all": 4
+    }
+   ],
+   "calendar": {
+    "style": "day_count",
+    "time_of_day": "parts",
+    "epoch": null,
+    "start_second_of_day": 21600,
+    "months": [],
+    "start_year": 1,
+    "start_month": 1,
+    "start_day": 1,
+    "era": ""
+   },
+   "travel": {
+    "description": "People travel on foot, by horse, or in wooden carriages. News is carried by royal messengers or guild scouts.",
+    "instant_messages": false
+   },
+   "medicine": {
+    "healing": "Herbal poultices heal basic wounds, while mages of the Church use holy magic for severe injuries.",
+    "resurrection": "none",
+    "resurrection_means": ""
+   },
+   "laws": [
+    {
+     "id": "demonic-heresy",
+     "text": "Any association with demons or demonic magic is punishable by immediate execution by the Holy Inquisitors.",
+     "enforcer": "Holy Inquisitors",
+     "enforcer_faction_id": null,
+     "zeal": "high",
+     "corruptible": false
+    }
+   ],
+   "norms": [
+    "demon-prejudice"
+   ],
+   "several_partners": false,
+   "unions": "held",
+   "rules": [
+    {
+     "id": "magic-needs-mana",
+     "text": "All spellcasting requires a source of mana, which must be drawn from the atmosphere or one's own lifeforce.",
+     "fixed": true,
+     "topic": "nature"
+    },
+    {
+     "id": "reincarnation-resets-strength",
+     "text": "Reincarnation preserves the memories of the past life, but the physical body starts with none of its previous strength or magical circles.",
+     "fixed": true,
+     "topic": "nature"
+    },
+    {
+     "id": "hero-aura-detection",
+     "text": "The Hero's legendary holy sword can detect high-level demonic residue, but cannot sense a dormant demon soul with zero magic.",
+     "fixed": false,
+     "topic": "limits"
+    },
+    {
+     "id": "magic-exists",
+     "text": "Mana magic: real, and everywhere.",
+     "fixed": true,
+     "topic": "existence"
+    },
+    {
+     "id": "reincarnation-exists",
+     "text": "Soul transmigration: real, and hidden from most people.",
+     "fixed": true,
+     "topic": "existence"
+    }
+   ],
+   "mysteries": [
+    {
+     "id": "reincarnation-cause",
+     "question": "How did I manage to reincarnate into this young human body?",
+     "answer": "At the exact moment of your defeat, your loyal general cast a forbidden forbidden soul-tethering spell, sacrificing his own life to slip your soul into a newly born human container.",
+     "clues": [
+      "A faint, black-colored runic scar behind your left ear that glows slightly when near dark mana.",
+      "A rumor whispered by travelers about a high-ranking demon found dead with a completely drained soul near your birthplace."
+     ],
+     "thread_id": "demon-king-identity",
+     "solved": false
+    }
+   ]
+  },
+  "player_id": "player",
+  "characters": {
+   "player": {
+    "id": "player",
+    "name": "Karen",
+    "aliases": [
+     "Valakor",
+     "The Demon King"
+    ],
+    "prominence": "key",
+    "description": "An unusually quiet and intense young girl whose sharp, calculating eyes contrast sharply with her fragile, youthful appearance.",
+    "appearance": "A petite ten-year-old girl with messy dark hair, pale skin, and a thin build, wearing a simple, patched peasant dress.",
+    "look_version": 1,
+    "age": 10,
+    "people_id": "humans",
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "loft-room",
+    "personal_offset_s": 0,
+    "memberships": [],
+    "sheet": {
+     "attributes": {
+      "strength": 1,
+      "speed": 2,
+      "toughness": 1,
+      "wits": 5,
+      "knowledge": 5,
+      "willpower": 5,
+      "charm": 3,
+      "nerve": 4,
+      "bearing": 4
+     },
+     "skills": [
+      {
+       "name": "Ancient History",
+       "level": "expert",
+       "notes": "Memories of the demon realm, its geography, and its historical conflicts."
+      },
+      {
+       "name": "Magic Theory",
+       "level": "master",
+       "notes": "An absolute understanding of spells and mana circulation, though currently unable to cast them."
+      },
+      {
+       "name": "Stealth",
+       "level": "novice",
+       "notes": "Basic capability to move quietly around the house and village."
+      }
+     ],
+     "traits": [
+      {
+       "name": "Demon King's Mind",
+       "kind": "gift",
+       "description": "You possess the tactical brilliance, iron willpower, and knowledge of an ancient ruler."
+      },
+      {
+       "name": "Fragile Vessel",
+       "kind": "flaw",
+       "description": "Your current human body is young, easily fatigued, and lacks any natural physical training."
+      }
+     ],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "proud",
+        "cautious",
+        "calculating",
+        "patient"
+       ],
+       "values": [
+        "survival",
+        "knowledge",
+        "control"
+       ],
+       "loves": [
+        "quiet study",
+        "valuable information"
+       ],
+       "fears": [
+        "being exposed",
+        "permanent death"
+       ],
+       "wants": [],
+       "voice": ""
+      },
+      "attitudes": {}
+     },
+     "resources": {
+      "items": [
+       {
+        "id": "patched-woolen-blanket",
+        "name": "Patched woolen blanket",
+        "kind": "gear",
+        "description": "A coarse, well-worn blanket that barely keeps out the draft.",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       }
+      ],
+      "money": 3,
+      "currency": "copper coins",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": [
+       {
+        "name": "Martha",
+        "kind": "family",
+        "character_id": "martha",
+        "note": "Your adoptive human mother in this life, who cares deeply for you."
+       }
+      ]
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": [
+      {
+       "text": "You ruled the demon continent for centuries before the Hero Jeanne breached your castle gates and ended your reign.",
+       "turn": 0
+      },
+      {
+       "text": "Instead of entering the void, your soul woke up years later in the body of a young human orphan named Karen.",
+       "turn": 0
+      },
+      {
+       "text": "You have spent the last few years quietly observing this rustic village life, trying to understand your situation without raising suspicion.",
+       "turn": 0
+      }
+     ]
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [
+     "martha"
+    ],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": 80,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   },
+   "hero-jeanne": {
+    "id": "hero-jeanne",
+    "name": "Hero Jeanne",
+    "aliases": [],
+    "prominence": "key",
+    "description": "The legendary warrior who struck down the Demon King, celebrated across the continent as a savior.",
+    "appearance": "Tall, with shining golden hair, wearing gleaming silver plate armor and carrying a glowing holy sword.",
+    "look_version": 1,
+    "age": 24,
+    "people_id": "humans",
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "capital-solaria",
+    "personal_offset_s": 0,
+    "memberships": [
+     {
+      "faction_id": "church-of-light",
+      "rank": "Grand Champion",
+      "loyalty": 100
+     }
+    ],
+    "sheet": {
+     "attributes": {
+      "strength": 5,
+      "speed": 5,
+      "toughness": 5,
+      "wits": 4,
+      "knowledge": 3,
+      "willpower": 5,
+      "charm": 5,
+      "nerve": 5,
+      "bearing": 5
+     },
+     "skills": [
+      {
+       "name": "Swordsmanship",
+       "level": "master",
+       "notes": ""
+      },
+      {
+       "name": "Holy Magic",
+       "level": "expert",
+       "notes": ""
+      }
+     ],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "righteous",
+        "uncompromising",
+        "vigilant"
+       ],
+       "values": [
+        "justice",
+        "peace",
+        "duty"
+       ],
+       "loves": [
+        "the light",
+        "her sword"
+       ],
+       "fears": [
+        "the return of darkness"
+       ],
+       "wants": [
+        "To completely cleanse the world of demonic influence."
+       ],
+       "voice": ""
+      },
+      "attitudes": {
+       "player": {
+        "affinity": -50,
+        "fear": 0,
+        "trust": -50,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 8,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [
+      {
+       "ladder_id": "magic-circles",
+       "rung": 3,
+       "stage": "peak",
+       "shown_rung": null,
+       "yearly_s": null
+      }
+     ],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": {
+     "goal": "Purge any remaining traces of the Demon King's essence from the kingdom.",
+     "method": "Touring the outer provinces to perform purification rituals and search for hidden anomalies.",
+     "secret": "She suspects the Demon King's soul did not completely disperse during their final battle.",
+     "clock_id": null
+    },
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   },
+   "martha": {
+    "id": "martha",
+    "name": "Martha",
+    "aliases": [],
+    "prominence": "key",
+    "description": "A kind-hearted, hardworking village woman who took in the mysterious orphan girl years ago.",
+    "appearance": "A stout woman with greying brown hair tied in a kerchief, wearing a simple linen apron and patched dress.",
+    "look_version": 1,
+    "age": 32,
+    "people_id": "humans",
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "peasant-cottage",
+    "personal_offset_s": 0,
+    "memberships": [],
+    "sheet": {
+     "attributes": {
+      "strength": 2,
+      "speed": 2,
+      "toughness": 3,
+      "wits": 3,
+      "knowledge": 2,
+      "willpower": 3,
+      "charm": 3,
+      "nerve": 2,
+      "bearing": 2
+     },
+     "skills": [
+      {
+       "name": "Cooking",
+       "level": "skilled",
+       "notes": ""
+      },
+      {
+       "name": "Farming",
+       "level": "skilled",
+       "notes": ""
+      }
+     ],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "gentle",
+        "nurturing",
+        "worrying"
+       ],
+       "values": [
+        "family",
+        "safety",
+        "honest work"
+       ],
+       "loves": [
+        "her home",
+        "warm broth"
+       ],
+       "fears": [
+        "famine",
+        "inquisitors"
+       ],
+       "wants": [
+        "To raise her daughter safely far from the dangers of the world."
+       ],
+       "voice": ""
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 80,
+        "fear": 0,
+        "trust": 80,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   }
+  },
+  "factions": {
+   "church-of-light": {
+    "id": "church-of-light",
+    "name": "The Church of Light",
+    "kind": "sect",
+    "description": "The religious authority of the human kingdom, dedicated to purging dark forces and supporting the Hero.",
+    "parent_id": null,
+    "status": "intact",
+    "status_history": [],
+    "activity": "active",
+    "leader_ids": [
+     "hero-jeanne"
+    ],
+    "goal": "Ensure the absolute eradication of demonic remnants and maintain order.",
+    "methods": "Deploying inquisitors, performing holy purifications, and searching for any signs of the Demon King's return.",
+    "strength": "Thousands of holy knights, powerful light mages, and the backing of the empire.",
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "threat": 0,
+    "relations": {},
+    "survivors": [],
+    "secrets": [
+     "They are keeping several high-tier demons in secret dungeons for experiments."
+    ],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ]
+   },
+   "demon-remnants": {
+    "id": "demon-remnants",
+    "name": "The Demon Remnants",
+    "kind": "faction",
+    "description": "Scattered, desperate groups of demons hiding in the shadows, waiting for a sign of their master's return.",
+    "parent_id": null,
+    "status": "intact",
+    "status_history": [],
+    "activity": "active",
+    "leader_ids": [],
+    "goal": "Find the reincarnated soul of the Demon King and rebuild their empire.",
+    "methods": "Gathering intelligence in human territories, performing dark rituals, and conducting guerrilla attacks.",
+    "strength": "A few hidden elite warriors and scattered packs of lesser demons.",
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "threat": 0,
+    "relations": {},
+    "survivors": [],
+    "secrets": [
+     "They have a spy placed high within the imperial administration."
+    ],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "places": {
+   "oakhaven": {
+    "id": "oakhaven",
+    "name": "Oakhaven Village",
+    "kind": "village",
+    "description": "A quiet, rural settlement nested at the edge of the kingdom, surrounded by dense woods.",
+    "parent_id": null,
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "peaceful yet isolated",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "oakhaven-wilds",
+      "travel_s": 1800,
+      "mode": "on foot"
+     },
+     {
+      "to_id": "capital-solaria",
+      "travel_s": 259200,
+      "mode": "by cart"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "peasant-cottage": {
+    "id": "peasant-cottage",
+    "name": "Peasant Cottage",
+    "kind": "building",
+    "description": "A small, weathered wooden home with a thatched roof and a smoking chimney.",
+    "parent_id": "oakhaven",
+    "setting": "indoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "cozy and humble",
+    "stability": 70,
+    "routes": [],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "loft-room": {
+    "id": "loft-room",
+    "name": "The Loft",
+    "kind": "room",
+    "description": "A dusty attic bedroom with a straw mattress, a single small window, and a wooden chest.",
+    "parent_id": "peasant-cottage",
+    "setting": "indoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "quiet and drafty",
+    "stability": 70,
+    "routes": [],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [
+     "player"
+    ],
+    "judged": []
+   },
+   "oakhaven-wilds": {
+    "id": "oakhaven-wilds",
+    "name": "Oakhaven Wilds",
+    "kind": "wilds",
+    "description": "An ancient, thick forest where wild beasts roam and rare magical herbs sometimes grow.",
+    "parent_id": "oakhaven",
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "dangerous and dark",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "oakhaven",
+      "travel_s": 1800,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "capital-solaria": {
+    "id": "capital-solaria",
+    "name": "Capital City Solaria",
+    "kind": "city",
+    "description": "The magnificent white-stone capital of the kingdom, guarded by towering walls and elite mages.",
+    "parent_id": null,
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "bustling and grand",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "oakhaven",
+      "travel_s": 259200,
+      "mode": "by cart"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [],
+    "visited_by": [],
+    "judged": []
+   }
+  },
+  "deeds": {},
+  "rumors": {},
+  "bonds": {},
+  "lives": {},
+  "aged_s": null,
+  "changes": {},
+  "strife_s": {},
+  "facts": {
+   "fact-1": {
+    "id": "fact-1",
+    "text": "You were once the dread Demon King, ruler of the dark realm.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-2": {
+    "id": "fact-2",
+    "text": "The Hero Jeanne defeated you in a climactic battle, destroying your physical form.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-3": {
+    "id": "fact-3",
+    "text": "You have woken up in the body of Karen, a ten-year-old human girl in the rural village of Oakhaven.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-4": {
+    "id": "fact-4",
+    "text": "You possess all of your ancient memories and knowledge, but your body is physically weak and contains absolutely zero magical power.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   }
+  },
+  "goals": {},
+  "leads": {},
+  "threads": {
+   "demon-king-identity": {
+    "id": "demon-king-identity",
+    "title": "A Demon King in Hiding",
+    "kind": "threat",
+    "stakes": "If your true identity is discovered by the Church of Light, you will be executed on the spot.",
+    "involved_ids": [
+     "hero-jeanne",
+     "church-of-light"
+    ],
+    "clock_id": "hero-triumph-tour",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "status": "open",
+    "opened_turn": 0,
+    "last_active_turn": 0,
+    "taken_up_turn": null,
+    "closed_turn": null,
+    "arc": null,
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "clocks": {
+   "hero-triumph-tour": {
+    "id": "hero-triumph-tour",
+    "name": "The Hero's Triumph Tour",
+    "steps": [
+     "The Hero's tour begins in the capital amid grand celebrations.",
+     "Imperial scouts and knights arrive in Oakhaven to secure the area.",
+     "Villagers prepare a grand feast and clear the town square.",
+     "Hero Jeanne arrives in Oakhaven to conduct her divine blessing."
+    ],
+    "filled": 0,
+    "advances_on": [],
+    "reverses_on": [],
+    "interval_s": 216000,
+    "next_step_s": 216000,
+    "owner_id": null,
+    "thread_id": "demon-king-identity",
+    "status": "running",
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "pending_events": {
+   "event-1": {
+    "id": "event-1",
+    "kind": "world.clock_step",
+    "title": "The Hero's Triumph Tour: The Hero's tour begins in the capital amid grand celebrations.",
+    "due_s": 216000,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": {
+     "kind": "clock",
+     "ref_id": "hero-triumph-tour",
+     "text": ""
+    },
+    "payload": {
+     "clock_id": "hero-triumph-tour"
+    },
+    "seed": "story=play%2Fx-demonking/timeline=main/turn=1/world/schedule/event-1",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-2": {
+    "id": "event-2",
+    "kind": "world.old_age",
+    "title": "Your years run short",
+    "due_s": 2326448890,
+    "timeline_id": "main",
+    "needs_player": true,
+    "status": "pending",
+    "subject_ids": [
+     "player"
+    ],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "phase": "near",
+     "who": "player",
+     "span": 80,
+     "day_s": 2390111883
+    },
+    "seed": "story=play%2Fx-demonking/timeline=main/turn=1/world/schedule/event-2",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-3": {
+    "id": "event-3",
+    "kind": "world.tick",
+    "title": "The world moves on",
+    "due_s": 86400,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "last_s": 0,
+     "stride_s": 86400
+    },
+    "seed": "story=play%2Fx-demonking/timeline=main/turn=1/world/schedule/event-3",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   }
+  },
+  "transfers": [],
+  "time_effects": [],
+  "scene": {
+   "place_id": "loft-room",
+   "present_ids": [
+    "player"
+   ],
+   "positions": [
+    "sitting on the edge of the straw mattress"
+   ],
+   "props": [
+    "the dusty wooden window frame",
+    "the simple woolen blanket"
+   ],
+   "ended_on": "You sit on the edge of the straw mattress, listening to Martha's footsteps near the stairs.",
+   "encounter": null
+  },
+  "director": {
+   "turns_without_stakes": 0,
+   "low_stakes_streak": 0,
+   "last_action_key": null,
+   "last_event_turn": null,
+   "last_event_size": null,
+   "last_event_s": {},
+   "last_small_s": null,
+   "recent_moments": [],
+   "recent_clock": [
+    0
+   ],
+   "frequency_drift": 0.0,
+   "recent_sources": [],
+   "auto_pictures": 1,
+   "picture_credit": 1.1,
+   "pictured": [
+    "portrait:player",
+    "portrait:player:v1"
+   ],
+   "fight": null,
+   "deck_draws": 0,
+   "road_stops": 0
+  },
+  "summary": "The fallen Demon King has reincarnated into the body of a weak ten-year-old human girl in a remote village. Retaining all of her memories but none of her magic, she must navigate a peaceful life under the nose of the very Hero who struck her down.",
+  "chapters": [],
+  "id_counters": {
+   "fact": 4,
+   "goal": 0,
+   "bond": 0,
+   "event": 3
+  },
+  "fallen": [],
+  "opening_due": false,
+  "misses_in_a_row": 0,
+  "openings": [],
+  "journey": null,
+  "untold": [
+   "thread:demon-king-identity"
+  ]
+ },
+ "scenes": [
+  {
+   "turn": 1,
+   "narration": "You stare at your tiny, fragile hands in the pale morning light filtering through the dusty loft window. Your fingers are thin and unblemished, lacking the dark, claw-like nails and the pulse of ancient black mana that once commanded legions of the night. This fragile human skin is now yours. You, the dread Demon King Valakor, have been reduced to a peasant child in the dusty, quiet village of Oakhaven.\n\nThe silence of the attic is absolute, broken only by the whistling draft. You try to summon even a spark of your former majesty, but your spirit meets only a vast, empty void. Not a single magic circle remains. \n\nFrom the kitchen below, the comforting smell of weak barley broth rises, followed by the heavy, familiar footsteps of Martha, the human woman who took you in. \"Karen, sweet child, are you awake?\" she calls out, her voice gentle yet laced with the weariness of village life. \n\nYour ancient mind remains intact, sharp and calculating. Downstairs lies the peaceful, rustic reality of your new existence, but out there, the Hero Jeanne and her Holy Inquisitors still hunt for any trace of your kind. You must decide how to begin this new, hidden life.",
+   "player_action": null
+  }
+ ],
+ "choices": [
+  "Call back to Martha and pretend to be an ordinary child.",
+  "Quietly inspect your human body for any hidden trace of mana.",
+  "Slip out the loft window to explore the village outskirts."
+ ],
+ "cost_usd": 0.117624,
+ "draft": {
+  "premise": "The Demon King was killed by the hero. She wakes up reincarnated as a ten-year-old village girl, with all her memories and none of her power.",
+  "proposal": {
+   "world": {
+    "title": "Rebirth of the Demon King",
+    "genre": "Fantasy Reincarnation",
+    "tone": "mysterious and dramatic",
+    "era": "A classic fantasy medieval world of swords, magic, and rustic villages.",
+    "extraordinary": [
+     {
+      "id": "magic",
+      "kind": "mana magic",
+      "prevalence": "common",
+      "reach": "Mages can conjure elements, erect barriers, and at the highest levels, level cities."
+     },
+     {
+      "id": "reincarnation",
+      "kind": "soul transmigration",
+      "prevalence": "hidden",
+      "reach": "A dying soul of immense willpower can occasionally bind itself to a newborn or young vessel, preserving memories but losing all accumulated power."
+     }
+    ],
+    "rules": [
+     {
+      "id": "magic-needs-mana",
+      "text": "All spellcasting requires a source of mana, which must be drawn from the atmosphere or one's own lifeforce.",
+      "fixed": true,
+      "topic": "nature",
+      "about": [
+       "magic"
+      ]
+     },
+     {
+      "id": "reincarnation-resets-strength",
+      "text": "Reincarnation preserves the memories of the past life, but the physical body starts with none of its previous strength or magical circles.",
+      "fixed": true,
+      "topic": "nature",
+      "about": [
+       "reincarnation"
+      ]
+     },
+     {
+      "id": "hero-aura-detection",
+      "text": "The Hero's legendary holy sword can detect high-level demonic residue, but cannot sense a dormant demon soul with zero magic.",
+      "fixed": false,
+      "topic": "limits",
+      "about": [
+       "magic"
+      ]
+     }
+    ],
+    "dropped_rule_ids": [],
+    "peoples": [
+     {
+      "id": "humans",
+      "name": "Humans",
+      "description": "The dominant inhabitants of the kingdom, versatile and widespread.",
+      "lifespan_years": 80,
+      "gifts": [
+       "adaptability"
+      ],
+      "culture": "They live in structured feudal societies governed by lords and the Church of Light.",
+      "relations": [],
+      "path": ""
+     },
+     {
+      "id": "demons",
+      "name": "Demons",
+      "description": "Powerful beings of dark mana, currently scattered and leaderless after the death of the Demon King.",
+      "lifespan_years": 300,
+      "gifts": [
+       "dark-vision",
+       "mana-affinity"
+      ],
+      "culture": "A strictly hierarchical society based on raw power and magic circles.",
+      "relations": [],
+      "path": ""
+     }
+    ],
+    "creatures": [
+     {
+      "id": "direwolf",
+      "name": "Direwolf",
+      "description": "Large, aggressive wolves infused with wild mana that roam the outskirts of civilization.",
+      "rung": "",
+      "habitat": "forests and mountains",
+      "worth": "mana-infused pelt and fangs",
+      "can_be_tamed": true
+     }
+    ],
+    "nature": [
+     "Mana flows through the earth like ley lines, occasionally pooling to create magical beasts or rare herbs."
+    ],
+    "ladders": [
+     {
+      "id": "magic-circles",
+      "name": "Magic Circles",
+      "axis": "might",
+      "rungs": [
+       {
+        "name": "Apprentice",
+        "description": "Can light small fires or create tiny drops of water.",
+        "lifespan_years": null
+       },
+       {
+        "name": "Mage",
+        "description": "Capable of casting offensive elemental spells and basic wards.",
+        "lifespan_years": null
+       },
+       {
+        "name": "Archmage",
+        "description": "Commanding regional-scale spells, highly respected by kings.",
+        "lifespan_years": null
+       },
+       {
+        "name": "Grandmaster",
+        "description": "Living legends who can alter the terrain of a battlefield.",
+        "lifespan_years": null
+       },
+       {
+        "name": "Sovereign",
+        "description": "The ultimate peak of magic, once held only by the Demon King.",
+        "lifespan_years": null
+       }
+      ],
+      "known_to_all": 4,
+      "sensing": true,
+      "standing_follows": true,
+      "lengthens_life": true
+     }
+    ],
+    "calendar": {
+     "style": "day_count",
+     "clock_time": false,
+     "epoch": "",
+     "start_hour": 6,
+     "months": [],
+     "start_year": 1,
+     "start_month": 1,
+     "start_day": 1,
+     "era": ""
+    },
+    "travel": {
+     "description": "People travel on foot, by horse, or in wooden carriages. News is carried by royal messengers or guild scouts.",
+     "instant_messages": false
+    },
+    "medicine": {
+     "healing": "Herbal poultices heal basic wounds, while mages of the Church use holy magic for severe injuries.",
+     "resurrection": "none",
+     "resurrection_means": ""
+    },
+    "laws": [
+     {
+      "id": "demonic-heresy",
+      "text": "Any association with demons or demonic magic is punishable by immediate execution by the Holy Inquisitors.",
+      "enforcer": "Holy Inquisitors",
+      "enforcer_faction_id": "",
+      "zeal": "high",
+      "corruptible": false
+     }
+    ],
+    "norms": [
+     "demon-prejudice"
+    ],
+    "several_partners": false,
+    "unions": "held",
+    "places": [
+     {
+      "id": "oakhaven",
+      "name": "Oakhaven Village",
+      "kind": "village",
+      "description": "A quiet, rural settlement nested at the edge of the kingdom, surrounded by dense woods.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "peaceful yet isolated",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "oakhaven-wilds",
+        "travel_hours": 0.5,
+        "mode": "on foot"
+       },
+       {
+        "to_id": "capital-solaria",
+        "travel_hours": 72.0,
+        "mode": "by cart"
+       }
+      ]
+     },
+     {
+      "id": "peasant-cottage",
+      "name": "Peasant Cottage",
+      "kind": "building",
+      "description": "A small, weathered wooden home with a thatched roof and a smoking chimney.",
+      "parent_id": "oakhaven",
+      "setting": "indoors",
+      "controller_id": "",
+      "mood": "cozy and humble",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "loft-room",
+      "name": "The Loft",
+      "kind": "room",
+      "description": "A dusty attic bedroom with a straw mattress, a single small window, and a wooden chest.",
+      "parent_id": "peasant-cottage",
+      "setting": "indoors",
+      "controller_id": "",
+      "mood": "quiet and drafty",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "oakhaven-wilds",
+      "name": "Oakhaven Wilds",
+      "kind": "wilds",
+      "description": "An ancient, thick forest where wild beasts roam and rare magical herbs sometimes grow.",
+      "parent_id": "oakhaven",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "dangerous and dark",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "capital-solaria",
+      "name": "Capital City Solaria",
+      "kind": "city",
+      "description": "The magnificent white-stone capital of the kingdom, guarded by towering walls and elite mages.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "bustling and grand",
+      "known_to_player": false,
+      "routes": []
+     }
+    ],
+    "factions": [
+     {
+      "id": "church-of-light",
+      "name": "The Church of Light",
+      "kind": "sect",
+      "description": "The religious authority of the human kingdom, dedicated to purging dark forces and supporting the Hero.",
+      "parent_id": "",
+      "leader_ids": [
+       "hero-jeanne"
+      ],
+      "goal": "Ensure the absolute eradication of demonic remnants and maintain order.",
+      "methods": "Deploying inquisitors, performing holy purifications, and searching for any signs of the Demon King's return.",
+      "strength": "Thousands of holy knights, powerful light mages, and the backing of the empire.",
+      "relations": [],
+      "secrets": [
+       "They are keeping several high-tier demons in secret dungeons for experiments."
+      ],
+      "known_to_player": true
+     },
+     {
+      "id": "demon-remnants",
+      "name": "The Demon Remnants",
+      "kind": "faction",
+      "description": "Scattered, desperate groups of demons hiding in the shadows, waiting for a sign of their master's return.",
+      "parent_id": "",
+      "leader_ids": [],
+      "goal": "Find the reincarnated soul of the Demon King and rebuild their empire.",
+      "methods": "Gathering intelligence in human territories, performing dark rituals, and conducting guerrilla attacks.",
+      "strength": "A few hidden elite warriors and scattered packs of lesser demons.",
+      "relations": [],
+      "secrets": [
+       "They have a spy placed high within the imperial administration."
+      ],
+      "known_to_player": true
+     }
+    ],
+    "npcs": [
+     {
+      "id": "hero-jeanne",
+      "name": "Hero Jeanne",
+      "aliases": [],
+      "description": "The legendary warrior who struck down the Demon King, celebrated across the continent as a savior.",
+      "appearance": "Tall, with shining golden hair, wearing gleaming silver plate armor and carrying a glowing holy sword.",
+      "age": 24,
+      "people_id": "humans",
+      "location_id": "capital-solaria",
+      "memberships": [
+       {
+        "faction_id": "church-of-light",
+        "rank": "Grand Champion",
+        "loyalty": 100
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "righteous",
+        "uncompromising",
+        "vigilant"
+       ],
+       "values": [
+        "justice",
+        "peace",
+        "duty"
+       ],
+       "loves": [
+        "the light",
+        "her sword"
+       ],
+       "fears": [
+        "the return of darkness"
+       ],
+       "wants": [
+        "To completely cleanse the world of demonic influence."
+       ],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 5,
+       "speed": 5,
+       "toughness": 5,
+       "wits": 4,
+       "knowledge": 3,
+       "willpower": 5,
+       "charm": 5,
+       "nerve": 5,
+       "bearing": 5
+      },
+      "skills": [
+       {
+        "name": "Swordsmanship",
+        "level": "master",
+        "notes": ""
+       },
+       {
+        "name": "Holy Magic",
+        "level": "expert",
+        "notes": ""
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [
+       {
+        "ladder_id": "magic-circles",
+        "rung": "Grandmaster",
+        "stage": "peak"
+       }
+      ],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": -50,
+       "fear": 0,
+       "trust": -50,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": {
+       "goal": "Purge any remaining traces of the Demon King's essence from the kingdom.",
+       "method": "Touring the outer provinces to perform purification rituals and search for hidden anomalies.",
+       "secret": "She suspects the Demon King's soul did not completely disperse during their final battle.",
+       "clock_id": ""
+      },
+      "secrets": [],
+      "player_knows": "heard_of"
+     },
+     {
+      "id": "martha",
+      "name": "Martha",
+      "aliases": [],
+      "description": "A kind-hearted, hardworking village woman who took in the mysterious orphan girl years ago.",
+      "appearance": "A stout woman with greying brown hair tied in a kerchief, wearing a simple linen apron and patched dress.",
+      "age": 32,
+      "people_id": "humans",
+      "location_id": "peasant-cottage",
+      "memberships": [],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "gentle",
+        "nurturing",
+        "worrying"
+       ],
+       "values": [
+        "family",
+        "safety",
+        "honest work"
+       ],
+       "loves": [
+        "her home",
+        "warm broth"
+       ],
+       "fears": [
+        "famine",
+        "inquisitors"
+       ],
+       "wants": [
+        "To raise her daughter safely far from the dangers of the world."
+       ],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 2,
+       "speed": 2,
+       "toughness": 3,
+       "wits": 3,
+       "knowledge": 2,
+       "willpower": 3,
+       "charm": 3,
+       "nerve": 2,
+       "bearing": 2
+      },
+      "skills": [
+       {
+        "name": "Cooking",
+        "level": "skilled",
+        "notes": ""
+       },
+       {
+        "name": "Farming",
+        "level": "skilled",
+        "notes": ""
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 80,
+       "fear": 0,
+       "trust": 80,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "met"
+     }
+    ],
+    "clocks": [
+     {
+      "id": "hero-triumph-tour",
+      "name": "The Hero's Triumph Tour",
+      "steps": [
+       "The Hero's tour begins in the capital amid grand celebrations.",
+       "Imperial scouts and knights arrive in Oakhaven to secure the area.",
+       "Villagers prepare a grand feast and clear the town square.",
+       "Hero Jeanne arrives in Oakhaven to conduct her divine blessing."
+      ],
+      "step_every_hours": 60.0,
+      "owner_id": "",
+      "thread_id": "",
+      "known_to_player": true
+     }
+    ],
+    "threads": [
+     {
+      "id": "demon-king-identity",
+      "title": "A Demon King in Hiding",
+      "kind": "threat",
+      "stakes": "If your true identity is discovered by the Church of Light, you will be executed on the spot.",
+      "involved_ids": [
+       "hero-jeanne",
+       "church-of-light"
+      ],
+      "clock_id": "hero-triumph-tour",
+      "known_to_player": true
+     }
+    ],
+    "mysteries": [
+     {
+      "id": "reincarnation-cause",
+      "question": "How did I manage to reincarnate into this young human body?",
+      "answer": "At the exact moment of your defeat, your loyal general cast a forbidden forbidden soul-tethering spell, sacrificing his own life to slip your soul into a newly born human container.",
+      "clues": [
+       "A faint, black-colored runic scar behind your left ear that glows slightly when near dark mana.",
+       "A rumor whispered by travelers about a high-ranking demon found dead with a completely drained soul near your birthplace."
+      ],
+      "thread_id": "demon-king-identity",
+      "known_to_player": true
+     }
+    ],
+    "known_facts": [
+     "You were once the dread Demon King, ruler of the dark realm.",
+     "The Hero Jeanne defeated you in a climactic battle, destroying your physical form.",
+     "You have woken up in the body of Karen, a ten-year-old human girl in the rural village of Oakhaven.",
+     "You possess all of your ancient memories and knowledge, but your body is physically weak and contains absolutely zero magical power."
+    ],
+    "opening": {
+     "place_id": "loft-room",
+     "present_ids": [],
+     "positions": [
+      "lying on a straw mattress"
+     ],
+     "props": [
+      "a dusty wooden window frame",
+      "a simple woolen blanket"
+     ],
+     "situation": "You open your eyes to the faint morning light filtering through a dusty loft window, staring in disbelief at your tiny, fragile ten-year-old hands and realizing you are completely devoid of your former dark power."
+    },
+    "summary": "The fallen Demon King has reincarnated into the body of a weak ten-year-old human girl in a remote village. Retaining all of her memories but none of her magic, she must navigate a peaceful life under the nose of the very Hero who struck her down."
+   },
+   "character": {
+    "name": "Karen",
+    "aliases": [
+     "Valakor",
+     "The Demon King"
+    ],
+    "age": 10,
+    "lifespan_years": 80,
+    "people_id": "humans",
+    "description": "An unusually quiet and intense young girl whose sharp, calculating eyes contrast sharply with her fragile, youthful appearance.",
+    "appearance": "A petite ten-year-old girl with messy dark hair, pale skin, and a thin build, wearing a simple, patched peasant dress.",
+    "location_id": "loft-room",
+    "attributes": {
+     "strength": 1,
+     "speed": 2,
+     "toughness": 1,
+     "wits": 5,
+     "knowledge": 5,
+     "willpower": 5,
+     "charm": 3,
+     "nerve": 4,
+     "bearing": 4
+    },
+    "skills": [
+     {
+      "name": "Ancient History",
+      "level": "expert",
+      "notes": "Memories of the demon realm, its geography, and its historical conflicts."
+     },
+     {
+      "name": "Magic Theory",
+      "level": "master",
+      "notes": "An absolute understanding of spells and mana circulation, though currently unable to cast them."
+     },
+     {
+      "name": "Stealth",
+      "level": "novice",
+      "notes": "Basic capability to move quietly around the house and village."
+     }
+    ],
+    "traits": [
+     {
+      "name": "Demon King's Mind",
+      "kind": "gift",
+      "description": "You possess the tactical brilliance, iron willpower, and knowledge of an ancient ruler."
+     },
+     {
+      "name": "Fragile Vessel",
+      "kind": "flaw",
+      "description": "Your current human body is young, easily fatigued, and lacks any natural physical training."
+     }
+    ],
+    "talents": [],
+    "powers": [],
+    "techniques": [],
+    "temperament": {
+     "traits": [
+      "proud",
+      "cautious",
+      "calculating",
+      "patient"
+     ],
+     "values": [
+      "survival",
+      "knowledge",
+      "control"
+     ],
+     "loves": [
+      "quiet study",
+      "valuable information"
+     ],
+     "fears": [
+      "being exposed",
+      "permanent death"
+     ],
+     "wants": [],
+     "voice": ""
+    },
+    "items": [
+     {
+      "name": "Patched woolen blanket",
+      "kind": "gear",
+      "description": "A coarse, well-worn blanket that barely keeps out the draft.",
+      "quantity": 1,
+      "carried": true
+     }
+    ],
+    "money": 3,
+    "currency": "copper coins",
+    "title": "",
+    "rank": "",
+    "family_name": "",
+    "connections": [
+     {
+      "name": "Martha",
+      "kind": "family",
+      "character_id": "martha",
+      "note": "Your adoptive human mother in this life, who cares deeply for you."
+     }
+    ],
+    "parent_ids": [
+     "martha"
+    ],
+    "memberships": [],
+    "ladders": [],
+    "axes": {
+     "might": 1,
+     "influence": 1,
+     "wealth": 1,
+     "knowledge": 1,
+     "stealth": 1
+    },
+    "reserves": [],
+    "goals": [],
+    "backstory": [
+     "You ruled the demon continent for centuries before the Hero Jeanne breached your castle gates and ended your reign.",
+     "Instead of entering the void, your soul woke up years later in the body of a young human orphan named Karen.",
+     "You have spent the last few years quietly observing this rustic village life, trying to understand your situation without raising suspicion."
+    ],
+    "hidden_past": []
+   }
+  },
+  "rating": "teen",
+  "premise_id": null,
+  "physics": "fun_first",
+  "gift": null,
+  "released_rules": [],
+  "language": "en",
+  "told": []
+ }
+}

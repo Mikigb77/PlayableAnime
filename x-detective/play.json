@@ -1,0 +1,1959 @@
+{
+ "premise": "Soy una detective brillante en el Madrid de 1920. Nadie me toma en serio por ser mujer, pero resuelvo los casos que la policía no puede.",
+ "language": "es",
+ "rating": "teen",
+ "settings": {
+  "narration_length": "medium",
+  "tone": null,
+  "difficulty": "balanced",
+  "event_frequency": "normal",
+  "images": "key_moments",
+  "suggestions": true,
+  "language": "es",
+  "accent": null
+ },
+ "seed": "play/x-detective",
+ "state": {
+  "schema_version": 1,
+  "turn": 1,
+  "timeline_id": "main",
+  "world_s": 0,
+  "bible": {
+   "title": "La detective de la calle Alcalá",
+   "genre": "misterio histórico",
+   "tone": "noir elegante",
+   "era": "Madrid, 1920: tranvías, automóviles de época, teléfonos mecánicos y prensa de papel.",
+   "extraordinary": [
+    {
+     "id": "supernatural",
+     "kind": "magia o cualquier elemento sobrenatural",
+     "prevalence": "none",
+     "reach": "No existe ningún elemento sobrenatural; todo se rige por la lógica, la ciencia y la física.",
+     "rule_ids": [
+      "no-supernatural"
+     ]
+    }
+   ],
+   "peoples": [
+    {
+     "id": "humanos",
+     "name": "Humanos",
+     "description": "La gente corriente del Madrid de los años veinte.",
+     "lifespan_years": 80,
+     "gifts": [],
+     "culture": "Sociedad madrileña de entreguerras, dividida entre el conservadurismo tradicional y los primeros aires de modernidad.",
+     "relations": [],
+     "path": ""
+    }
+   ],
+   "creatures": [],
+   "nature": [],
+   "physics": "fun_first",
+   "force": {
+    "tier1_joules": 10000.0,
+    "per_tier": 10.0
+   },
+   "ladders": [],
+   "calendar": {
+    "style": "gregorian",
+    "time_of_day": "clock",
+    "epoch": "1920-10-15T10:00",
+    "start_second_of_day": 36000,
+    "months": [],
+    "start_year": 1,
+    "start_month": 1,
+    "start_day": 1,
+    "era": ""
+   },
+   "travel": {
+    "description": "La gente se desplaza a pie, en tranvía o en los primeros automóviles. Las comunicaciones telefónicas requieren de una centralita manual.",
+    "instant_messages": false
+   },
+   "medicine": {
+    "healing": "Tratamientos médicos de principios del siglo XX, eficaces pero limitados por la falta de antibióticos modernos.",
+    "resurrection": "none",
+    "resurrection_means": ""
+   },
+   "laws": [
+    {
+     "id": "codigo-penal",
+     "text": "Las leyes de la Corona protegen la propiedad y el orden público, siendo la policía local y la Guardia Civil quienes las imponen.",
+     "enforcer": "Cuerpo de Vigilancia y Seguridad",
+     "enforcer_faction_id": "policia",
+     "zeal": "medium",
+     "corruptible": true
+    }
+   ],
+   "norms": [],
+   "several_partners": false,
+   "unions": "for_life",
+   "rules": [
+    {
+     "id": "no-supernatural",
+     "text": "El mundo se rige estrictamente por las leyes de la física y la lógica; no existe la magia ni lo sobrenatural.",
+     "fixed": true,
+     "topic": "existence"
+    },
+    {
+     "id": "patriarcado-1920",
+     "text": "Las mujeres se enfrentan a un profundo escepticismo profesional y a un rol social secundario en la España de 1920.",
+     "fixed": true,
+     "topic": "law"
+    },
+    {
+     "id": "prensa-y-rumores",
+     "text": "Las noticias y pistas vuelan a través de los periódicos locales y las tertulias en los cafés madrileños.",
+     "fixed": true,
+     "topic": "travel"
+    }
+   ],
+   "mysteries": [
+    {
+     "id": "misterio-joyas",
+     "question": "¿Quién robó la diadema de esmeraldas de la caja fuerte del Marqués de Santomera?",
+     "answer": "El robo fue planeado por el propio hijo del Marqués para saldar unas deudas de juego clandestino, contando con la complicidad del mayordomo de la casa para abrir la caja fuerte sin forzarla.",
+     "clues": [
+      "Una marca de ceniza de tabaco exótico y caro sobre la alfombra junto a la caja fuerte.",
+      "Un duplicado de la llave de la caja fuerte escondido en la cubertería de plata.",
+      "Un listado de deudas de un club de juego privado con el apellido del Marqués garabateado."
+     ],
+     "thread_id": "el-robo-de-las-joyas",
+     "solved": false
+    }
+   ]
+  },
+  "player_id": "player",
+  "characters": {
+   "player": {
+    "id": "player",
+    "name": "Irene Lara",
+    "aliases": [
+     "Señorita Lara"
+    ],
+    "prominence": "key",
+    "description": "Una joven perspicaz, de mirada analítica y una elegancia sobria que oculta una mente excepcionalmente rápida.",
+    "appearance": "Estatura media, cabello castaño recogido en un moño práctico, viste un traje de chaqueta de tweed oscuro y botas de cuero.",
+    "look_version": 1,
+    "age": 27,
+    "people_id": "humanos",
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "despacho",
+    "personal_offset_s": 0,
+    "memberships": [],
+    "sheet": {
+     "attributes": {
+      "strength": 2,
+      "speed": 3,
+      "toughness": 2,
+      "wits": 5,
+      "knowledge": 4,
+      "willpower": 5,
+      "charm": 4,
+      "nerve": 4,
+      "bearing": 4
+     },
+     "skills": [
+      {
+       "name": "Investigación",
+       "level": "expert",
+       "notes": "Capacidad para encontrar detalles imperceptibles a simple vista."
+      },
+      {
+       "name": "Deducción",
+       "level": "expert",
+       "notes": "Habilidad para conectar pistas inconexas de forma lógica."
+      },
+      {
+       "name": "Sigilo",
+       "level": "skilled",
+       "notes": "Moverse sin llamar la atención en zonas vigiladas."
+      },
+      {
+       "name": "Persuasión",
+       "level": "skilled",
+       "notes": "Conseguir que la gente hable más de lo que debería."
+      }
+     ],
+     "traits": [
+      {
+       "name": "Mente analítica",
+       "kind": "gift",
+       "description": "Procesas la información del entorno con una velocidad asombrosa."
+      },
+      {
+       "name": "Menospreciada",
+       "kind": "flaw",
+       "description": "Los hombres de autoridad tienden a ignorarte o subestimar tus palabras a primera vista."
+      }
+     ],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "observadora",
+        "tenaz",
+        "metódica"
+       ],
+       "values": [
+        "justicia",
+        "verdad"
+       ],
+       "loves": [
+        "los rompecabezas complejos",
+        "el olor a papel viejo"
+       ],
+       "fears": [
+        "cometer un error que condene a un inocente"
+       ],
+       "wants": [],
+       "voice": ""
+      },
+      "attitudes": {}
+     },
+     "resources": {
+      "items": [
+       {
+        "id": "lupa-de-laton",
+        "name": "Lupa de latón",
+        "kind": "gear",
+        "description": "Una lente de aumento compacta para examinar huellas y fibras.",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       },
+       {
+        "id": "cuaderno-de-notas-y-estilografica",
+        "name": "Cuaderno de notas y estilográfica",
+        "kind": "document",
+        "description": "Donde registras minuciosamente cada pista y testimonio.",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       },
+       {
+        "id": "ganzua-de-bolsillo",
+        "name": "Ganzúa de bolsillo",
+        "kind": "gear",
+        "description": "Un pequeño alambre templado de acero para cerraduras sencillas.",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       }
+      ],
+      "money": 120,
+      "currency": "pesetas",
+      "title": "Detective Privada",
+      "rank": "",
+      "family_name": "",
+      "connections": [
+       {
+        "name": "Lucía Bravo",
+        "kind": "ally",
+        "character_id": "lucia",
+        "note": "Tu fiel secretaria, asistente de campo y confidente."
+       }
+      ]
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": 80,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   },
+   "valenzuela": {
+    "id": "valenzuela",
+    "name": "Inspector Valenzuela",
+    "aliases": [],
+    "prominence": "key",
+    "description": "Un veterano de la policía, testarudo, chapado a la antigua y de mirada cansada.",
+    "appearance": "Hombre de unos cincuenta años, bigote espeso y canoso, siempre viste un abrigo oscuro gastado.",
+    "look_version": 1,
+    "age": 52,
+    "people_id": "humanos",
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "comisaria",
+    "personal_offset_s": 0,
+    "memberships": [
+     {
+      "faction_id": "policia",
+      "rank": "Inspector Jefe",
+      "loyalty": 80
+     }
+    ],
+    "sheet": {
+     "attributes": {
+      "strength": 3,
+      "speed": 2,
+      "toughness": 3,
+      "wits": 3,
+      "knowledge": 3,
+      "willpower": 4,
+      "charm": 2,
+      "nerve": 4,
+      "bearing": 4
+     },
+     "skills": [
+      {
+       "name": "Interrogatorio",
+       "level": "skilled",
+       "notes": ""
+      },
+      {
+       "name": "Leyes",
+       "level": "skilled",
+       "notes": ""
+      }
+     ],
+     "traits": [
+      {
+       "name": "Machista",
+       "kind": "flaw",
+       "description": "No cree que una mujer sea capaz de realizar trabajo policial o deductivo."
+      }
+     ],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "obstinado",
+        "escéptico",
+        "cansado"
+       ],
+       "values": [
+        "orden",
+        "tradición"
+       ],
+       "loves": [
+        "su puro de la tarde",
+        "la rutina"
+       ],
+       "fears": [
+        "el ridículo público",
+        "el cambio social"
+       ],
+       "wants": [
+        "Resolver el caso Santomera sin intromisiones."
+       ],
+       "voice": ""
+      },
+      "attitudes": {
+       "player": {
+        "affinity": -20,
+        "fear": 0,
+        "trust": -10,
+        "apparent_affinity": -30,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": {
+     "goal": "Cerrar el caso del robo del palacete incriminando a un anarquista local para calmar los ánimos políticos.",
+     "method": "Fabricar o forzar pruebas débiles contra un sospechoso habitual.",
+     "secret": "Sabe que no tiene pruebas reales contra el sospechoso acusado.",
+     "clock_id": "caso-santomera"
+    },
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   },
+   "santomera": {
+    "id": "santomera",
+    "name": "Marqués de Santomera",
+    "aliases": [],
+    "prominence": "key",
+    "description": "Un aristócrata altivo que valora el honor familiar por encima de todo.",
+    "appearance": "Elegante caballero de mediana edad, barba pulcra, monóculo y traje de tres piezas hecho a medida.",
+    "look_version": 1,
+    "age": 48,
+    "people_id": "humanos",
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "palacete",
+    "personal_offset_s": 0,
+    "memberships": [
+     {
+      "faction_id": "alta-sociedad",
+      "rank": "Patriarca",
+      "loyalty": 100
+     }
+    ],
+    "sheet": {
+     "attributes": {
+      "strength": 2,
+      "speed": 3,
+      "toughness": 2,
+      "wits": 3,
+      "knowledge": 4,
+      "willpower": 3,
+      "charm": 4,
+      "nerve": 3,
+      "bearing": 5
+     },
+     "skills": [
+      {
+       "name": "Etiqueta",
+       "level": "expert",
+       "notes": ""
+      }
+     ],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "orgulloso",
+        "distante",
+        "desconfiado"
+       ],
+       "values": [
+        "linaje",
+        "reputación"
+       ],
+       "loves": [
+        "el prestigio",
+        "las antigüedades"
+       ],
+       "fears": [
+        "el deshonor",
+        "la bancarrota"
+       ],
+       "wants": [
+        "Recuperar las joyas de la familia sin que trasciendan los detalles."
+       ],
+       "voice": ""
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 0,
+        "fear": 0,
+        "trust": 10,
+        "apparent_affinity": -10,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   },
+   "lucia": {
+    "id": "lucia",
+    "name": "Lucía Bravo",
+    "aliases": [],
+    "prominence": "key",
+    "description": "Tu audaz ayudante y única confidente en un Madrid hostil.",
+    "appearance": "Mujer joven de cabello corto al estilo flapper, mirada despierta y un eterno cigarrillo en los dedos.",
+    "look_version": 1,
+    "age": 24,
+    "people_id": "humanos",
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "despacho",
+    "personal_offset_s": 0,
+    "memberships": [],
+    "sheet": {
+     "attributes": {
+      "strength": 2,
+      "speed": 4,
+      "toughness": 3,
+      "wits": 4,
+      "knowledge": 3,
+      "willpower": 4,
+      "charm": 4,
+      "nerve": 4,
+      "bearing": 3
+     },
+     "skills": [
+      {
+       "name": "Mecanografía",
+       "level": "expert",
+       "notes": ""
+      },
+      {
+       "name": "Discreción",
+       "level": "skilled",
+       "notes": ""
+      }
+     ],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "leal",
+        "rebelde",
+        "ingeniosa"
+       ],
+       "values": [
+        "lealtad",
+        "libertad"
+       ],
+       "loves": [
+        "la literatura moderna",
+        "el café bien cargado"
+       ],
+       "fears": [
+        "el aburrimiento",
+        "perder su independencia"
+       ],
+       "wants": [
+        "Ayudar a resolver casos y escribir sobre ellos en un diario privado."
+       ],
+       "voice": ""
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 80,
+        "fear": 0,
+        "trust": 90,
+        "apparent_affinity": 80,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": 0,
+    "near_s": null,
+    "met_s": null
+   }
+  },
+  "factions": {
+   "policia": {
+    "id": "policia",
+    "name": "Cuerpo de Vigilancia y Seguridad",
+    "kind": "sect",
+    "description": "Las fuerzas del orden de Madrid, reacias a aceptar la ayuda de civiles y menos aún de una mujer.",
+    "parent_id": null,
+    "status": "intact",
+    "status_history": [],
+    "activity": "active",
+    "leader_ids": [
+     "valenzuela"
+    ],
+    "goal": "Mantener el orden social y resolver los crímenes de forma rápida para evitar el ridículo en la prensa.",
+    "methods": "Interrogatorios rutinarios, presión a sospechosos habituales y burocracia obstinada.",
+    "strength": "Decenas de agentes patrullando las calles de la capital.",
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "threat": 0,
+    "relations": {},
+    "survivors": [],
+    "secrets": [
+     "Muchos de sus inspectores aceptan sobornos para desviar investigaciones delicadas."
+    ],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ]
+   },
+   "alta-sociedad": {
+    "id": "alta-sociedad",
+    "name": "Aristocracia de Madrid",
+    "kind": "family",
+    "description": "La élite adinerada que vive de las apariencias y las influencias políticas.",
+    "parent_id": null,
+    "status": "intact",
+    "status_history": [],
+    "activity": "active",
+    "leader_ids": [
+     "santomera"
+    ],
+    "goal": "Proteger sus secretos familiares y fortunas de cualquier escándalo público.",
+    "methods": "Contratación discreta de investigadores, sobornos a la prensa y favores políticos.",
+    "strength": "Gran influencia sobre las autoridades y enormes recursos financieros.",
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "threat": 0,
+    "relations": {},
+    "survivors": [],
+    "secrets": [
+     "Varios de sus miembros financian timbas ilegales en los bajos fondos."
+    ],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "places": {
+   "madrid": {
+    "id": "madrid",
+    "name": "Madrid",
+    "kind": "city",
+    "description": "La vibrante capital española, llena de cafés literarios, carruajes y coches modernos.",
+    "parent_id": null,
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "despacho": {
+    "id": "despacho",
+    "name": "Tu Despacho Privado",
+    "kind": "building",
+    "description": "Un pequeño estudio discreto cerca de la Puerta del Sol, donde atiendes a los clientes que la policía ignora.",
+    "parent_id": "madrid",
+    "setting": "indoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "calle-alcala",
+      "travel_s": 360,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [
+     "player"
+    ],
+    "judged": []
+   },
+   "calle-alcala": {
+    "id": "calle-alcala",
+    "name": "Calle de Alcalá",
+    "kind": "wilds",
+    "description": "Una de las arterias principales de Madrid, siempre concurrida por tranvías y caballeros con sombrero de copa.",
+    "parent_id": "madrid",
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "comisaria",
+      "travel_s": 1080,
+      "mode": "on foot"
+     },
+     {
+      "to_id": "palacete",
+      "travel_s": 1800,
+      "mode": "on foot"
+     },
+     {
+      "to_id": "despacho",
+      "travel_s": 360,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "comisaria": {
+    "id": "comisaria",
+    "name": "Comisaría del Cuerpo de Vigilancia",
+    "kind": "building",
+    "description": "Un edificio gris cargado de humo de tabaco, archivos desordenados y agentes condescendientes.",
+    "parent_id": "madrid",
+    "setting": "indoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "calle-alcala",
+      "travel_s": 1080,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "palacete": {
+    "id": "palacete",
+    "name": "Palacete de Santomera",
+    "kind": "building",
+    "description": "La suntuosa residencia del Marqués de Santomera en el barrio de Salamanca, escenario de un robo misterioso.",
+    "parent_id": "madrid",
+    "setting": "indoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "calle-alcala",
+      "travel_s": 1800,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [],
+    "visited_by": [],
+    "judged": []
+   }
+  },
+  "deeds": {},
+  "rumors": {},
+  "bonds": {},
+  "lives": {},
+  "aged_s": null,
+  "changes": {},
+  "strife_s": {},
+  "facts": {
+   "fact-1": {
+    "id": "fact-1",
+    "text": "El Marqués de Santomera ha sufrido el robo de sus valiosas esmeraldas familiares.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-2": {
+    "id": "fact-2",
+    "text": "La policía ha asumido el caso, pero el Inspector Valenzuela está buscando un chivo expiatorio rápido.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-3": {
+    "id": "fact-3",
+    "text": "Como mujer en el Madrid de los años veinte, la policía prefiere ignorar tu presencia y obstaculizar tus pasos.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   }
+  },
+  "goals": {},
+  "leads": {},
+  "threads": {
+   "el-robo-de-las-joyas": {
+    "id": "el-robo-de-las-joyas",
+    "title": "El robo de las joyas de Santomera",
+    "kind": "quest",
+    "stakes": "Si no descubres al verdadero ladrón, un joven inocente será encarcelado y el verdadero culpable escapará con el botín.",
+    "involved_ids": [
+     "santomera",
+     "valenzuela"
+    ],
+    "clock_id": "caso-santomera",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "status": "open",
+    "opened_turn": 0,
+    "last_active_turn": 0,
+    "taken_up_turn": null,
+    "closed_turn": null,
+    "arc": null,
+    "known_by": [
+     "player"
+    ]
+   },
+   "el-respeto-de-madrid": {
+    "id": "el-respeto-de-madrid",
+    "title": "Ganarse el respeto de la policía",
+    "kind": "rivalry",
+    "stakes": "Conseguir que la policía de Madrid no pueda ignorar tus capacidades intelectuales.",
+    "involved_ids": [
+     "valenzuela"
+    ],
+    "clock_id": null,
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "status": "open",
+    "opened_turn": 0,
+    "last_active_turn": 0,
+    "taken_up_turn": null,
+    "closed_turn": null,
+    "arc": null,
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "clocks": {
+   "caso-santomera": {
+    "id": "caso-santomera",
+    "name": "La farsa del Inspector Valenzuela",
+    "steps": [
+     "El inspector Valenzuela señala públicamente a un inocente.",
+     "La policía detiene al sospechoso equivocado bajo falsos cargos.",
+     "El juez prepara el juicio rápido sin apenas revisar las pruebas.",
+     "El inocente es condenado, el verdadero culpable huye y el caso queda cerrado para siempre."
+    ],
+    "filled": 0,
+    "advances_on": [],
+    "reverses_on": [],
+    "interval_s": 86400,
+    "next_step_s": 86400,
+    "owner_id": null,
+    "thread_id": "el-robo-de-las-joyas",
+    "status": "running",
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "pending_events": {
+   "event-1": {
+    "id": "event-1",
+    "kind": "world.clock_step",
+    "title": "La farsa del Inspector Valenzuela: El inspector Valenzuela señala públicamente a un inocente.",
+    "due_s": 86400,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": {
+     "kind": "clock",
+     "ref_id": "caso-santomera",
+     "text": ""
+    },
+    "payload": {
+     "clock_id": "caso-santomera"
+    },
+    "seed": "story=play%2Fx-detective/timeline=main/turn=1/world/schedule/event-1",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-2": {
+    "id": "event-2",
+    "kind": "world.old_age",
+    "title": "Your years run short",
+    "due_s": 1663502515,
+    "timeline_id": "main",
+    "needs_player": true,
+    "status": "pending",
+    "subject_ids": [
+     "player"
+    ],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "phase": "near",
+     "who": "player",
+     "span": 80,
+     "day_s": 1758201671
+    },
+    "seed": "story=play%2Fx-detective/timeline=main/turn=1/world/schedule/event-2",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-3": {
+    "id": "event-3",
+    "kind": "world.tick",
+    "title": "The world moves on",
+    "due_s": 86400,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "last_s": 0,
+     "stride_s": 86400
+    },
+    "seed": "story=play%2Fx-detective/timeline=main/turn=1/world/schedule/event-3",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   }
+  },
+  "transfers": [],
+  "time_effects": [],
+  "scene": {
+   "place_id": "despacho",
+   "present_ids": [
+    "lucia"
+   ],
+   "positions": [
+    "sentada tras el escritorio de roble",
+    "de pie frente al escritorio mirando a Irene"
+   ],
+   "props": [
+    "escritorio de roble",
+    "periódico El Imparcial abierto",
+    "recortes de prensa",
+    "archivadores metálicos"
+   ],
+   "ended_on": "Lucía apoya las manos en el escritorio, esperando a que decidas el primer paso.",
+   "encounter": null
+  },
+  "director": {
+   "turns_without_stakes": 0,
+   "low_stakes_streak": 0,
+   "last_action_key": null,
+   "last_event_turn": null,
+   "last_event_size": null,
+   "last_event_s": {},
+   "last_small_s": null,
+   "recent_moments": [],
+   "recent_clock": [
+    0
+   ],
+   "frequency_drift": 0.0,
+   "recent_sources": [],
+   "auto_pictures": 1,
+   "picture_credit": 1.1,
+   "pictured": [
+    "portrait:player",
+    "portrait:player:v1"
+   ],
+   "fight": null,
+   "deck_draws": 0,
+   "road_stops": 0
+  },
+  "summary": "Estás en tu despacho del Madrid de 1920 junto a tu ayudante Lucía, dispuesta a investigar el robo de las esmeraldas del Marqués de Santomera antes de que la policía detenga a un inocente.",
+  "chapters": [],
+  "id_counters": {
+   "fact": 3,
+   "goal": 1,
+   "bond": 0,
+   "event": 3
+  },
+  "fallen": [],
+  "opening_due": false,
+  "misses_in_a_row": 0,
+  "openings": [],
+  "journey": null,
+  "untold": [
+   "thread:el-respeto-de-madrid"
+  ]
+ },
+ "scenes": [
+  {
+   "turn": 1,
+   "narration": "Permaneces sentada tras el escritorio de roble, deslizando la yema de los dedos sobre los recortes de prensa de *El Imparcial* que detallan el audaz robo de las esmeraldas de Santomera, mientras Lucía se aparta de la ventana con el periódico fresco en las manos.\n\nLa luz mortecina de la mañana madrileña apenas logra disipar las sombras de tu discreto estudio. Lucía apura el último trago de su taza de café y deja caer el diario sobre la madera con un golpe seco, señalando un titular en letras de molde.\n\n—El Inspector Valenzuela ya tiene su chivo expiatorio —dice tu ayudante con una mueca de desdén—. Van a cerrar el caso del siglo deteniendo a un pobre diablo antes de que acabe el día.\n\nLa nota policial asegura que el arresto es inminente. Sabes bien que la rigidez del Cuerpo de Vigilancia solo servirá para condenar a un inocente mientras el verdadero ladrón huye con la fortuna del marqués. En este Madrid de tranvías y prejuicios, donde la ley te considera invisible, el tiempo corre en tu contra si pretendes adelantarte a los guardias.",
+   "player_action": null
+  }
+ ],
+ "choices": [
+  "Estudiar minuciosamente los recortes de prensa con tu lupa de latón",
+  "Preguntar a Lucía qué se comenta en la Puerta del Sol",
+  "Salir de inmediato hacia la calle de Alcalá a investigar"
+ ],
+ "cost_usd": 0.1326915,
+ "draft": {
+  "premise": "Soy una detective brillante en el Madrid de 1920. Nadie me toma en serio por ser mujer, pero resuelvo los casos que la policía no puede.",
+  "proposal": {
+   "world": {
+    "title": "La detective de la calle Alcalá",
+    "genre": "misterio histórico",
+    "tone": "noir elegante",
+    "era": "Madrid, 1920: tranvías, automóviles de época, teléfonos mecánicos y prensa de papel.",
+    "extraordinary": [
+     {
+      "id": "supernatural",
+      "kind": "magia o cualquier elemento sobrenatural",
+      "prevalence": "none",
+      "reach": "No existe ningún elemento sobrenatural; todo se rige por la lógica, la ciencia y la física."
+     }
+    ],
+    "rules": [
+     {
+      "id": "no-supernatural",
+      "text": "El mundo se rige estrictamente por las leyes de la física y la lógica; no existe la magia ni lo sobrenatural.",
+      "fixed": true,
+      "topic": "existence",
+      "about": [
+       "supernatural"
+      ]
+     },
+     {
+      "id": "patriarcado-1920",
+      "text": "Las mujeres se enfrentan a un profundo escepticismo profesional y a un rol social secundario en la España de 1920.",
+      "fixed": true,
+      "topic": "law",
+      "about": []
+     },
+     {
+      "id": "prensa-y-rumores",
+      "text": "Las noticias y pistas vuelan a través de los periódicos locales y las tertulias en los cafés madrileños.",
+      "fixed": true,
+      "topic": "travel",
+      "about": []
+     }
+    ],
+    "dropped_rule_ids": [],
+    "peoples": [
+     {
+      "id": "humanos",
+      "name": "Humanos",
+      "description": "La gente corriente del Madrid de los años veinte.",
+      "lifespan_years": 80,
+      "gifts": [],
+      "culture": "Sociedad madrileña de entreguerras, dividida entre el conservadurismo tradicional y los primeros aires de modernidad.",
+      "relations": [],
+      "path": ""
+     }
+    ],
+    "creatures": [],
+    "nature": [],
+    "ladders": [],
+    "calendar": {
+     "style": "gregorian",
+     "clock_time": true,
+     "epoch": "1920-10-15T10:00",
+     "start_hour": 10,
+     "months": [],
+     "start_year": 1920,
+     "start_month": 10,
+     "start_day": 15,
+     "era": ""
+    },
+    "travel": {
+     "description": "La gente se desplaza a pie, en tranvía o en los primeros automóviles. Las comunicaciones telefónicas requieren de una centralita manual.",
+     "instant_messages": false
+    },
+    "medicine": {
+     "healing": "Tratamientos médicos de principios del siglo XX, eficaces pero limitados por la falta de antibióticos modernos.",
+     "resurrection": "none",
+     "resurrection_means": ""
+    },
+    "laws": [
+     {
+      "id": "codigo-penal",
+      "text": "Las leyes de la Corona protegen la propiedad y el orden público, siendo la policía local y la Guardia Civil quienes las imponen.",
+      "enforcer": "Cuerpo de Vigilancia y Seguridad",
+      "enforcer_faction_id": "policia",
+      "zeal": "medium",
+      "corruptible": true
+     }
+    ],
+    "norms": [],
+    "several_partners": false,
+    "unions": "for_life",
+    "places": [
+     {
+      "id": "madrid",
+      "name": "Madrid",
+      "kind": "city",
+      "description": "La vibrante capital española, llena de cafés literarios, carruajes y coches modernos.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "despacho",
+      "name": "Tu Despacho Privado",
+      "kind": "building",
+      "description": "Un pequeño estudio discreto cerca de la Puerta del Sol, donde atiendes a los clientes que la policía ignora.",
+      "parent_id": "madrid",
+      "setting": "indoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "calle-alcala",
+        "travel_hours": 0.1,
+        "mode": "on foot"
+       }
+      ]
+     },
+     {
+      "id": "calle-alcala",
+      "name": "Calle de Alcalá",
+      "kind": "wilds",
+      "description": "Una de las arterias principales de Madrid, siempre concurrida por tranvías y caballeros con sombrero de copa.",
+      "parent_id": "madrid",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "comisaria",
+        "travel_hours": 0.3,
+        "mode": "on foot"
+       },
+       {
+        "to_id": "palacete",
+        "travel_hours": 0.5,
+        "mode": "on foot"
+       }
+      ]
+     },
+     {
+      "id": "comisaria",
+      "name": "Comisaría del Cuerpo de Vigilancia",
+      "kind": "building",
+      "description": "Un edificio gris cargado de humo de tabaco, archivos desordenados y agentes condescendientes.",
+      "parent_id": "madrid",
+      "setting": "indoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "palacete",
+      "name": "Palacete de Santomera",
+      "kind": "building",
+      "description": "La suntuosa residencia del Marqués de Santomera en el barrio de Salamanca, escenario de un robo misterioso.",
+      "parent_id": "madrid",
+      "setting": "indoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": false,
+      "routes": []
+     }
+    ],
+    "factions": [
+     {
+      "id": "policia",
+      "name": "Cuerpo de Vigilancia y Seguridad",
+      "kind": "sect",
+      "description": "Las fuerzas del orden de Madrid, reacias a aceptar la ayuda de civiles y menos aún de una mujer.",
+      "parent_id": "",
+      "leader_ids": [
+       "valenzuela"
+      ],
+      "goal": "Mantener el orden social y resolver los crímenes de forma rápida para evitar el ridículo en la prensa.",
+      "methods": "Interrogatorios rutinarios, presión a sospechosos habituales y burocracia obstinada.",
+      "strength": "Decenas de agentes patrullando las calles de la capital.",
+      "relations": [],
+      "secrets": [
+       "Muchos de sus inspectores aceptan sobornos para desviar investigaciones delicadas."
+      ],
+      "known_to_player": true
+     },
+     {
+      "id": "alta-sociedad",
+      "name": "Aristocracia de Madrid",
+      "kind": "family",
+      "description": "La élite adinerada que vive de las apariencias y las influencias políticas.",
+      "parent_id": "",
+      "leader_ids": [
+       "santomera"
+      ],
+      "goal": "Proteger sus secretos familiares y fortunas de cualquier escándalo público.",
+      "methods": "Contratación discreta de investigadores, sobornos a la prensa y favores políticos.",
+      "strength": "Gran influencia sobre las autoridades y enormes recursos financieros.",
+      "relations": [],
+      "secrets": [
+       "Varios de sus miembros financian timbas ilegales en los bajos fondos."
+      ],
+      "known_to_player": true
+     }
+    ],
+    "npcs": [
+     {
+      "id": "valenzuela",
+      "name": "Inspector Valenzuela",
+      "aliases": [],
+      "description": "Un veterano de la policía, testarudo, chapado a la antigua y de mirada cansada.",
+      "appearance": "Hombre de unos cincuenta años, bigote espeso y canoso, siempre viste un abrigo oscuro gastado.",
+      "age": 52,
+      "people_id": "humanos",
+      "location_id": "comisaria",
+      "memberships": [
+       {
+        "faction_id": "policia",
+        "rank": "Inspector Jefe",
+        "loyalty": 80
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "obstinado",
+        "escéptico",
+        "cansado"
+       ],
+       "values": [
+        "orden",
+        "tradición"
+       ],
+       "loves": [
+        "su puro de la tarde",
+        "la rutina"
+       ],
+       "fears": [
+        "el ridículo público",
+        "el cambio social"
+       ],
+       "wants": [
+        "Resolver el caso Santomera sin intromisiones."
+       ],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 3,
+       "speed": 2,
+       "toughness": 3,
+       "wits": 3,
+       "knowledge": 3,
+       "willpower": 4,
+       "charm": 2,
+       "nerve": 4,
+       "bearing": 4
+      },
+      "skills": [
+       {
+        "name": "Interrogatorio",
+        "level": "skilled",
+        "notes": ""
+       },
+       {
+        "name": "Leyes",
+        "level": "skilled",
+        "notes": ""
+       }
+      ],
+      "traits": [
+       {
+        "name": "Machista",
+        "kind": "flaw",
+        "description": "No cree que una mujer sea capaz de realizar trabajo policial o deductivo."
+       }
+      ],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": -20,
+       "fear": 0,
+       "trust": -10,
+       "shown_affinity": -30,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": {
+       "goal": "Cerrar el caso del robo del palacete incriminando a un anarquista local para calmar los ánimos políticos.",
+       "method": "Fabricar o forzar pruebas débiles contra un sospechoso habitual.",
+       "secret": "Sabe que no tiene pruebas reales contra el sospechoso acusado.",
+       "clock_id": "caso-santomera"
+      },
+      "secrets": [],
+      "player_knows": "met"
+     },
+     {
+      "id": "santomera",
+      "name": "Marqués de Santomera",
+      "aliases": [],
+      "description": "Un aristócrata altivo que valora el honor familiar por encima de todo.",
+      "appearance": "Elegante caballero de mediana edad, barba pulcra, monóculo y traje de tres piezas hecho a medida.",
+      "age": 48,
+      "people_id": "humanos",
+      "location_id": "palacete",
+      "memberships": [
+       {
+        "faction_id": "alta-sociedad",
+        "rank": "Patriarca",
+        "loyalty": 100
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "orgulloso",
+        "distante",
+        "desconfiado"
+       ],
+       "values": [
+        "linaje",
+        "reputación"
+       ],
+       "loves": [
+        "el prestigio",
+        "las antigüedades"
+       ],
+       "fears": [
+        "el deshonor",
+        "la bancarrota"
+       ],
+       "wants": [
+        "Recuperar las joyas de la familia sin que trasciendan los detalles."
+       ],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 2,
+       "speed": 3,
+       "toughness": 2,
+       "wits": 3,
+       "knowledge": 4,
+       "willpower": 3,
+       "charm": 4,
+       "nerve": 3,
+       "bearing": 5
+      },
+      "skills": [
+       {
+        "name": "Etiqueta",
+        "level": "expert",
+        "notes": ""
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 0,
+       "fear": 0,
+       "trust": 10,
+       "shown_affinity": -10,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "heard_of"
+     },
+     {
+      "id": "lucia",
+      "name": "Lucía Bravo",
+      "aliases": [],
+      "description": "Tu audaz ayudante y única confidente en un Madrid hostil.",
+      "appearance": "Mujer joven de cabello corto al estilo flapper, mirada despierta y un eterno cigarrillo en los dedos.",
+      "age": 24,
+      "people_id": "humanos",
+      "location_id": "despacho",
+      "memberships": [],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "leal",
+        "rebelde",
+        "ingeniosa"
+       ],
+       "values": [
+        "lealtad",
+        "libertad"
+       ],
+       "loves": [
+        "la literatura moderna",
+        "el café bien cargado"
+       ],
+       "fears": [
+        "el aburrimiento",
+        "perder su independencia"
+       ],
+       "wants": [
+        "Ayudar a resolver casos y escribir sobre ellos en un diario privado."
+       ],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 2,
+       "speed": 4,
+       "toughness": 3,
+       "wits": 4,
+       "knowledge": 3,
+       "willpower": 4,
+       "charm": 4,
+       "nerve": 4,
+       "bearing": 3
+      },
+      "skills": [
+       {
+        "name": "Mecanografía",
+        "level": "expert",
+        "notes": ""
+       },
+       {
+        "name": "Discreción",
+        "level": "skilled",
+        "notes": ""
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 80,
+       "fear": 0,
+       "trust": 90,
+       "shown_affinity": 80,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "met"
+     }
+    ],
+    "clocks": [
+     {
+      "id": "caso-santomera",
+      "name": "La farsa del Inspector Valenzuela",
+      "steps": [
+       "El inspector Valenzuela señala públicamente a un inocente.",
+       "La policía detiene al sospechoso equivocado bajo falsos cargos.",
+       "El juez prepara el juicio rápido sin apenas revisar las pruebas.",
+       "El inocente es condenado, el verdadero culpable huye y el caso queda cerrado para siempre."
+      ],
+      "step_every_hours": 24.0,
+      "owner_id": "",
+      "thread_id": "",
+      "known_to_player": true
+     }
+    ],
+    "threads": [
+     {
+      "id": "el-robo-de-las-joyas",
+      "title": "El robo de las joyas de Santomera",
+      "kind": "quest",
+      "stakes": "Si no descubres al verdadero ladrón, un joven inocente será encarcelado y el verdadero culpable escapará con el botín.",
+      "involved_ids": [
+       "santomera",
+       "valenzuela"
+      ],
+      "clock_id": "caso-santomera",
+      "known_to_player": true
+     },
+     {
+      "id": "el-respeto-de-madrid",
+      "title": "Ganarse el respeto de la policía",
+      "kind": "rivalry",
+      "stakes": "Conseguir que la policía de Madrid no pueda ignorar tus capacidades intelectuales.",
+      "involved_ids": [
+       "valenzuela"
+      ],
+      "clock_id": "",
+      "known_to_player": true
+     }
+    ],
+    "mysteries": [
+     {
+      "id": "misterio-joyas",
+      "question": "¿Quién robó la diadema de esmeraldas de la caja fuerte del Marqués de Santomera?",
+      "answer": "El robo fue planeado por el propio hijo del Marqués para saldar unas deudas de juego clandestino, contando con la complicidad del mayordomo de la casa para abrir la caja fuerte sin forzarla.",
+      "clues": [
+       "Una marca de ceniza de tabaco exótico y caro sobre la alfombra junto a la caja fuerte.",
+       "Un duplicado de la llave de la caja fuerte escondido en la cubertería de plata.",
+       "Un listado de deudas de un club de juego privado con el apellido del Marqués garabateado."
+      ],
+      "thread_id": "el-robo-de-las-joyas",
+      "known_to_player": true
+     }
+    ],
+    "known_facts": [
+     "El Marqués de Santomera ha sufrido el robo de sus valiosas esmeraldas familiares.",
+     "La policía ha asumido el caso, pero el Inspector Valenzuela está buscando un chivo expiatorio rápido.",
+     "Como mujer en el Madrid de los años veinte, la policía prefiere ignorar tu presencia y obstaculizar tus pasos."
+    ],
+    "opening": {
+     "place_id": "despacho",
+     "present_ids": [
+      "lucia"
+     ],
+     "positions": [
+      "sentada tras el escritorio analizando unos recortes de prensa",
+      "de pie junto a la ventana terminando un café"
+     ],
+     "props": [
+      "escritorio de roble",
+      "archivadores metálicos",
+      "recortes del periódico El Imparcial sobre el robo"
+     ],
+     "situation": "Estás en tu modesto despacho cerca de la Puerta del Sol cuando Lucía te muestra el último ejemplar del periódico, donde la policía anuncia que está a punto de cerrar en falso el robo del siglo en el palacete de Santomera."
+    },
+    "summary": "Eres una brillante detective en el Madrid de 1920 que debe resolver los casos que la policía descarta o arruina, luchando contra los prejuicios de una época que se niega a tomarte en serio."
+   },
+   "character": {
+    "name": "Irene Lara",
+    "aliases": [
+     "Señorita Lara"
+    ],
+    "age": 27,
+    "lifespan_years": 80,
+    "people_id": "humanos",
+    "description": "Una joven perspicaz, de mirada analítica y una elegancia sobria que oculta una mente excepcionalmente rápida.",
+    "appearance": "Estatura media, cabello castaño recogido en un moño práctico, viste un traje de chaqueta de tweed oscuro y botas de cuero.",
+    "location_id": "despacho",
+    "attributes": {
+     "strength": 2,
+     "speed": 3,
+     "toughness": 2,
+     "wits": 5,
+     "knowledge": 4,
+     "willpower": 5,
+     "charm": 4,
+     "nerve": 4,
+     "bearing": 4
+    },
+    "skills": [
+     {
+      "name": "Investigación",
+      "level": "expert",
+      "notes": "Capacidad para encontrar detalles imperceptibles a simple vista."
+     },
+     {
+      "name": "Deducción",
+      "level": "expert",
+      "notes": "Habilidad para conectar pistas inconexas de forma lógica."
+     },
+     {
+      "name": "Sigilo",
+      "level": "skilled",
+      "notes": "Moverse sin llamar la atención en zonas vigiladas."
+     },
+     {
+      "name": "Persuasión",
+      "level": "skilled",
+      "notes": "Conseguir que la gente hable más de lo que debería."
+     }
+    ],
+    "traits": [
+     {
+      "name": "Mente analítica",
+      "kind": "gift",
+      "description": "Procesas la información del entorno con una velocidad asombrosa."
+     },
+     {
+      "name": "Menospreciada",
+      "kind": "flaw",
+      "description": "Los hombres de autoridad tienden a ignorarte o subestimar tus palabras a primera vista."
+     }
+    ],
+    "talents": [],
+    "powers": [],
+    "techniques": [],
+    "temperament": {
+     "traits": [
+      "observadora",
+      "tenaz",
+      "metódica"
+     ],
+     "values": [
+      "justicia",
+      "verdad"
+     ],
+     "loves": [
+      "los rompecabezas complejos",
+      "el olor a papel viejo"
+     ],
+     "fears": [
+      "cometer un error que condene a un inocente"
+     ],
+     "wants": [
+      "Resolver los casos que la policía no puede.",
+      "Hacer que me tomen en serio como detective."
+     ],
+     "voice": ""
+    },
+    "items": [
+     {
+      "name": "Lupa de latón",
+      "kind": "gear",
+      "description": "Una lente de aumento compacta para examinar huellas y fibras.",
+      "quantity": 1,
+      "carried": true
+     },
+     {
+      "name": "Cuaderno de notas y estilográfica",
+      "kind": "document",
+      "description": "Donde registras minuciosamente cada pista y testimonio.",
+      "quantity": 1,
+      "carried": true
+     },
+     {
+      "name": "Ganzúa de bolsillo",
+      "kind": "gear",
+      "description": "Un pequeño alambre templado de acero para cerraduras sencillas.",
+      "quantity": 1,
+      "carried": true
+     }
+    ],
+    "money": 120,
+    "currency": "pesetas",
+    "title": "Detective Privada",
+    "rank": "",
+    "family_name": "",
+    "connections": [
+     {
+      "name": "Lucía Bravo",
+      "kind": "ally",
+      "character_id": "lucia",
+      "note": "Tu fiel secretaria, asistente de campo y confidente."
+     }
+    ],
+    "parent_ids": [],
+    "memberships": [],
+    "ladders": [],
+    "axes": {
+     "might": 1,
+     "influence": 1,
+     "wealth": 1,
+     "knowledge": 1,
+     "stealth": 1
+    },
+    "reserves": [],
+    "goals": [
+     "Resolver los casos que la policía no puede"
+    ],
+    "backstory": [],
+    "hidden_past": []
+   }
+  },
+  "rating": "teen",
+  "premise_id": null,
+  "physics": "fun_first",
+  "gift": null,
+  "released_rules": [],
+  "language": "es",
+  "told": []
+ }
+}
