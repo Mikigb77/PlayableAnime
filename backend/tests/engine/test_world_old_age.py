@@ -307,7 +307,8 @@ def test_a_month_takes_nobody_and_a_hundred_years_every_mortal():
     century, _ = idle(valley(*people), 100 * YEAR)
 
     assert all(dead(state) == [] for state in month)
-    assert dead(century) == sorted(i for i in century.characters if i != YOU)
+    # Tomas among them: his own old age came for him too (`engine.world.last_years`).
+    assert dead(century) == sorted(century.characters)
     assert check_state(century) == []
 
 

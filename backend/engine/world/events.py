@@ -19,6 +19,7 @@ from engine.world.carriers import on_report, on_word
 from engine.world.cast import on_emergence, on_revival
 from engine.world.clocks import on_clock_end, on_clock_step
 from engine.world.discovery import on_discovery
+from engine.world.last_years import on_old_age
 from engine.world.returns import on_return
 from engine.world.rumors import on_rumor
 from engine.world.scheduling import Kind, World, event_rng
@@ -40,6 +41,7 @@ _MAY_NEED_PLAYER = {
     Kind.ANSWER: on_answer,
     Kind.CLOCK_END: on_clock_end,
     Kind.BIRTH: on_birth,
+    Kind.OLD_AGE: on_old_age,
 }
 
 

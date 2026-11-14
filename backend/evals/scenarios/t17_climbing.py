@@ -45,6 +45,12 @@ def in_greywater(state: WorldState) -> None:
     state.scene = SceneFrame(place_id="town", present_ids=[YOU], ended_on=IN_GREYWATER)
 
 
+def long_lived(state: WorldState) -> None:
+    """Lin lives as long as the highest realm does, whichever he stands on, by a span of his
+    own: the years of a century come to everyone else alone."""
+    state.characters[YOU].lifespan_years = worlds.REALM_YEARS[-1]
+
+
 def alone_at_the_well(state: WorldState) -> None:
     """Lin stays on the mountain, with nobody beside him as the years begin."""
     state.scene = SceneFrame(place_id="well", present_ids=[YOU], ended_on=AT_THE_WELL)
@@ -266,7 +272,7 @@ def on_record(before: WorldState, state: WorldState, present: list[str]) -> str:
         "and the gatekeeper too unless he broke through, whoever lives stands on a realm that "
         "lets them live so long, a rise of someone he never met is news to nobody, and the "
         "same years with him on the highest realm leave everyone exactly where they stand "
-        "with him on the lowest: nobody is lifted to meet him"
+        "with him on the lowest: nobody is lifted to meet him (his own old age set aside)"
     ),
 )
 async def others_rise(ev: Eval) -> None:
@@ -463,7 +469,9 @@ async def others_rise(ev: Eval) -> None:
             live=False,
         )
 
-    # A hundred years: nobody is lifted to meet him, whatever he made of them.
+    # A hundred years: nobody is lifted to meet him, whatever he made of them. His own years
+    # are set aside on both realms, so the century is watched whole: on the lowest his own old
+    # age would stop it at a hundred and two (`t17.own-old-age`).
     after: Counter[str] = Counter()
     for seed in ev.seeds(12, live=0):
         ends = []
@@ -475,6 +483,7 @@ async def others_rise(ev: Eval) -> None:
                 under_way=True,
             )
             story.change(in_greywater)
+            story.change(long_lived)
             left = story.state
             await live_there(story, HUNDRED, where="in Greywater", turns=TURNS)
             ends.append(story.state)

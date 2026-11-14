@@ -113,8 +113,9 @@ from engine.state.sheet import (
 from engine.state.world import ActiveTimeEffect, WorldState, natural_key
 from engine.text import any_mentions
 from engine.timekeeping import effect_over
+from engine.world import old_age
 from engine.world.geography import find_place, scene_ids, together
-from engine.world.tuning import GESTATION_S
+from engine.world.tuning import AGELESS_YEARS, GESTATION_S
 
 # How far one narrated scene can move an attitude on its own (W4). The engine moves them further.
 NARRATOR_ATTITUDE_CAP = 10
@@ -122,6 +123,8 @@ NARRATOR_ATTITUDE_CAP = 10
 MAX_PROGRESS = 300
 # W10: why a narrated scene's word about someone it can't have in it is refused.
 _ELSEWHERE = "the record has them elsewhere, and only the world brings them here"
+# W6: a scene lengthens the life of nobody it doesn't reach.
+_UNREACHED = "the scene doesn't reach them: only the world touches anyone elsewhere"
 # G18, A4: a rung is come standing on only by someone the same delta brings into the story.
 _NOBODY_LIFTED = "only someone this scene brought in comes standing on it: nobody is lifted"
 
@@ -492,6 +495,20 @@ class _Applier:
     def reject(self, subject: str, change: str, reason: str) -> None:
         self.rejected.append(Rejection(subject, change, reason))
 
+    def longer_life(self, character: Character, years: int) -> None:
+        """W6. A scene lengthened someone's life, or ended their ageing: a span of their own
+        from here on, where it is longer than they already live by their people, their rung
+        and any span they had (`engine.world.old_age.span`). A life is never shortened this
+        way, so fewer years change nothing, and a scene lengthens the life only of someone it
+        reaches: only the world touches anyone elsewhere (W10)."""
+        years = min(years, AGELESS_YEARS)
+        if years <= old_age.span(self.state, character):
+            return
+        if self.door is not None and not self.door.touches(self.state, character.id):
+            self.reject(f"character {character.id}", "lifespan", _UNREACHED)
+            return
+        character.lifespan_years = years
+
     def engine_only(self, subject: str, change: str) -> bool:
         """True if the change may go ahead; records a rejection for the narrator."""
         if not self.engine:
@@ -734,6 +751,8 @@ class _Applier:
                 if not self.engine_only(subject, "age"):
                     continue
             setattr(character, attr, value)
+        if change.lifespan_years:
+            self.longer_life(character, change.lifespan_years)
         if look is not None:
             character.appearance = look
             character.look_version += 1  # M5: the portrait is drawn once more

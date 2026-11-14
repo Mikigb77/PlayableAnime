@@ -142,15 +142,18 @@ async def world_moves(ev: Eval) -> None:
     # Ten years, evenly matched: what the years bring varies, and nothing is made to happen.
     kinds: Counter[str] = Counter()
     winners: Counter[str] = Counter()
-    fought = stories = 0
+    fought = late = stories = 0
     for seed in ev.seeds(36, live=0):
         story = ev.story(
             worlds.kingdoms_at_war(), seed=f"{seed}/even", settings=CALM, under_way=True
         )
+        began_s = story.state.world_s
         await live_there(story, TEN, where="on the farm", turns=TURNS)
         state = story.state
         stories += 1
         fought += bool(state.changes)
+        first_s = min((c.world_s for c in state.changes.values()), default=None)
+        late += first_s is None or first_s - began_s > 5 * YEAR
         for change in changes(state):
             kinds[change.kind.value] += 1
             if change.kind in (WorldChangeKind.BEATEN, WorldChangeKind.FELL):
@@ -172,10 +175,14 @@ async def world_moves(ev: Eval) -> None:
         )
     ev.metric("what ten years brought an even war", dict(kinds))
     ev.metric("wars fought out in ten years", f"{fought} of {stories}")
+    ev.metric("wars not fought out in the first five", f"{late} of {stories}")
+    # One war in four takes more than five years or never comes to it, and one in twenty-five
+    # is never fought in the ten: a check on the second alone failed one run in four by the
+    # luck of its 36 seeds.
     ev.check(
-        "over ten years most wars are fought out, and some never are",
-        stories == 0 or (fought * 3 >= stories * 2 and fought < stories),
-        f"{fought} of {stories}",
+        "over ten years most wars are fought out, at no set time: some only late, or never",
+        stories == 0 or (fought * 3 >= stories * 2 and 0 < late < stories),
+        f"{fought} of {stories} fought out, {late} of them late or never",
         live=False,
     )
     ev.check(

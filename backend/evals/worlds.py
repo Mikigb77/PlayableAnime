@@ -1571,6 +1571,57 @@ def millbrook_grown_old() -> WorldState:
     return state
 
 
+PEACH = "peach"
+
+
+def millbrook_at_sixty(*, peach: bool = False) -> WorldState:
+    """`millbrook_he_knows` years on, for his own old age (N6, W6): Tomas is sixty, on the farm
+    he never left. The record gives him eighty years, as a new world's draft says of its
+    character, so he is old at sixty-eight and old age takes him some years on.
+    With `peach` he has kept a peach from the Orchard of the Undying all his life, which gives
+    whoever eats it three hundred years."""
+    state = millbrook_he_knows()
+    tomas = state.characters["tomas"]
+    tomas.age = 60
+    tomas.lifespan_years = 80
+    tomas.appearance = "60, broad shoulders gone lean, grey hair, a farmer's hands."
+    state.summary = "Tomas Weller has farmed a small plot in the Long Valley all his life, alone."
+    if peach:
+        fruit = Item(
+            id=PEACH,
+            name="peach from the Orchard of the Undying",
+            kind=ItemKind.CONSUMABLE,
+            description="A peach that never spoils. Whoever eats it lives three hundred years.",
+        )
+        give(state, "tomas", fruit)
+    return state
+
+
+def millbrook_elf_at_sixty() -> WorldState:
+    """`millbrook_at_sixty` as a world drafted before peoples said how long they live (W6):
+    Tomas is an elf among humans, the story has elves live for many centuries, and the record
+    gives neither people a lifespan, nor him one of his own. The world takes his life for a
+    human one."""
+    state = millbrook_at_sixty()
+    state.bible.peoples = [
+        People(id="humans", name="humans"),
+        People(
+            id="elves",
+            name="elves",
+            description="Elves live for many centuries: one of sixty is barely grown.",
+        ),
+    ]
+    for character in state.characters.values():
+        character.people_id = "humans"
+    tomas = state.characters["tomas"]
+    tomas.people_id = "elves"
+    tomas.lifespan_years = None
+    tomas.description = "An elf who farms among humans, young for his kind at sixty."
+    tomas.appearance = "Looks a man of twenty: fair hair, pointed ears, a farmer's hands."
+    state.summary = "Tomas Weller, an elf, has farmed a small plot in the Long Valley for decades."
+    return state
+
+
 SAEL, WICK = "sael", "brother-wick"
 
 
