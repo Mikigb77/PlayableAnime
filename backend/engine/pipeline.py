@@ -49,7 +49,7 @@ from engine.state.records import PendingEvent
 from engine.state.sheet import Practice
 from engine.state.world import WorldState
 from engine.timekeeping import TimePassage, prune_time_effects, world_stopped
-from engine.world import carriers, hearsay, journeys, lives, strife
+from engine.world import carriers, hearsay, journeys, last_years, lives, strife
 from engine.world.geography import region_of
 from engine.world.scheduling import World
 
@@ -187,6 +187,9 @@ def play_out(
     do next happens there, and one an event cut short leaves the player character on the way,
     with what is left of it kept (W10, `engine.world.journeys`). A trip of theirs rolls what
     the road brings in place of a long stretch's events (W16, `director.schedule_road`).
+
+    A step with which the player character lets death come at the end of their years ends
+    with it, and one of a day or more runs to the day (N6, `last_years.let_go`).
     """
     # One working copy for the whole plan; the input state is never touched.
     current = state.model_copy(deep=True)
@@ -197,6 +200,11 @@ def play_out(
     interrupted_by: PendingEvent | None = None
     capped = False
     for step in resolution.steps:
+        if step.lets_go and actor_id == current.player_id and not world_stopped(current):
+            # N6. Told the end is close, they let it come: a last step ends with their death,
+            # and the time they have left, lived out, runs to the day.
+            w = World(state=current, ctx=ctx, at_s=current.world_s, rng=rng.child("world"))
+            step = step.model_copy(update={"duration_s": last_years.let_go(w, step.duration_s)})
         # W10. A long stretch that isn't part of the encounter, such as a night's sleep, ends it
         # first, so the stretch rolls its events (E7).
         encounters.before_step(current, step, actor_id)

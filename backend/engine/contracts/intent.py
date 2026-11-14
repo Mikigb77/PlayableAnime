@@ -605,9 +605,11 @@ def _step_required(schema: dict[str, Any]) -> None:
     "I cut Han's throat" was read as a killing with no target (2026-11-11), so nobody died on
     record. Where a reading still names nobody, `graph.turn.check` finds who the words point
     at. And so is `romance` (W17), null on any step that is no move in a romance: a bond moves
-    only on a move the reading named, so one it left out would leave a couple unrecorded. A
-    turn that one of these can't apply to, such as a ruling on talent for a character with
-    none, is asked a form without it (`graph.turn.form`), and it keeps its default."""
+    only on a move the reading named, so one it left out would leave a couple unrecorded. And
+    so is `lets_go` (N6), false on any step that isn't the character letting death come at the
+    end of their years. A turn that one of these can't apply to, such as a ruling on talent
+    for a character with none, is asked a form without it (`graph.turn.form`), and it keeps
+    its default."""
     must = [
         "target_ids",
         "aim",
@@ -618,6 +620,7 @@ def _step_required(schema: dict[str, Any]) -> None:
         "destination",
         "show_strength",
         "romance",
+        "lets_go",
     ]
     schema["required"] = list(dict.fromkeys([*schema.get("required", []), *must]))
 
@@ -749,6 +752,15 @@ class IntentStep(EngineModel):
         description=(
             "W17: always given. null unless the step is itself a move in a romance between"
             " the character and someone it is aimed at."
+        ),
+    )
+    lets_go: bool = Field(
+        default=False,
+        description=(
+            "N6: always given. true only when the player's own words have the character, at"
+            " the end of their years, let death come: let go here and now, or live out the"
+            " time they have left until it ends. false for sleep, rest, a wait and anything"
+            " they mean to wake from or go on after."
         ),
     )
 

@@ -49,6 +49,7 @@ from engine.state.records import GoalStatus, LeadStatus, RollRecord, StepResult,
 from engine.state.world import WorldState
 from engine.text import stems
 from engine.timekeeping import DURATION_BOUNDS, names_a_span, parse_clock
+from engine.world import last_years
 from engine.world.geography import scene_ids
 from graph.turn.form import Above
 from graph.turn.outputs import NarratorOutput
@@ -88,6 +89,10 @@ MAX_RUNG_NAME = 60
 READ_AGAIN = "read_again"
 BEYOND_TERMS = "beyond_terms"
 BREAKTHROUGH = "breakthrough"
+# N6: the reading has the player character let death come at the end of their years, and the
+# issue for one that says so before any scene told them the end is close.
+LETS_GO = "lets_go"
+END_UNTOLD = "end_untold"
 # C10, R2: something the reading filed as the character's own that they don't hold and the
 # player's words never named: a prop the reading added, so it is a thing of the place.
 PROP_ADDED = "prop_added"
@@ -127,6 +132,7 @@ def check_intent(
     intent.actor_id = None
 
     known = state.characters.keys() | state.places.keys() | state.factions.keys()
+    end_told = last_years.end_told(state)
     for step in intent.steps:
         unknown = [ref for ref in step.target_ids if ref not in known]
         if unknown:
@@ -157,6 +163,10 @@ def check_intent(
             facts.opposition = "; ".join(filter(None, [facts.opposition, *unknown]))
         _aimed(step, state, issues, action if len(intent.steps) == 1 else "")
         _props(step, state, action, issues)
+        if step.lets_go and not end_told:
+            # N6: nobody's words bring old age on before a scene has told them it is close.
+            step.lets_go = False
+            issues.append(Issue(END_UNTOLD, "no scene has told them the end is close"))
         # N6, A8: an edge or hindrance that leans on an injury the record doesn't hold, such as
         # an "old wound" the character never had, is left out of the odds and the scene.
         step.facts, dropped = injuries.unrecorded_harm(state, state.player, step)
@@ -212,7 +222,7 @@ def doubtful(intent: Intent, state: WorldState) -> str | None:
     """What a reading would do that can't be taken back and rests on the model's word alone, or
     None: such a turn is read once more, by the larger model, before code decides (B8).
 
-    Two things so far. A blow the reading says is meant to go beyond the terms of a bout (W1),
+    Three things so far. A blow the reading says is meant to go beyond the terms of a bout (W1),
     which ends the bout as an attack on a friend, for good. Read on the real model on
     2026-11-12, one plain lesson blow in 36 came back that way, and every blow after it in that
     story was an attack on the teacher. A fight already in earnest has no terms left to break,
@@ -220,9 +230,13 @@ def doubtful(intent: Intent, state: WorldState) -> str | None:
     (`engine.resolve.bouts`). And an attempt to break through at the peak of a rank (G19), which
     is thrown for: neither a climb nor what a miss costs can be taken back, and an attempt was
     once read into "you propose a short rest". Before the peak the same reading is only
-    training, so it is not read again."""
+    training, so it is not read again. And the player character letting death come at the
+    end of their years (N6), which ends their story: `check_intent` keeps that only once a
+    scene has told them the end is close, and "I close my eyes and rest" must never be it."""
     if _ends_a_bout(intent, state):
         return BEYOND_TERMS
+    if any(step.lets_go for step in intent.steps):
+        return LETS_GO
     for step in intent.steps:
         training = step.training
         if training is None or training.kind is not GrowthKind.BREAKTHROUGH:

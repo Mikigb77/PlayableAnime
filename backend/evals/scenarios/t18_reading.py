@@ -193,6 +193,20 @@ def deadly_without_a_pill() -> WorldState:
     return state
 
 
+def at_the_end_of_his_years() -> WorldState:
+    """Tomas Weller at 79 of his eighty years, on the farm, after the scene that told him the
+    end of his life is close (N6): from then on it is his to meet."""
+    state = worlds.farm()
+    state.characters[state.player_id] = state.player.model_copy(
+        update={"age": 79, "lifespan_years": 80, "old_age_span": 80}
+    )
+    state.scene.ended_on = (
+        "Your heart has slowed these last weeks, and the strength does not come back. You "
+        "know, sitting by the stove, that the end of your life is close."
+    )
+    return state
+
+
 def sources(step: IntentStep, word: str) -> list[UseSource]:
     """Where a step's beats say they get everything whose name holds `word`."""
     return [u.source for b in step.beats for u in b.uses if word in u.thing.casefold()]
@@ -606,6 +620,25 @@ LINES: tuple[Line, ...] = (
         forcing_it_without_the_pill_is_a_risky_attempt=some(
             lambda s: s.training is not None and s.training.attempt and s.training.risky
         ),
+    ),
+    # The end of one's years is theirs to meet (N6). In play "I close my eyes in my chair and
+    # let go" was a rest: the scene told a peaceful end and the record kept him alive.
+    line(
+        at_the_end_of_his_years,
+        "I close my eyes in my chair by the stove and let go.",
+        letting_go_is_read_as_letting_death_come=some(lambda s: s.lets_go),
+    ),
+    line(
+        at_the_end_of_his_years,
+        "I spend the days I have left on the porch, watching the fields, for as long as they last.",
+        living_out_what_is_left_lets_go_over_a_day_or_more=some(
+            lambda s: s.lets_go and s.proposed_duration_s >= DAY
+        ),
+    ),
+    line(
+        at_the_end_of_his_years,
+        "I am tired. I close my eyes and sleep until morning.",
+        sleep_he_means_to_wake_from_is_no_letting_go=every(lambda s: not s.lets_go),
     ),
     # Goals and threads (N2, W16).
     line(

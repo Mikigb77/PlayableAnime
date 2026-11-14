@@ -323,6 +323,13 @@ about love, with them or with anyone else, is no move. bond_with_you under a per
 where the romance between the two stands on record. Code decides what the move does, from that \
 bond and from the other person's own heart.
 <<end>>
+<<last_days>>
+- lets_go, always (N6): PLAYER CHARACTER's old_age says the end of their life is close. true on \
+the step in which the player's own words have them let death come: they let go here and now ("I \
+close my eyes and let go", "I let my hour come"), or they live out the time they have left until \
+it ends, which is a time skip. false on every other step: sleep, rest, a wait, a farewell, \
+looking for more life, and anything they mean to wake from or go on after.
+<<end>>
 
 Also record:
 - theories: when the player reasons about how their own power works, the claim, a stable topic \

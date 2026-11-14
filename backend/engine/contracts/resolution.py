@@ -273,6 +273,11 @@ class StepResolution(EngineModel):
         "what the time it ran earned.",
     )
     kind: ActionKind | None = Field(default=None, description="W10: the kind of action.")
+    lets_go: bool = Field(
+        default=False,
+        description="N6: the player character, told the end of their life is close, lets "
+        "death come with this step (`engine.world.last_years.let_go`).",
+    )
     trip: Trip | None = Field(
         default=None,
         description="W10: where the step took the actor, for a step that goes somewhere.",
