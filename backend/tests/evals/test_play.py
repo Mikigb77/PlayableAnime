@@ -212,6 +212,61 @@ def test_a_step_that_breaks_says_where_and_the_other_plays_go_on(tmp_path, monke
     assert kept(tmp_path, "one")["state"]["turn"] == 1
 
 
+def test_a_copy_goes_another_way_from_the_same_point_and_leaves_the_first_alone(tmp_path):
+    assert played(tmp_path, {"farmer": [CREATE, {"start": {}}]}) == {"farmer": True}
+    first = kept(tmp_path, "farmer")
+
+    steps = [{"copy": "farmer"}, {"act": "I walk away from the well."}]
+    assert played(tmp_path, {"other": steps}) == {"other": True}
+
+    other = kept(tmp_path, "other")
+    assert other["seed"] == first["seed"] and other["premise"] == first["premise"]
+    assert [s["turn"] for s in other["scenes"]] == [1, 2]
+    assert other["scenes"][0] == first["scenes"][0]
+    assert kept(tmp_path, "farmer") == first
+    told = transcript(tmp_path, "other")
+    assert told.startswith("## Copied from `farmer`, after 1 scenes\n")
+    assert "> I walk away from the well." in told
+
+
+def test_a_copy_of_a_draft_can_be_changed_and_started_on_its_own(tmp_path):
+    assert played(tmp_path, {"farmer": [CREATE]}) == {"farmer": True}
+
+    assert played(tmp_path, {"other": [{"copy": "farmer"}, {"start": {}}]}) == {"other": True}
+
+    assert transcript(tmp_path, "other").startswith("## Copied from `farmer`, as a draft\n")
+    assert kept(tmp_path, "other")["state"]["turn"] == 1
+    assert kept(tmp_path, "farmer")["state"] is None
+
+
+@pytest.mark.parametrize(
+    ("steps", "says"),
+    [
+        ([{"copy": "nobody"}], "There is no play named 'nobody' to copy."),
+        ([{"copy": "../farmer"}], "copy takes the name of another play."),
+        ([{"copy": 3}], "copy takes the name of another play."),
+        ([CREATE, {"copy": "farmer"}], "This play already holds a story"),
+    ],
+)
+def test_a_copy_that_cant_be_made_stops_the_play(tmp_path, steps, says):
+    assert played(tmp_path, {"farmer": [CREATE]}) == {"farmer": True}
+
+    assert played(tmp_path, {"other": steps}) == {"other": False}
+
+    assert says in transcript(tmp_path, "other")
+    assert kept(tmp_path, "farmer")["state"] is None
+
+
+def test_a_play_isnt_copied_in_the_call_that_plays_it(tmp_path):
+    # Plays run side by side, so the copy would be of wherever the other had got to.
+    with pytest.raises(play.PlayError, match="'farmer' is played in this call too"):
+        played(tmp_path, {"farmer": [CREATE], "other": [{"copy": "farmer"}]})
+    with pytest.raises(play.PlayError, match="'other' is played in this call too"):
+        played(tmp_path, {"other": [{"copy": "other"}]})
+
+    assert not list(tmp_path.iterdir())
+
+
 @pytest.mark.parametrize("name", ["../elsewhere", "Farmer", "a b", "", "-x", "x" * 41, 7])
 def test_a_plays_name_is_its_folder_so_it_holds_nothing_a_path_could_misread(tmp_path, name):
     with pytest.raises(play.PlayError, match="small letters, digits and dashes"):
