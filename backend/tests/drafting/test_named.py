@@ -8,7 +8,16 @@ from engine.base import DAY, HOUR, WEEK, YEAR
 from engine.context import Language
 from graph.drafting import samples
 from graph.drafting.catalog import starter
-from graph.drafting.named import MONTH, aimed, called, named, timed, times_ahead, told_of
+from graph.drafting.named import (
+    MONTH,
+    aimed,
+    called,
+    named,
+    one_aim,
+    timed,
+    times_ahead,
+    told_of,
+)
 from graph.words import alike, content
 
 EN, ES, CA = Language.EN, Language.ES, Language.CA
@@ -389,6 +398,43 @@ def test_what_it_is_to_them_says_an_aim(said, aim, language):
 )
 def test_what_a_drafter_makes_of_a_premise_is_no_aim_of_the_players(said, aim, language):
     assert not aimed(said, aim, language)
+
+
+@pytest.mark.parametrize(
+    ("said", "language"),
+    [
+        ("I want to be a pirate.", EN),
+        ("i want to become the strongest swordsman in the world", EN),
+        ("My dream is to open a bakery!", EN),
+        ("Quiero ser pirata.", ES),
+        ("Vull ser pirata.", CA),
+    ],
+)
+def test_one_short_sentence_that_says_an_aim_is_one_aim(said, language):
+    assert one_aim(said, language)
+    # Handed back whole, it is the player's own aim (`aimed`), so a story starts with it.
+    assert aimed(said, said, language)
+
+
+@pytest.mark.parametrize(
+    ("said", "language"),
+    [
+        # No aim said.
+        ("A pirate with a cursed map.", EN),
+        ("I'm a squire about to take the knight exam in 3 days.", EN),
+        # More than the aim: a second sentence, or a sentence too long to be only an aim.
+        ("I'm a squire. I want to pass the knight exam.", EN),
+        (
+            "I'm the last disciple of a fallen sect and I want to find the man who burned "
+            "our mountain.",
+            EN,
+        ),
+        ("Soy un pirata con un mapa maldito.", ES),
+        ("", EN),
+    ],
+)
+def test_words_that_say_more_or_less_than_an_aim_are_not_one_aim(said, language):
+    assert not one_aim(said, language)
 
 
 def test_an_aim_is_said_about_what_it_names():

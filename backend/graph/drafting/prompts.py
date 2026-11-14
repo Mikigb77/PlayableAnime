@@ -78,7 +78,9 @@ vow, a calling or their nature.
 each step and how many in-world hours each step takes ("the council picks the boss in ten days" \
 is four steps of 60 hours). The steps' hours add up to exactly the time the premise gives: its \
 "exam in three days" is 72 hours in all, never four days. Nothing is timed in turns, and the \
-clocks run whether or not the player is there.
+clocks run whether or not the player is there. The character's own old age is never a clock: \
+where the premise says their years are running out, their age and lifespan_years say so, and \
+the story tells the end itself when it comes.
 - Threads for the open plot lines. Decide the answer and the clues of any major mystery now, so \
 an investigation stays fair.
 - The story opens on the premise's situation: the place, who is there, where they stand, what is \

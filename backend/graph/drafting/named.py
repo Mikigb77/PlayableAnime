@@ -195,6 +195,20 @@ def aimed(said: str, text: str, language: Language) -> bool:
     return False
 
 
+# How long a premise can be and still be one aim and nothing else.
+ONE_AIM_WORDS = 12
+
+
+def one_aim(said: str, language: Language) -> bool:
+    """Whether `said`, the player's own words, are one short sentence that says what the
+    character is after and nothing more, as "I want to be a pirate." does. A drafter that
+    hands such words back whole as the goal has still named the aim."""
+    sentences = [sentence for sentence in _SENTENCE.split(said) if WORD.search(sentence)]
+    if len(sentences) != 1 or len(WORD.findall(said)) > ONE_AIM_WORDS:
+        return False
+    return bool(_AIM[language].search(sentences[0]))
+
+
 def _done_for(words: list[str], lead: str, language: Language) -> bool:
     """Whether the words say `lead`, an aim's own first word, as what something is done for."""
     for phrase in _FOR[language]:
