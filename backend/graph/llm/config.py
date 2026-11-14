@@ -34,8 +34,10 @@ class NodeSettings:
 # The narrator is the one large call on the critical path (B8), so it thinks at `low` to keep the
 # first words under 2 s (S3). The interpret step is cheap but reasons about cause and effect
 # (A9); the graph can raise its thinking for a turn that rests on a chain. Checker, tick and
-# summaries use the cheapest model (B8). Drafting is off the turn path, so it keeps the model's
-# own thinking default for quality. Image models take no thinking setting. A deadline counts
+# summaries use the cheapest model (B8). Drafting is off the turn path, so a first draft keeps
+# the model's own thinking default for quality; a change to a draft, which the player waits on
+# at the row they changed, asks for `low` itself (`graph.drafting.chain.CHANGE`). Image models
+# take no thinking setting. A deadline counts
 # only time spent waiting on the model, and a retry gets a fresh one, so the slowest turn
 # (interpret, a second reading, then narrate, each timing out twice) still ends well inside
 # Cloud Run's 300 s.

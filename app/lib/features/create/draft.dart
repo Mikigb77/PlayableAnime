@@ -554,12 +554,18 @@ abstract final class DraftLimits {
   static const premiseMax = 4000;
   static const line = 300;
   static const instruction = 1000;
+
+  /// The most rules the player may write. A draft may hold more, and those are still theirs to
+  /// change or remove.
   static const rules = 12;
 
-  /// A title, a tone or a name.
-  static const short = 80;
+  /// The plain fields, each as long as the drafter may write it (the backend's
+  /// `graph.drafting.assemble`): a field always takes back the text it shows.
+  static const title = 120;
+  static const tone = 200;
+  static const name = 120;
 
   /// A look or a manner.
-  static const long = 300;
+  static const long = 600;
   static const ageMax = 100000;
 }
