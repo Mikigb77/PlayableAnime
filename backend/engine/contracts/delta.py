@@ -119,20 +119,32 @@ class Expecting(EngineModel):
     )
 
 
-def _rung_required(schema: dict[str, Any]) -> None:
-    """G18. Gemini answers only what a schema requires as often as not (see `Intent`), and
+def _always_asked(schema: dict[str, Any]) -> None:
+    """G18, F3. Gemini answers only what a schema requires as often as not (see `Intent`), and
     someone a scene brought in whose rung went unsaid is an ordinary person on record, whatever
     the scene told of them. So the model is always asked for it, empty for whoever stands on
-    none, though code may leave it out."""
-    schema["required"] = list(dict.fromkeys([*schema.get("required", []), "rung"]))
+    none, though code may leave it out.
+
+    Their age is asked the same way. The first live play to bring someone in (2026-11-14)
+    put "the widow, a weary woman named Clara" on record with no age, and a romance is only
+    with someone whose age the record has (F3): the kiss the next turn was refused, and would
+    have been for good. A scene's age for someone the record already has one for is not taken
+    (`engine.apply`), so asking it of everyone costs a number."""
+    schema["required"] = list(dict.fromkeys([*schema.get("required", []), "rung", "age"]))
     rung = schema["properties"]["rung"]
     schema["properties"]["rung"] = {"type": "string", "description": rung["description"]}
+    age = schema["properties"]["age"]
+    schema["properties"]["age"] = {
+        "type": "integer",
+        "minimum": 1,
+        "description": age["description"],
+    }
 
 
 class CharacterChange(EngineModel):
     """A new character (a name is required) or a change to a known one."""
 
-    model_config = ConfigDict(json_schema_extra=_rung_required)
+    model_config = ConfigDict(json_schema_extra=_always_asked)
 
     id: str
     name: Name | None = Field(
@@ -157,8 +169,9 @@ class CharacterChange(EngineModel):
     age: int | None = Field(
         default=None,
         ge=0,
-        description="W10: only for someone new, or whose age the record doesn't have. An age on "
-        "record moves with the world's years, never by a scene.",
+        description="W10, F3: their age in years, as the story has it. It goes on record for "
+        "someone new, or whose age the record doesn't have: an age on record moves with the "
+        "world's years, never by a scene.",
     )
     people_id: str | None = Field(
         default=None,

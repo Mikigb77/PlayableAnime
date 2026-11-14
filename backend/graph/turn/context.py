@@ -309,9 +309,17 @@ def _kin_name(state: WorldState, character_id: str, knower: str | None) -> dict[
     return view
 
 
+# F3: someone in the scene whose age the record doesn't have, as stories begun before the
+# form asked every newcomer's age have them. A romance is only with someone whose age is on
+# record, so the first scene they are in is asked for it.
+_AGE_ASKED = "not on record: say it in update.characters"
+
+
 def _npc_view(character: Character, state: WorldState) -> dict[str, Any]:
     hidden = dict.fromkeys({*_RECORD_NOISE, *_KIN}, True) | _NPC_HIDDEN
     view = {"id": character.id} | _dump(character, exclude=hidden) | _family_view(state, character)
+    if character.age is None:
+        view["age"] = _AGE_ASKED
     sheet = view.get("sheet", {})
     if "powers" in sheet:
         # A power kept secret stays out until it is used, and resolve's outcome tells of it then.
