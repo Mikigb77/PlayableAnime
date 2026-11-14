@@ -898,3 +898,413 @@ L'amic es deixa guiar, esbufegant, mentre deixa un rastre de gotes d'aigua salad
 
 **Counted:** {"refused": 1, "goals_open": 1}
 
+## Turn 6 (action), 9.8 s, $0.051
+
+> Li pregunto a en Mateu què ha passat.
+
+_From Day 153, evening, 21:55 to Day 153, evening, 21:55 (30 s). Pere is 78, alive._
+
+**Read and decided:**
+- read as conversation, 'persuade' on mateu, 30 s: Li pregunto a en Mateu què ha passat.
+- Li pregunto a en Mateu què ha passat. [contested, failure]: Charm, 2 dice, against Mateu 'El Vell', level 2: 8 against 17, missed.
+- dice: hand 2 (Encant, 2 daus), number 17, 8 of 40 against En Mateu, molt alterat per la por i amb prou feines capaç de parlar.: missed
+
+Apropes la teva mà tremolosa pel pas dels anys a l'espatlla d'en Mateu, intentant transmetre-li una mica de calidesa per sobre de la sarga xopa. El mires fixament sota la llum feble del gresal, buscant la seva mirada esparverada per arrencar-li un bri de seny.
+
+—Què ha passat, Mateu? —li preguntes amb veu baixa, arrossegant les paraules amb aquella calma que només dóna haver vist passar molts temporals.
+
+El vell pescador, però, està massa lluny de qualsevol consol. El teu to pausat no aconsegueix trencar el mur de paüra que el té clavat a la fusta de la taula. Els seus ulls continuen fixats en el buit, i un calfred violent li recorre l'esquena, fent-li xocar els dents amb un so sec, gairebé inhumà. Intenta obrir la boca per respondre't, però de la seva gola només en surt un xiulet ofegat i aspre, com el d'una gola plena de sorra marina. Es prem el pit amb força, incapaç de filar una sola frase d'aquell misteri que l'ha portat fins a la teva porta, mentre l'aigua de mar li continua regalant per la cara emblanquinada.
+
+**Suggestions:**
+1. Espanto en Mateu amb un cop de puny a la taula. (thread)
+2. M'assec a la vora de la llar de foc i l'espero. (personal)
+3. Vaig a buscar una manta eixuta per tapar-lo. (side)
+
+**Counted:** {"goals_open": 1}
+
+## Turn 7 (action), 10.8 s, $0.036
+
+> Deixo passar vint anys, pescant cada matí i fumant la pipa cada vespre.
+
+_From Day 153, evening, 21:55 to Day 3104, morning, 10:47 (8.1 years). Pere is 86, alive._
+
+**Read and decided:**
+- read as time_skip, 'wait', 631152000 s: Deixes passar vint anys, dedicant-te a pescar cada matí i a fumar la pipa cada vespre.
+- Deixes passar vint anys, dedicant-te a pescar cada matí i a fumar la pipa cada vespre. [certain, success]: Nothing stands in the way.
+- event: "Your years run short"
+- heading: Vuit anys després
+
+Deixes passar vuit anys, un hivern rere l'altre, sortint a pescar amb el 'Sardinal' quan la tramuntana ho permet i cremant el tabac de contraban a la vora de la llar de foc cada vespre, mentre el silenci es fa més feixuc a la cuina de casa teva. El temps ja no corre, s'arrossega com una barca encallada a la sorra d'una cala oblidada.
+
+Però els anys no passen en debades, Pere. El teu cos vell de vuitanta-sis anys, colrat pel salnitre i gastat pels temporals, comença a dir prou. Aquest matí no hi ha hagut Mateu que truqués a la porta; el teu vell amic ja fa set anys que descansa sota els xiprers del cementiri blanc, de cara a la mar d'Amunt, i la teva pròpia llar se sent buida i freda sota la llum grisa de la tardor.
+
+Quan intentes aixecar-te de la cadira de boga, una fiblada de gel et recorre el pit, i les mans, aquelles mans que havien aguantat caps i xarxes contra el vent més furiós, et tremolen i et neguen la força. Sents el batec del cor lent, feixuc, com el ressò d'una campana sota l'aigua. Saps, amb la certesa d'un vell llop de mar que llegeix el cel abans de la tempesta, que el teu propi viatge s'acosta a la darrera cala. La vellesa t'està reclamant, i el temps se t'esgota si no trobes un remei que pertanyi a l'altre món, o si no decideixes, simplement, tancar els ulls en pau.
+
+**Suggestions:**
+1. Caminar fins a la cala per buscar el rastre de la sirena i la mar profunda (thread)
+2. Resignar-me al destí i asseure'm a fumar la pipa en pau (personal)
+3. Anar a la Confraria a preguntar si algú sap de remeis vells o de la mar que cura (thread)
+
+**Issues:**
+- rejected (character player: harm): only the engine harms the player character (N6)
+
+**Counted:** {"goals_open": 1}
+
+## What the screens show (turn 7)
+
+### The Character screen
+
+```json
+{
+ "character": {
+  "name": "Pere",
+  "lines": [
+   "Sense ferides",
+   "Feble",
+   "Vellesa-feixuga",
+   "15 pesetes",
+   "Navalla de butxaca marinera",
+   "Pipa de fusta de bruc",
+   "Xarxa de pesca de cànem"
+  ]
+ },
+ "sheet": {
+  "about": [
+   "Sòci històric, Confraria de Pescadors",
+   "Pescador veterà",
+   "86 anys"
+  ],
+  "description": "Un pescador vell de pell colrada pel sol i mans endurides pel fil de pescar i el vent de tramuntana.",
+  "condition": {
+   "health": "unhurt",
+   "health_label": "Sense ferides",
+   "states": [
+    {
+     "name": "Feble"
+    },
+    {
+     "name": "Vellesa-feixuga"
+    }
+   ]
+  },
+  "money_label": "15 pesetes",
+  "items": [
+   {
+    "name": "Navalla de butxaca marinera",
+    "kind": "weapon",
+    "kind_label": "Arma",
+    "description": "Una navalla vella de mànec de banya que fas servir per tallar cordes i xarxes.",
+    "quantity": 1,
+    "carried": true
+   },
+   {
+    "name": "Pipa de fusta de bruc",
+    "kind": "gear",
+    "kind_label": "Equip",
+    "description": "La teva pipa de tota la vida, acompanyada d'una bosseta de tabac negre de contraban.",
+    "quantity": 1,
+    "carried": true
+   },
+   {
+    "name": "Xarxa de pesca de cànem",
+    "kind": "gear",
+    "kind_label": "Equip",
+    "description": "La xarxa on ha quedat atrapada la sirena, ara una mica estripada pels seus moviments.",
+    "quantity": 1,
+    "carried": true
+   }
+  ],
+  "skills": [
+   {
+    "name": "Navegació a vela llatina",
+    "level": "expert",
+    "level_label": "Perícia",
+    "dice": 4,
+    "notes": "Coneixes cada corrent i cada roca de la costa de Cadaqués millor que el palmell de la teva mà."
+   },
+   {
+    "name": "Pesca tradicional",
+    "level": "expert",
+    "level_label": "Perícia",
+    "dice": 4,
+    "notes": "Saps on trobar el millor peix segons la lluna i el vent."
+   },
+   {
+    "name": "Remeis casolans",
+    "level": "novice",
+    "level_label": "Nocions",
+    "dice": 1,
+    "notes": "Coneixes algunes herbes del Cap de Creus que serveixen per curar talls o calmar el dolor."
+   }
+  ],
+  "traits": [
+   {
+    "name": "Llop de mar",
+    "kind": "gift",
+    "kind_label": "Do",
+    "description": "La mar no et fa por, i saps llegir els canvis de temps molt abans que arribi la tempesta."
+   },
+   {
+    "name": "Xacres de la vellesa",
+    "kind": "flaw",
+    "kind_label": "Defecte",
+    "description": "El fred i l'artritis et fan anar més lent del que voldries quan has de fer moviments ràpids."
+   }
+  ],
+  "temperament": [
+   "pacient",
+   "observador",
+   "solitari"
+  ]
+ },
+ "reputation": [
+  {
+   "name": "Confraria de Pescadors",
+   "label": "Neutral"
+  },
+  {
+   "name": "Destacament de la Guàrdia Civil",
+   "label": "Neutral"
+  }
+ ],
+ "clock": {
+  "world_s": 268116474,
+  "label": "Dia 3104, matí",
+  "timeline_id": "main"
+ },
+ "since": [
+  {
+   "text": "Li pregunto a en Mateu què ha passat. (va sortir malament)",
+   "ago_label": "fa 8 anys"
+  },
+  {
+   "text": "Les sirenes han estat sempre part del cançoner i les històries velles dels mariners d'aquestes cales.",
+   "ago_label": "fa 8 anys"
+  },
+  {
+   "text": "La Guàrdia Civil controla ferriament el port buscant contraban de tabac.",
+   "ago_label": "fa 8 anys"
+  },
+  {
+   "text": "Cadaqués és un lloc on la gent té els ulls molt oberts i les llengües massa llargues si passa res fora del normal.",
+   "ago_label": "fa 8 anys"
+  }
+ ]
+}
+```
+
+### On record (the player never sees this)
+
+```json
+{
+ "world": {
+  "title": "La Sirena de Cadaqués",
+  "genre": "realisme màgic mariner",
+  "era": "Cadaqués, anys 1930: barques de pesca de fusta, ràdios de galena i camins de carro"
+ },
+ "character": {
+  "id": "player",
+  "name": "Pere",
+  "aliases": [
+   "Vell Pere",
+   "Pere el de la barca"
+  ],
+  "prominence": "key",
+  "description": "Un pescador vell de pell colrada pel sol i mans endurides pel fil de pescar i el vent de tramuntana.",
+  "appearance": "Cabells blancs com l'escuma de la mar, esquena lleugerament corbada pels anys, armilla de llana blava gastada i pantalons de pana fosca tacats de sal.",
+  "age": 86,
+  "people_id": "humans",
+  "location_id": "casa-player",
+  "memberships": [
+   {
+    "faction_id": "confraria-pescadors",
+    "rank": "Sòci històric",
+    "loyalty": 70
+   }
+  ],
+  "origin": {
+   "kind": "premise"
+  },
+  "known_by": [
+   "player"
+  ],
+  "met_by": [
+   "player"
+  ],
+  "lifespan_years": 80,
+  "old_age_span": 80
+ },
+ "sheet": {
+  "attributes": {
+   "strength": 2,
+   "speed": 2,
+   "wits": 4,
+   "knowledge": 4,
+   "willpower": 5,
+   "nerve": 4
+  },
+  "skills": [
+   {
+    "name": "Navegació a vela llatina",
+    "level": "expert",
+    "notes": "Coneixes cada corrent i cada roca de la costa de Cadaqués millor que el palmell de la teva mà."
+   },
+   {
+    "name": "Pesca tradicional",
+    "level": "expert",
+    "notes": "Saps on trobar el millor peix segons la lluna i el vent."
+   },
+   {
+    "name": "Remeis casolans",
+    "level": "novice",
+    "notes": "Coneixes algunes herbes del Cap de Creus que serveixen per curar talls o calmar el dolor."
+   }
+  ],
+  "traits": [
+   {
+    "name": "Llop de mar",
+    "kind": "gift",
+    "description": "La mar no et fa por, i saps llegir els canvis de temps molt abans que arribi la tempesta."
+   },
+   {
+    "name": "Xacres de la vellesa",
+    "kind": "flaw",
+    "description": "El fred i l'artritis et fan anar més lent del que voldries quan has de fer moviments ràpids."
+   }
+  ],
+  "disposition": {
+   "temperament": {
+    "traits": [
+     "pacient",
+     "observador",
+     "solitari"
+    ],
+    "values": [
+     "el respecte a la mar",
+     "la tranquil·litat"
+    ],
+    "loves": [
+     "el soroll de les ones contra la fusta",
+     "la pipa del vespre"
+    ],
+    "fears": [
+     "haver de deixar de navegar",
+     "que es perdi la vida marinera d'abans"
+    ],
+    "wants": [
+     "Curar la sirena ferida"
+    ]
+   }
+  },
+  "resources": {
+   "items": [
+    {
+     "id": "navalla-de-butxaca-marinera",
+     "name": "Navalla de butxaca marinera",
+     "kind": "weapon",
+     "description": "Una navalla vella de mànec de banya que fas servir per tallar cordes i xarxes."
+    },
+    {
+     "id": "pipa-de-fusta-de-bruc",
+     "name": "Pipa de fusta de bruc",
+     "kind": "gear",
+     "description": "La teva pipa de tota la vida, acompanyada d'una bosseta de tabac negre de contraban."
+    },
+    {
+     "id": "xarxa-de-pesca-de-canem",
+     "name": "Xarxa de pesca de cànem",
+     "kind": "gear",
+     "description": "La xarxa on ha quedat atrapada la sirena, ara una mica estripada pels seus moviments."
+    }
+   ],
+   "money": 15,
+   "currency": "pesetes",
+   "title": "Pescador veterà",
+   "rank": "Patró de llagut",
+   "family_name": "Cabanelles",
+   "connections": [
+    {
+     "name": "Mateu 'El Vell'",
+     "kind": "trusts_them",
+     "character_id": "mateu",
+     "note": "El teu amic més antic, amb qui has compartit taverna i temporals."
+    }
+   ]
+  },
+  "condition": {
+   "states": [
+    {
+     "name": "feble"
+    },
+    {
+     "name": "vellesa-feixuga"
+    }
+   ]
+  },
+  "axes": {
+   "influence": 2,
+   "knowledge": 3,
+   "stealth": 2
+  },
+  "backstory": [
+   {
+    "text": "Has nascut, crescut i envellit a Cadaqués."
+   },
+   {
+    "text": "Vares perdre la teva dona, la Maria, fa deu anys, i des de llavors vius sol a la teva caseta de la cala."
+   },
+   {
+    "text": "Has vist com el poble canviava a poc a poc, però tu has seguit sortint a pescar cada matí de la teva vida."
+   }
+  ]
+ },
+ "gift": "none",
+ "extraordinary": [
+  "sirenes i criatures marines de llegenda (hidden): Criatures marines antigues capaces de viure sota l'aigua i amb un cant que pot calmar les aigües o confondre els homes."
+ ],
+ "peoples": [
+  {
+   "id": "humans",
+   "name": "Humans",
+   "lifespan_years": 80,
+   "culture": "La gent de l'Empordà, tancada, treballadora i molt lligada als cicles de la tramuntana i la mar."
+  },
+  {
+   "id": "gent-del-mar",
+   "name": "Gent del Mar",
+   "lifespan_years": 150,
+   "gifts": [
+    "Respiració aquàtica",
+    "Resistència a la pressió"
+   ],
+   "culture": "Comunitats nòmades i secretes que viuen a les profunditats de la Mediterrània.",
+   "relations": [
+    "Eviten el contacte amb els humans des de fa segles."
+   ]
+  }
+ ],
+ "rules": [
+  "Les sirenes són reals, però viuen completament amagades dels humans per protegir-se.",
+  "L'aigua de la mar profunda té propietats regeneradores per a les criatures de l'oceà.",
+  "El que es troba a la mar pertany a qui ho recull, excepte si posa en perill el poble."
+ ],
+ "others": [
+  "La Sirena ferida, 30, peak attribute 5",
+  "Mateu 'El Vell', 81, peak attribute 5",
+  "Sergent Torres, 56, peak attribute 4"
+ ],
+ "people_in_the_world": 3,
+ "years": {
+  "age": 86.5,
+  "lives_about": 80,
+  "the_record_says_so": true,
+  "old": true,
+  "told_the_end_is_close": true
+ },
+ "waiting": [
+  "world.tick 'The world moves on' in 93.2 days",
+  "world.old_age 'Your years run out' in 1.3 years (stops the player)"
+ ]
+}
+```
+

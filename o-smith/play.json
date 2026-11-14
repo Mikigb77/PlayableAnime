@@ -15,9 +15,9 @@
  "seed": "play/o-smith",
  "state": {
   "schema_version": 1,
-  "turn": 1,
+  "turn": 2,
   "timeline_id": "main",
-  "world_s": 0,
+  "world_s": 2280,
   "bible": {
    "title": "Anvil and Mill",
    "genre": "grounded medieval romance",
@@ -142,7 +142,7 @@
     "death_certainty": null,
     "status_history": [],
     "activity": "active",
-    "location_id": "blacksmith-forge",
+    "location_id": "village-mill",
     "personal_offset_s": 0,
     "memberships": [
      {
@@ -238,7 +238,7 @@
         "history": ""
        }
       ],
-      "money": 12,
+      "money": 13,
       "currency": "silver pennies",
       "title": "Village Blacksmith",
       "rank": "Commoner",
@@ -430,7 +430,7 @@
     "born_s": null,
     "lifespan_years": null,
     "old_age_span": null,
-    "seen_s": null,
+    "seen_s": 2280,
     "near_s": null,
     "met_s": null
    },
@@ -479,9 +479,9 @@
       },
       "attitudes": {
        "player": {
-        "affinity": -20,
+        "affinity": -30,
         "fear": 0,
-        "trust": -10,
+        "trust": -16,
         "apparent_affinity": null,
         "grudges": [],
         "attraction": 0,
@@ -553,7 +553,7 @@
     "born_s": null,
     "lifespan_years": null,
     "old_age_span": null,
-    "seen_s": null,
+    "seen_s": 2280,
     "near_s": null,
     "met_s": null
    },
@@ -808,7 +808,13 @@
     "visited_by": [
      "player"
     ],
-    "judged": []
+    "judged": [
+     {
+      "key": "aldou brac craft fix word",
+      "what": "I fix the brace for Aldous without a word.",
+      "level": 2
+     }
+    ]
    },
    "village-mill": {
     "id": "village-mill",
@@ -836,7 +842,9 @@
     "known_by": [
      "player"
     ],
-    "visited_by": [],
+    "visited_by": [
+     "player"
+    ],
     "judged": []
    },
    "bailiff-house": {
@@ -898,7 +906,47 @@
     "judged": []
    }
   },
-  "deeds": {},
+  "deeds": {
+   "deed-1": {
+    "id": "deed-1",
+    "actor_id": "player",
+    "kind": "court",
+    "text": "find Gwenyth alone and tell her I love her. (it failed)",
+    "turn": 2,
+    "world_s": 2280,
+    "timeline_id": "main",
+    "place_id": "village-mill",
+    "victim_ids": [],
+    "target_ids": [
+     "gwenyth"
+    ],
+    "wronged_ids": [
+     "aldous"
+    ],
+    "severity": 1,
+    "visibility": "witnessed",
+    "witness_ids": [
+     "aldous",
+     "gwenyth"
+    ],
+    "unnoticed_witness_ids": [],
+    "traces": [],
+    "in_stopped_time": false,
+    "discovered": false,
+    "known_by": [
+     "player",
+     "aldous",
+     "gwenyth"
+    ],
+    "known_by_factions": [],
+    "heard_by": {},
+    "heard_by_factions": {},
+    "terms": null,
+    "broke_terms": false,
+    "went_to_tell": {},
+    "word_out_s": null
+   }
+  },
   "rumors": {},
   "bonds": {
    "bond-1": {
@@ -914,6 +962,22 @@
       "world_s": 0,
       "by_id": null,
       "how": "As the story opens."
+     }
+    ]
+   },
+   "bond-2": {
+    "id": "bond-2",
+    "a_id": "player",
+    "b_id": "gwenyth",
+    "stage": "interest",
+    "end": null,
+    "steps": [
+     {
+      "stage": "interest",
+      "turn": 2,
+      "world_s": 2280,
+      "by_id": "player",
+      "how": "Halvard made it plain to Gwenyth."
      }
     ]
    }
@@ -1016,8 +1080,8 @@
     },
     "status": "open",
     "opened_turn": 0,
-    "last_active_turn": 0,
-    "taken_up_turn": null,
+    "last_active_turn": 2,
+    "taken_up_turn": 2,
     "closed_turn": null,
     "arc": null,
     "known_by": [
@@ -1118,25 +1182,65 @@
     "created_s": 0,
     "applied_turn": null,
     "applied_s": null
+   },
+   "event-4": {
+    "id": "event-4",
+    "kind": "world.word",
+    "title": "Word of a deed may get out",
+    "due_s": 4134,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "deed_id": "deed-1",
+     "again": false
+    },
+    "seed": "story=play%2Fo-smith/timeline=main/turn=2/play_out/step/2/deed/0/schedule/event-4",
+    "created_turn": 2,
+    "created_s": 2280,
+    "applied_turn": null,
+    "applied_s": null
    }
   },
-  "transfers": [],
+  "transfers": [
+   {
+    "name": "silver pennies",
+    "quantity": 1,
+    "money": true,
+    "currency": "silver pennies",
+    "item_id": null,
+    "from_id": "aldous",
+    "to_id": "player",
+    "how": "",
+    "known_by": [
+     "player",
+     "aldous"
+    ],
+    "turn": 2,
+    "world_s": 2280,
+    "timeline_id": "main",
+    "origin": "narrator"
+   }
+  ],
   "time_effects": [],
   "scene": {
-   "place_id": "blacksmith-forge",
+   "place_id": "village-mill",
    "present_ids": [
-    "player"
+    "aldous",
+    "gwenyth"
    ],
    "positions": [
-    "Halvard stands at the anvil, hammer in hand",
-    "Aldous stands near the wooden workbench by the doorway"
+    "Halvard stands inside the millhouse near the flour bins",
+    "Gwenyth stands clutching her broom, looking down",
+    "Aldous stands blocking the entrance"
    ],
    "props": [
-    "heavy-blacksmith-hammer",
-    "glowing iron shoe",
-    "broken flour-chute brace"
+    "broom"
    ],
-   "ended_on": "Aldous folds his arms, waiting for your answer as the broken iron brace sits on the workbench.",
+   "ended_on": "Aldous stands in the doorway of the mill, staring at you with cold, venomous anger while Gwenyth shrinks back.",
    "encounter": null
   },
   "director": {
@@ -1149,15 +1253,17 @@
    "last_small_s": null,
    "recent_moments": [],
    "recent_clock": [
-    0
+    0,
+    2280
    ],
    "frequency_drift": 0.0,
    "recent_sources": [],
-   "auto_pictures": 1,
-   "picture_credit": 1.1,
+   "auto_pictures": 2,
+   "picture_credit": 1.2,
    "pictured": [
     "portrait:player",
-    "portrait:player:v1"
+    "portrait:player:v1",
+    "cover"
    ],
    "fight": null,
    "deck_draws": 0,
@@ -1168,8 +1274,9 @@
   "id_counters": {
    "fact": 3,
    "goal": 1,
-   "bond": 1,
-   "event": 3
+   "bond": 2,
+   "event": 4,
+   "deed": 1
   },
   "fallen": [],
   "opening_due": false,
@@ -1177,8 +1284,7 @@
   "openings": [],
   "journey": null,
   "untold": [
-   "person:bailiff-robert",
-   "thread:forbidden-love"
+   "person:bailiff-robert"
   ]
  },
  "scenes": [
@@ -1186,14 +1292,19 @@
    "turn": 1,
    "narration": "You strike the glowing red iron on your anvil, each heavy beat of your hammer matching the throb of your heart as you look through the open doorway toward the watermill down the road. The morning air of Blackwood Fief is cool, but the forge is thick with the dry heat of burning charcoal and the sulfurous scent of coal dust. From this vantage, your eyes drift constantly to the heavy wooden wheel of the mill, churning slowly in the stream.\n\nAs you raise the hammer for another strike, a shadow falls across the threshold. It is not Gwenyth, but her husband, Aldous the Miller. He carries a bent iron flour-chute brace, his face as sour and grey as a winter sky. He drops the heavy piece of metal onto your wooden workbench with a dull thud. 'The mount broke again, blacksmith,' he grunts, not offering a greeting. 'And I need it fixed before the afternoon grinding. My wife said you were the only one who could do it proper, though I think she just likes an excuse to look down the road.' He watches you with a hard, suspicious squint, waiting to see how you respond.",
    "player_action": null
+  },
+  {
+   "turn": 2,
+   "narration": "You pick up the broken flour-chute brace from the workbench, your gaze dropping from Aldous's suspicious squint to the fractured iron. Without a single word, you lay your hammer against the anvil, thrust the cold brace into the hot heart of the charcoal forge, and begin to work. Under your expert strikes, the iron glows cherry-red and yields to the steady, heavy beat of your hammer, the metal fusing clean and strong once more as the miller watches in sullen silence.\n\nOnce the metal cools, Aldous snatches it up, flings a single silver penny onto the table, and leaves with a warning grumble about keeping your eyes on your work. The morning wears on, and the heat of the fire does little to warm the cold knot in your chest. By afternoon, the restlessness in your blood drives you down the muddy road toward the watermill, the heavy wheel churning the rushing stream. You find Gwenyth alone in the cool, flour-dusted shade of the millhouse, sweeping grain from the floorboards. When you speak those desperate words—confessing the love that has kept you awake for so many nights—she freezes, the broom slipping slightly in her grip. Her sad green eyes widen with sudden fear, and she looks away, her knuckles white. 'Do not say such things, Halvard,' she whispers, her voice trembling. 'I am a wedded wife, and the bailiff's eyes are always on this road. Please, go.' Before you can step closer, a heavy shadow blocks the mill doorway. Aldous stands there, his face dark with fury, having heard every word.",
+   "player_action": "I fix the brace for Aldous without a word. That afternoon I carry it to the mill myself, find Gwenyth alone and tell her I love her."
   }
  ],
  "choices": [
-  "Assure Aldous politely and ask how Gwenyth is doing at the mill.",
-  "Quietly agree to fix the brace for a few silver pennies.",
-  "Deflect his suspicion by complaining about the poor iron quality."
+  "Defend yourself and explain that you meant no disrespect to his marriage.",
+  "Brace for a fight as Aldous steps into the mill.",
+  "Apologize quickly to Gwenyth and try to push past the miller."
  ],
- "cost_usd": 0.116961,
+ "cost_usd": 0.1445825,
  "draft": {
   "premise": "I'm a young blacksmith in a small medieval village, hopelessly in love with the miller's wife.",
   "proposal": {

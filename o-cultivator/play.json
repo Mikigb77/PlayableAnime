@@ -15,9 +15,9 @@
  "seed": "play/o-cultivator",
  "state": {
   "schema_version": 1,
-  "turn": 1,
+  "turn": 2,
   "timeline_id": "main",
-  "world_s": 0,
+  "world_s": 3600,
   "bible": {
    "title": "The Flickering Jade: A Cultivator's Last Stand",
    "genre": "Cultivation / Xianxia",
@@ -752,7 +752,7 @@
     "born_s": null,
     "lifespan_years": null,
     "old_age_span": null,
-    "seen_s": 0,
+    "seen_s": 3600,
     "near_s": null,
     "met_s": null
    },
@@ -1187,8 +1187,8 @@
     },
     "status": "open",
     "opened_turn": 0,
-    "last_active_turn": 0,
-    "taken_up_turn": null,
+    "last_active_turn": 2,
+    "taken_up_turn": 2,
     "closed_turn": null,
     "arc": null,
     "known_by": [
@@ -1323,17 +1323,17 @@
   "scene": {
    "place_id": "spirit-peak",
    "present_ids": [
-    "player",
     "disciple-chen"
    ],
    "positions": [
-    "Sitting cross-legged on the stone platform",
-    "Standing nearby, waiting anxiously"
+    "Sitting weak and breathless on the stone platform",
+    "Kneeling beside you, holding your arm in desperate worry"
    ],
    "props": [
-    "A cracked stone incense burner"
+    "A cracked stone incense burner",
+    "A fresh dark bloodstain on the frost-rimed stone"
    ],
-   "ended_on": "Chen Yi steps forward, waiting for your response.",
+   "ended_on": "Chen Yi holds your arm, his eyes pleading as you wipe the blood from your chin on the cold, windswept peak.",
    "encounter": null
   },
   "director": {
@@ -1346,15 +1346,17 @@
    "last_small_s": null,
    "recent_moments": [],
    "recent_clock": [
-    0
+    0,
+    3600
    ],
    "frequency_drift": 0.0,
    "recent_sources": [],
-   "auto_pictures": 1,
-   "picture_credit": 1.1,
+   "auto_pictures": 2,
+   "picture_credit": 1.2,
    "pictured": [
     "portrait:player",
-    "portrait:player:v1"
+    "portrait:player:v1",
+    "cover"
    ],
    "fight": null,
    "deck_draws": 0,
@@ -1380,14 +1382,19 @@
    "turn": 1,
    "narration": "You sit cross-legged on the cold stone platform of Spirit-Severing Peak. The dawn wind is a blade of ice, cutting through your thin, faded grey robes. Your breath comes ragged and shallow, puffing into white mist. Your body feels like brittle dry wood.\n\nNearby, Chen Yi stands by the cracked stone incense burner, his honest eyes shadowed with a desperate worry. He is only twenty-four, full of youth, yet bound to a master whose flame is flickering out.\n\nOnly two years remain of your natural hundred-and-fifty-year lifespan. Without a Core-Assisting Pill, attempting the breakthrough to Core Formation is a ninety percent guarantee of death—your stiff, aged meridians will simply shatter under the pressure. Yet, Sect Master Liu has made his stance clear: the sect will not waste precious resources on an outer elder who has stagnated for eighty years.\n\nChen Yi steps forward, his hands clenched. \"Master,\" his earnest voice trembles slightly. \"The Pill Refinement Hall... Elder Song is preparing a new batch of Core-Assisting Pills this week. There must be a way to secure one, even if the Sect Master refuses us.\"",
    "player_action": null
+  },
+  {
+   "turn": 2,
+   "narration": "You close your eyes, ignoring Chen Yi's desperate plea, and begin to circulate your liquid spiritual energy. You draw the chill of Spirit-Severing Peak into your lungs, forcing your Foundation Qi through pathways that feel like dry, splintering reeds. You attempt to compress the swirling liquid in your dantian, trying to crystallize it into a solid Golden Core by sheer willpower alone.\n\nThe moment you press the energy inward, a blinding spasm of agony tears through your chest. Your brittle meridians groaning under the sheer, unyielding pressure, warning you that one more ounce of force will shatter them instantly, turning your body into an empty husk of ash. The ancient laws of cultivation cannot be bypassed by resolve alone; without a Core-Assisting Pill, the bottleneck is an iron wall that will claim your life before you can even touch the threshold. Coughing up a dark, bitter drop of blood onto the frost-rimed stone, you are forced to disperse the gathered Qi before it tears you apart. Chen Yi drops to his knees beside you, his hands trembling as he reaches out to support your shaking frame. \"Master! Please, do not throw your life away,\" he begs, his voice cracking with raw emotion. \"The Pill Refinement Hall is our only hope. Or... or we search the Black Abyss Forest ourselves.\"",
+   "player_action": "I sit down, circulate my qi and attempt the breakthrough to Core Formation right now, without the pill."
   }
  ],
  "choices": [
-  "Ask Chen Yi what it would take to acquire a pill.",
-  "Steel your brittle meridians and begin a cautious Qi circulation session.",
-  "Seek an audience with Sect Master Liu to demand your dues."
+  "Ask Chen Yi how we can infiltrate the Pill Refinement Hall.",
+  "Resolve to travel to the Black Abyss Forest for rare herbs.",
+  "Descend to Misty River Market to trade my remaining stones."
  ],
- "cost_usd": 0.1423209,
+ "cost_usd": 0.2049472,
  "draft": {
   "premise": "An old cultivator, 148 years old, stuck at the peak of Foundation Establishment. My lifespan of 150 years is almost spent: I break through to Core Formation or I die.",
   "proposal": {
