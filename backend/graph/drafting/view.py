@@ -304,7 +304,8 @@ def character_parts(
         add(PartKind.NATURE, " ".join(_sentence(part) for part in (mood, wants) if part))
     if sheet.powers:
         for power in sheet.powers[:3]:
-            detail = power.description or power.name
+            # What it does, after its name. One the draft only named is its name, once.
+            does = f": {power.description.rstrip('.')}" if power.description else ""
             limits = f" ({'; '.join(power.limits)})" if power.limits else ""
             # G2, G13: what it costs is shown, so the player can change a cost they don't want.
             costs = power.costs_text
@@ -312,7 +313,7 @@ def character_parts(
             secret = words["secret"] if power.secret else ""
             add(
                 PartKind.POWER,
-                _sentence(f"{_capital(power.name)}: {detail.rstrip('.')}{limits}") + cost + secret,
+                _sentence(f"{_capital(power.name)}{does}{limits}") + cost + secret,
             )
     elif state.bible.grounded:
         add(PartKind.POWER, words["no_powers"])

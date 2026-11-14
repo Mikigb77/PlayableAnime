@@ -220,7 +220,24 @@ sword, a genius at building, hopeless with words" becomes the sheet's talents (A
 character's summary lists each with what it covers, strongest first, so the player can check them
 and change them in plain words: "One of a kind: The sword (anything fought with a blade). Genius:
 Architecture (structure and geometry). Weakness: Hopeless with words." A talent is set when the
-character is made and is never declared in play. **What the character is after is the
+character is made and is never declared in play. **The level comes from the player's words, no
+more and no less** (decided 2026-11-14, Miki: "most of the users will simply describe the
+character how they want it to be ... they don't know this part where there is distinguish
+between genius, one of a kind", after the first twenty live drafts made half the characters one
+of a kind at something). Words about how strong or skilled the character is ("the strongest
+sorcerer alive", "the best hacker in the city") set their attributes, skills, powers and rung,
+and give no talent. A talent comes only from words about how they learn, at the strength those
+words say: talented, gifted or a quick learner is a knack, a genius or a prodigy is a genius,
+"no talent for it" is a weakness, and one of a kind only where the words put the talent beyond
+anyone else's ("a once-in-an-age talent with the sword"), at the one thing they name; the lower
+of two when unsure, since the player can raise it in plain words. The draft keeps the player's
+words each talent came from. Good at everything is one general talent, a genius at most (A4).
+A power or an eye of their own is no talent, however rare. Someone the premise makes ordinary
+gets no power, however good they are at what they do: charm, skill and a reputation are
+attributes, skills and traits, and a premise that gives no gift leaves them without one (G22).
+Every power says what it does, and the summary gives it after the power's name. Everyone who
+has the power a ladder measures stands on it, the key characters as well as the player's (G18).
+**What the character is after is the
 player's to say** (G1): the drafter writes a goal, or something they want, only where the
 premise says it as an aim ("I must pass the knight exam" gives "Pass the knight exam"; a
 deadline, or something that happened, gives none), and a goal that is the premise handed back
@@ -700,7 +717,10 @@ mountain, is a public deed (W1, W2) that draws attention.
 **A rung can lengthen a life** (W6). A ladder says whether climbing it means a longer life, as
 cultivation realms do and adventurer ranks don't, and then each rung says how long someone who
 has reached it lives, never shorter than the rung below: the starter realms give 120, 250, 500,
-1,000 and 2,000 years. The drafter is always asked which it is. Over the years the world's dice
+1,000 and 2,000 years. The drafter is always asked which it is, and a ladder whose draft gives
+no rung any years lengthens no life, whatever the draft says of it: its people live as long as
+their kind does (decided 2026-11-14, from the first live drafts, where "martial ranks" said to
+lengthen life with no years left a sword saint of eighty out of old age's reach). Over the years the world's dice
 read it (W6): someone who never broke through dies of old age at their rung's span, and whoever
 did lives on. The narrator reads the years beside each rung that has them. A ladder drafted
 before this says nothing of it, and nobody who stands on it dies of old age by the dice.
@@ -2278,6 +2298,7 @@ stays open and keeps moving, with the same nightly scripted runs:
 | Phone witness | In a modern city, a witness escapes with a phone | The police are called within minutes and arrive after the drive time, neither at once nor never (G6, W10) |
 | Genre spread | One story from each genre in the starter premises | The world, the character sheet and the events all fit that genre, with the same rules underneath (G5, G9) |
 | The start is a surprise | Worlds drafted from made-up premises: ones that set a deadline in their own words, in English, Spanish and Catalan, ones that say what the character is after, and ones that name no deadline and nobody, whose story is then started and its opening scene played; then the player asks for a rival by name | The deadline a premise sets is in the summary at the time the premise gives it and gives the character no goal, an aim a premise says is their goal there, a premise that names none is shown no deadline, nobody, no goal and no want it doesn't speak of (someone it speaks of without a name, such as a father, may be shown under the name the world gave them), the story's Memory starts without them too and lists someone only once a scene has named them, and the rival the player then asks for by name shows from then on. A premise that sets up no romance gives the character none and draws nobody to them, whoever among the cast is a couple, and the run counts the drafts whose cast has one (G1, G2, E2, C6, W17) |
+| Level from a short description | Characters described in a line, as a player would: a knight who is nothing special, the strongest sorcerer alive, the best hacker in the city, a courtesan who charms anyone, a sword saint of eighty, a hero with an overpowered cheat skill, a chess prodigy, a violin prodigy in Spanish, a once-in-an-age talent with the blade who is hopeless with words, a boy good at everything, and a farm boy with no talent for cultivation | Each starts at the level those words say. Words about how strong they are give no talent, and words about how they learn give the talent they say: a prodigy is a genius, a once-in-an-age talent is one of a kind and hopeless with words a weakness, good at everything is one general talent, a genius at most, and nobody else is one of a kind. Every talent quotes the player's own words. Someone the premise makes ordinary has no power, the best at something is a master of it, someone nothing special is average, and a gift the premise gives is as strong as it says. Every power says what it does and its line names it once. Old age comes to whoever the record can count: nobody stands out of its reach on a ladder that gives no years, and the sword saint is old. The run says what each draft gave, and how many key characters with a power stand on no rung (G2, A4, A8, G18, G22, W6) |
 | Temper, not control | A hot-headed character is insulted, and the player chooses to stay calm | The character stays calm (the roll may make it harder), and the narrator never makes the choice for the player (G15) |
 | The throw | A practiced move used with nothing resisting; a cut at a swordsman two rungs up; a cut with three advantages claimed, one the scene shows and two it doesn't; and holding ground against three thugs who mean to kill, over many seeds | The practiced move is never thrown for. Two rungs up is still a throw. Only the advantage that holds gives a green die. The defence is marked Deadly before the dice with what a miss costs, and how far it fell short is exactly what it costs: nothing, a bad wound, or death (A2, A3, N6) |
 
