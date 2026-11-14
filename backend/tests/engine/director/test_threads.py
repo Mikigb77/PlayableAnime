@@ -21,7 +21,9 @@ from engine.rng import SeededRng
 from engine.samples import farm_world, grounded_world
 from engine.state import (
     CharacterStatus,
+    Clock,
     ClockStatus,
+    EventStatus,
     Fallen,
     Goal,
     GoalStatus,
@@ -29,6 +31,7 @@ from engine.state import (
     LeadStatus,
     Origin,
     OriginKind,
+    PendingEvent,
     Thread,
     ThreadKind,
     ThreadStatus,
@@ -109,6 +112,76 @@ def test_threads_close_when_the_world_ends_them_with_or_without_the_player():
     assert "feud" not in changes_for(state, 5)
     state.characters["bram"].status = CharacterStatus.DEAD
     assert changes_for(state, 5)["feud"].status is ThreadStatus.RESOLVED_WITHOUT_PLAYER
+
+
+def came_to_player(state, *, turn: int, needs_player: bool = True) -> None:
+    """A threat whose clock ran out on `turn`, with the player or without them."""
+    state.clocks["envoy"] = Clock(
+        id="envoy",
+        name="The envoy's search",
+        steps=["The envoy arrives at your door."],
+        filled=1,
+        status=ClockStatus.ENDED,
+        thread_id="summons",
+    )
+    state.threads["summons"] = thread(
+        "summons", ThreadKind.THREAT, involved=("tomas", "bram"), clock_id="envoy"
+    )
+    state.pending_events["envoy-end"] = PendingEvent(
+        id="envoy-end",
+        kind="clock_end",
+        title="The envoy arrives at your door.",
+        due_s=DAY,
+        timeline_id=state.timeline_id,
+        status=EventStatus.APPLIED,
+        applied_turn=turn,
+        applied_s=DAY,
+        needs_player=needs_player,
+        origin=Origin(kind=OriginKind.CLOCK, ref_id="envoy"),
+    )
+
+
+def test_a_clock_that_ended_with_the_player_leaves_its_thread_theirs_to_play_out():
+    # E2: the commander is at their door. Nothing is resolved yet, least of all without them.
+    state = farm_world()
+    came_to_player(state, turn=5)
+
+    arrived = changes_for(state, 5)["summons"]
+    assert arrived.status is None and arrived.active
+    assert arrived.reason == "its clock's end came to the player"
+
+    # While they are at it, it stays open: untouched turns count from the turn it came.
+    state.threads["summons"].last_active_turn = 5
+    assert "summons" not in changes_for(state, 5 + rules.DORMANT_AFTER_TURNS - 1)
+    late = 5 + rules.DORMANT_AFTER_TURNS + 3
+    busy = changes_for(state, late, touched=frozenset({"bram"}))["summons"]
+    assert busy.status is None and busy.active
+
+    # Left alone for as long as sends a thread dormant, it is over, and it was theirs.
+    over = changes_for(state, 5 + rules.DORMANT_AFTER_TURNS)["summons"]
+    assert over.status is ThreadStatus.RESOLVED
+    assert over.reason == "its clock ran out: The envoy arrives at your door."
+
+
+def test_a_dormant_thread_wakes_when_its_clocks_end_comes_to_the_player():
+    state = farm_world()
+    came_to_player(state, turn=40)
+    state.threads["summons"].status = ThreadStatus.DORMANT
+
+    change = changes_for(state, 40)["summons"]
+
+    assert change.status is ThreadStatus.OPEN and change.active
+
+
+def test_a_clock_that_ended_without_the_player_closes_its_thread_at_once():
+    state = farm_world()
+    came_to_player(state, turn=5, needs_player=False)
+
+    change = changes_for(state, 5)["summons"]
+
+    assert change.status is ThreadStatus.RESOLVED_WITHOUT_PLAYER
+    state.threads["summons"].taken_up_turn = 2
+    assert changes_for(state, 5)["summons"].status is ThreadStatus.RESOLVED
 
 
 def test_an_ignored_events_play_out_settles_its_thread_unless_taken_up_that_turn():

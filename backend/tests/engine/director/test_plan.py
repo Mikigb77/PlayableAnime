@@ -22,6 +22,7 @@ from engine.director.pressure import Pressure
 from engine.director.suggestions import AWAY, plan_suggestions
 from engine.samples import farm_world, grounded_world
 from engine.state import (
+    Clock,
     Encounter,
     EncounterKind,
     EventSize,
@@ -32,6 +33,7 @@ from engine.state import (
     PendingEvent,
     Thread,
     ThreadKind,
+    ThreadStatus,
 )
 from tests.engine.director.helpers import act, ctx, farming, play_turn, rng
 from tests.engine.director.test_scenarios import quiet_life
@@ -207,6 +209,46 @@ def test_recording_marks_due_director_events_applied_and_keeps_the_memory():
     assert applied.status is EventStatus.APPLIED and applied.applied_turn == 4
     assert applied.applied_s == 2 * DAY
     assert after.director.turns_without_stakes == 7
+
+
+def test_a_countdown_nobody_owns_stops_a_skip_and_is_the_scenes_event():
+    """E2: "Bram arrives at your door" is drafted with no owner and no place, as most clocks
+    of the real drafter are. A month at the plough stops on the day it runs out, the scene's
+    event is its end with Bram in it, though the record has him in the village, and the thread
+    is theirs to play out."""
+    state = farm_world()
+    state.clocks["debt"] = Clock(
+        id="debt",
+        name="Bram's patience",
+        steps=["Bram asks around about the harvest.", "Bram arrives at your door."],
+        interval_s=3 * DAY,
+        next_step_s=3 * DAY,
+        thread_id="debt",
+    )
+    state.threads["debt"] = Thread(
+        id="debt",
+        title="What Tomas owes Bram",
+        kind=ThreadKind.DEBT,
+        involved_ids=["tomas", "bram"],
+        clock_id="debt",
+        origin=Origin(kind=OriginKind.PREMISE),
+    )
+    assert state.characters["bram"].location_id != state.player.location_id
+
+    played = play_turn(
+        state, 2, act("Plough for a month", "plough", ActionKind.TIME_SKIP, 30 * DAY)
+    )
+
+    stop = played.play.interrupted_by
+    assert stop is not None and stop.kind == "clock_end" and played.state.world_s == 6 * DAY
+    event = played.plan.event
+    assert event is not None and event.source is EventSource.DUE
+    assert event.title == "Bram arrives at your door."
+    assert event.brief == "Bram's patience: Bram arrives at your door."
+    assert event.cast_ids == ["bram"]
+    assert pipeline.brought(played.play.state, played.plan, ctx(2)) == ["bram"]
+    thread = played.state.threads["debt"]
+    assert thread.status is ThreadStatus.OPEN and thread.last_active_turn == 2
 
 
 def test_the_first_turn_after_a_skip_lands_starts_on_the_event_it_stopped_at():

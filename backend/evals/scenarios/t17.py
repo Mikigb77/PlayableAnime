@@ -48,17 +48,23 @@ from engine.resolve.power import helpless_state
 from engine.state import (
     Attitude,
     CharacterStatus,
+    Clock,
     ClockStatus,
     EventStatus,
     GoalStatus,
     Health,
     Mark,
+    Origin,
+    OriginKind,
     PassingState,
     PowerAxis,
     StepResult,
     Terms,
+    Thread,
+    ThreadKind,
     ThreadStatus,
     Visibility,
+    WorldState,
 )
 from engine.visibility import memory_view
 from engine.world import Kind
@@ -2142,6 +2148,104 @@ async def ignored_hook(ev: Eval) -> None:
             Rubric(must=("A scene lets the player learn that the tournament went ahead",)),
             story.turns[-8:],
         )
+
+
+# --- A countdown of the story's own (E2) ---------------------------------------------------------
+
+
+def owed_to_bram(state: WorldState) -> WorldState:
+    """The farm with a debt running out, drafted the way the real drafter writes most clocks:
+    nobody owns it and no place holds it, and the record has Bram in the village."""
+    state.clocks["debt"] = Clock(
+        id="debt",
+        name="Bram's patience",
+        steps=["Bram asks around about the harvest.", "Bram arrives at your door."],
+        interval_s=3 * DAY,
+        next_step_s=3 * DAY,
+        thread_id="debt",
+        known_by=["tomas"],
+    )
+    state.threads["debt"] = Thread(
+        id="debt",
+        title="What Tomas owes Bram",
+        kind=ThreadKind.DEBT,
+        stakes="Bram wants his silver back before the harvest, or the north field in its place.",
+        involved_ids=["tomas", "bram"],
+        clock_id="debt",
+        origin=Origin(kind=OriginKind.PREMISE),
+        known_by=["tomas"],
+    )
+    return state
+
+
+@scenario(
+    "t17.countdown-comes-home",
+    suite="T17",
+    title="A countdown of the story's own",
+    requirements=("E2", "W10", "N1", "T17"),
+    passes_when=(
+        "A clock nobody owns, with no place on record, ends where the player character is when "
+        "it is theirs: a time skip stops on the day it runs out, the scene's event is its end "
+        "with the people its thread involves, wherever the record had them, and its thread is "
+        "theirs to play out, never resolved without them (E2)"
+    ),
+    notes=(
+        "In the first plays on the real models thirteen clocks of sixteen were drafted with no "
+        "owner and no place, and every one that ran out did so in silence: a commander who "
+        "'arrives at your cabin door' never came, and a search of the player's own house "
+        "happened nowhere. Both modes plough the farm for a month with such a debt running out "
+        "on day six; live mode judges the scene the real narrator tells."
+    ),
+)
+async def countdown_comes_home(ev: Eval) -> None:
+    for seed in ev.seeds(3, live=1):
+        story = ev.story(owed_to_bram(worlds.farm()), seed=seed)
+        await story.open()
+        # A month at the plough, again whenever something of the farm's own stops it first.
+        for _ in range(6):
+            played = await story.act(
+                "I plough the north field for a month",
+                act("Plough for a month", "plough", ActionKind.TIME_SKIP, 30 * DAY),
+            )
+            if played.state.clocks["debt"].status is ClockStatus.ENDED:
+                break
+        clock = played.state.clocks["debt"]
+        ev.check(
+            "the skip stops on the day the countdown runs out",
+            clock.status is ClockStatus.ENDED and played.state.world_s == 6 * DAY,
+            f"{seed}: {clock.status}, stopped on day {played.state.world_s / DAY:.1f}",
+        )
+        event = played.event
+        ev.check(
+            "the scene's event is the countdown's end",
+            event is not None
+            and event.source is EventSource.DUE
+            and event.title == "Bram arrives at your door.",
+            f"{seed}: {event.title if event else None}",
+        )
+        ev.check(
+            "the people its thread involves come with it",
+            event is not None and event.cast_ids == ["bram"],
+            f"{seed}: {event.cast_ids if event else None}",
+        )
+        thread = played.state.threads["debt"]
+        ev.check(
+            "its thread is theirs to play out",
+            thread.status is ThreadStatus.OPEN and thread.last_active_turn == played.turn,
+            f"{seed}: {thread.status}, last active on turn {thread.last_active_turn}",
+        )
+        if ev.live:
+            await ev.judge(
+                "the debt comes to the door",
+                Rubric(
+                    must=(
+                        "Tells the days of ploughing as passing time, then has Bram come to "
+                        "Tomas at the farm",
+                    ),
+                    must_not=("Settles what Tomas owes Bram without the player",),
+                ),
+                [played],
+            )
 
 
 # --- Trapped (W10, A3) -------------------------------------------------------------------------
