@@ -155,6 +155,18 @@ def stopped_plan() -> Resolution:
     )
 
 
+def test_the_narrators_form_says_a_scenes_ending_is_shown_and_never_told():
+    # S4: the first plays on the real models had endings that told the player their move
+    # ("You must decide whether to...", "The time has come to..."). The narrator's standing
+    # text has no room for it (K1): the field the ending is written in says it.
+    form = NarratorOutput.model_json_schema()
+    narration = form["properties"]["narration"]["description"]
+
+    assert "an ending the player can act on" in narration
+    assert "never tells the player what they must do, decide or choose" in narration
+    assert "which ways are open to them" in narration
+
+
 def test_present_characters_are_living_and_known():
     state = grounded_world()
     assert [c.id for c in present_characters(state)] == ["carmine", "bartender"]

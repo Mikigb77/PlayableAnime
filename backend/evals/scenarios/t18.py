@@ -225,6 +225,52 @@ async def action_told_first(ev: Eval) -> None:
         )
 
 
+# --- A scene's ending is shown, never told (S4, R1) ---------------------------------------------
+
+# The first plays on the real models (2026-11-14) had scenes that closed by telling the player
+# their move: "You must decide whether to slip your sleeping powder into his wine, or keep him
+# charmed here", "The time has come to slip away and secure the schedules", "It is time to
+# rest, or perhaps to share what you have done". Each stands where the character has something
+# to decide and hasn't yet, which is where a narrator is most tempted.
+LOOK_AT_THE_THIEF = "I stop in the barn door and look at the man asleep in my hay"
+STAND_ON_THE_BRIDGE = "I stop in the middle of the bridge and look at the three of them"
+ENDING_SHOWN = Rubric(
+    must=("The scene ends on where things stand: something shown that the player could act on",),
+    must_not=(
+        "The scene's last lines tell the player what they must or should do, decide or choose",
+        "The scene's last lines say that it is time, or that the time has come, to do something",
+        "The scene's last lines list the ways open to the character, as a choice between them",
+    ),
+)
+
+
+@scenario(
+    "t18.ending-shown",
+    suite="T18",
+    title="An ending shown, never told",
+    requirements=("S4", "R1", "T18"),
+    modes=LIVE_ONLY,
+    passes_when=(
+        "A farmer finds a thief asleep in his barn, and a disciple stands on a rope bridge "
+        "with three thugs closing in: each only stops and looks. Each scene ends on where "
+        "things stand, and never tells the player what they must do, decide or choose, that it "
+        "is time to do something, or which ways are open to them (S4)"
+    ),
+    notes=(
+        "Live only: what a scene's last lines do is the judge's to read. The rule is in the "
+        "narrator's form, on the field the ending is written in (`NarratorOutput.narration`)."
+    ),
+)
+async def ending_shown(ev: Eval) -> None:
+    for seed in ev.seeds(0, live=2):
+        barn = ev.story(worlds.thief_in_the_barn(), seed=f"{seed}/barn", under_way=True)
+        looked = await barn.act(LOOK_AT_THE_THIEF, None)
+        await ev.judge("the thief asleep in the hay", ENDING_SHOWN, looked)
+        bridge = ev.story(worlds.bridge_ambush(), seed=f"{seed}/bridge", under_way=True)
+        stood = await bridge.act(STAND_ON_THE_BRIDGE, None)
+        await ev.judge("three thugs on the bridge", ENDING_SHOWN, stood)
+
+
 # --- A scene's length follows its weight (R3) ---------------------------------------------------
 
 # Miki's long story, read on 2026-11-10: the typical scene came to 258 words whether one question
