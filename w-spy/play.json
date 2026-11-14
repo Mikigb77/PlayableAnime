@@ -15,9 +15,9 @@
  "seed": "play/w-spy",
  "state": {
   "schema_version": 1,
-  "turn": 1,
+  "turn": 3,
   "timeline_id": "main",
-  "world_s": 0,
+  "world_s": 28800,
   "bible": {
    "title": "Whispers of the Jade Pavilion",
    "genre": "historical fantasy spy drama",
@@ -472,13 +472,13 @@
       },
       "attitudes": {
        "player": {
-        "affinity": 40,
+        "affinity": 50,
         "fear": 0,
-        "trust": 50,
+        "trust": 60,
         "apparent_affinity": null,
         "grudges": [],
-        "attraction": 85,
-        "heart_moved_s": null
+        "attraction": 100,
+        "heart_moved_s": 30
        }
       }
      },
@@ -497,7 +497,13 @@
       "fatigue": 0,
       "hunger": 0,
       "stress": 0,
-      "states": [],
+      "states": [
+       {
+        "name": "charmed",
+        "effect": "",
+        "until_personal_s": null
+       }
+      ],
       "reserves": [],
       "weakened_tiers": 0
      },
@@ -544,7 +550,7 @@
     "born_s": null,
     "lifespan_years": null,
     "old_age_span": null,
-    "seen_s": 0,
+    "seen_s": 28800,
     "near_s": null,
     "met_s": null
    },
@@ -1074,9 +1080,71 @@
     "judged": []
    }
   },
-  "deeds": {},
+  "deeds": {
+   "deed-1": {
+    "id": "deed-1",
+    "actor_id": "player",
+    "kind": "seduce",
+    "text": "I take the cup, let my fingers linger on his, and tell him softly that he is the only man in Xijing who understands me, making him fall completely for me. (it worked)",
+    "turn": 2,
+    "world_s": 30,
+    "timeline_id": "main",
+    "place_id": "player-chambers",
+    "victim_ids": [],
+    "target_ids": [
+     "minister-gong"
+    ],
+    "wronged_ids": [],
+    "severity": 1,
+    "visibility": "witnessed",
+    "witness_ids": [
+     "minister-gong"
+    ],
+    "unnoticed_witness_ids": [],
+    "traces": [],
+    "in_stopped_time": false,
+    "discovered": false,
+    "known_by": [
+     "player",
+     "minister-gong"
+    ],
+    "known_by_factions": [
+     "imperial-court"
+    ],
+    "heard_by": {},
+    "heard_by_factions": {},
+    "terms": null,
+    "broke_terms": false,
+    "went_to_tell": {},
+    "word_out_s": null
+   }
+  },
   "rumors": {},
-  "bonds": {},
+  "bonds": {
+   "bond-1": {
+    "id": "bond-1",
+    "a_id": "player",
+    "b_id": "minister-gong",
+    "stage": "courting",
+    "end": null,
+    "steps": [
+     {
+      "stage": "interest",
+      "turn": 2,
+      "world_s": 30,
+      "by_id": "player",
+      "how": "Mei Lin made it plain to Minister Gong."
+     },
+     {
+      "stage": "courting",
+      "turn": 2,
+      "world_s": 30,
+      "by_id": "player",
+      "how": "Minister Gong answered Mei Lin's advances."
+     }
+    ]
+   }
+  },
   "lives": {},
   "aged_s": null,
   "changes": {},
@@ -1151,8 +1219,8 @@
     "closed_turn": null,
     "closed_s": null,
     "merged_into": null,
-    "progress": "",
-    "moved_turn": null
+    "progress": "You have stolen Minister Gong's key and charmed him into courting you, making him completely vulnerable.",
+    "moved_turn": 2
    },
    "goal-2": {
     "id": "goal-2",
@@ -1188,8 +1256,8 @@
     },
     "status": "open",
     "opened_turn": 0,
-    "last_active_turn": 0,
-    "taken_up_turn": null,
+    "last_active_turn": 3,
+    "taken_up_turn": 3,
     "closed_turn": null,
     "arc": null,
     "known_by": [
@@ -1318,6 +1386,55 @@
     "created_s": 0,
     "applied_turn": null,
     "applied_s": null
+   },
+   "event-4": {
+    "id": "event-4",
+    "kind": "world.report",
+    "title": "Minister Gong tells The Sisterhood of the Jade Pavilion",
+    "due_s": 1032,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "cancelled",
+    "subject_ids": [
+     "minister-gong",
+     "courtesan-guild",
+     "player"
+    ],
+    "place_id": "jade-pavilion",
+    "origin": null,
+    "payload": {
+     "deed_id": "deed-1",
+     "faction_id": "courtesan-guild",
+     "witness_id": "minister-gong",
+     "moves": true,
+     "sets_off_s": 132
+    },
+    "seed": "story=play%2Fw-spy/timeline=main/turn=2/play_out/step/0/deed/0/schedule/event-4",
+    "created_turn": 2,
+    "created_s": 30,
+    "applied_turn": 3,
+    "applied_s": 1032
+   },
+   "event-5": {
+    "id": "event-5",
+    "kind": "world.word",
+    "title": "Word of a deed may get out",
+    "due_s": 3213,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "applied",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "deed_id": "deed-1",
+     "again": false
+    },
+    "seed": "story=play%2Fw-spy/timeline=main/turn=2/play_out/step/0/deed/0/schedule/event-5",
+    "created_turn": 2,
+    "created_s": 30,
+    "applied_turn": 3,
+    "applied_s": 3213
    }
   },
   "transfers": [
@@ -1344,17 +1461,19 @@
   "scene": {
    "place_id": "player-chambers",
    "present_ids": [
+    "player",
     "minister-gong"
    ],
    "positions": [
-    "Mei Lin sits gracefully on her daybed, the key hidden in her sleeve.",
-    "Minister Gong stands close to the daybed, offering her the silver cup."
+    "Mei Lin stands quietly by the daybed, fully dressed in her emerald qipao.",
+    "Minister Gong is fast asleep, tangled in the silk sheets of the daybed."
    ],
    "props": [
     "A silver cup of spiced wine",
-    "A plate of sweet plums"
+    "Minister Gong's Brass Key",
+    "plush daybed"
    ],
-   "ended_on": "Minister Gong holds out the spiced wine, his eyes locked onto yours as he waits for you to drink.",
+   "ended_on": "Minister Gong lies fast asleep on the daybed, snoring softly in the dim light of the gas lamp.",
    "encounter": null
   },
   "director": {
@@ -1367,15 +1486,20 @@
    "last_small_s": null,
    "recent_moments": [],
    "recent_clock": [
-    0
+    0,
+    30,
+    28800
    ],
-   "frequency_drift": 0.0,
+   "frequency_drift": 0.1,
    "recent_sources": [],
-   "auto_pictures": 1,
-   "picture_credit": 1.1,
+   "auto_pictures": 3,
+   "picture_credit": 1.3,
    "pictured": [
     "portrait:player",
-    "portrait:player:v1"
+    "portrait:player:v1",
+    "cover",
+    "portrait:minister-gong",
+    "portrait:minister-gong:v1"
    ],
    "fight": null,
    "deck_draws": 0,
@@ -1386,9 +1510,10 @@
   "id_counters": {
    "fact": 3,
    "goal": 2,
-   "bond": 0,
-   "event": 3,
-   "item": 1
+   "bond": 1,
+   "event": 5,
+   "item": 1,
+   "deed": 1
   },
   "fallen": [],
   "opening_due": false,
@@ -1406,14 +1531,24 @@
    "turn": 1,
    "narration": "Your slender fingers brush against the embroidered purple silk of Minister Gong's sash, moving with a ghost's light touch. While he focuses on pouring the dark, spiced wine from the silver decanter, his stout frame swaying slightly under the weight of your soft gaze, you slide the delicate brass key from his belt and slip it into the wide emerald sleeve of your qipao.\n\nThe key vanishes into the silk without a single click. When Gong turns back, his eyes are heavy, utterly captured by the lingering thread of your Siren's Whisper. He offers you the silver cup with a sluggish smile, quite unaware that the instrument to his undoing is already in your possession. That key unlocks his private lockbox—the very one currently resting inside his heavy leather carriage downstairs, which contains the inner palace guard schedules. You must decide whether to slip your sleeping powder into his wine to slip away to the carriages, or keep him charmed here while you devise a cleaner escape.",
    "player_action": null
+  },
+  {
+   "turn": 2,
+   "narration": "You reach out, your slender fingers sliding along the cold silver of the cup, letting them trail deliberately across the warm, thick skin of Minister Gong's hand. He gasps softly at the contact, his breath catching in his throat. Leaning closer, so the scent of sweet plum blossoms on your skin wraps around him like a silk shroud, you look deep into his heavy eyes. Your voice drops to a low, intimate murmur, carrying the invisible weight of your Siren's Whisper. \"You are the only man in Xijing who truly understands me,\" you breathe.\n\nThe words seep into him like warm poison. Gong’s face flushes, his eyes glaze over with absolute adoration, and he steps closer, entirely ensnared. He covers your hand with his heavy, ringed fingers. \"Mei Lin... my beautiful jewel,\" he stammers, his voice thick with a sudden, desperate devotion. \"If only I could keep you from this place forever. I would give you the world.\" The connection between you is sealed; he is yours to mold, his heart completely open to your courtship. Yet, as he presses closer, the silver cup of spiced wine sits between you, and the stolen brass key remains heavy and hidden within your emerald sleeve. Outside, the gas lamps of the pavilion flicker, and the carriage containing the guard schedules waits below.",
+   "player_action": "I take the cup, let my fingers linger on his, and tell him softly that he is the only man in Xijing who understands me. I want him to fall for me completely."
+  },
+  {
+   "turn": 3,
+   "narration": "You lean close, letting the silver cup rest forgotten on the small wooden table beside you. As his heavy grip tightens on your fingers, you slant your lips over his, sealing his devotion with a long, intoxicating kiss that smells of plum blossoms and spiced wine. Under the steady pull of your Siren's Whisper, he is utterly powerless to resist. You rise slowly, your slender hand slipping down to his thick, purple-clad forearm, guiding his stout frame with absolute grace toward the plush, silk-covered daybed.\n\nMinister Gong follows your soft touch with a breathless, desperate compliance, his heavy jade rings catching the dim light of the gas lamp as he collapses onto the daybed beside you. The rest of the night is yours, sealed behind the thick paper screens of your private chamber while the city of Xijing sleeps. It is four in the morning when the heavy, rhythmic rise and fall of Gong's chest tells you he is deep in sleep, exhausted by his own adoration and the lingering draft of your wine. Outside, the rain begins to fall, a steady patter against the window. The stolen brass key lies cool and heavy inside your emerald sleeve, and downstairs, his carriage remains unguarded in the dark courtyard of the pavilion. The time has come to slip away and secure the schedules.",
+   "player_action": "I kiss him, lead him to the daybed and spend the night with him."
   }
  ],
  "choices": [
-  "Slip the sleeping powder into his wine as you lean close.",
-  "Drink with him and use your allure to learn where the box is kept.",
-  "Excuse yourself to find Madam Yume and have her create a distraction."
+  "Slip down to the courtyard to search Minister Gong's carriage.",
+  "Hide the brass key somewhere safe in your private chamber.",
+  "Wake Gong up gently to play the doting hostess at dawn."
  ],
- "cost_usd": 0.133482,
+ "cost_usd": 0.21975328,
  "draft": {
   "premise": "A beautiful courtesan and spy in the imperial capital. She can make almost anyone fall for her, and she uses it to steal secrets for the rebellion.",
   "proposal": {

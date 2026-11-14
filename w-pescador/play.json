@@ -15,9 +15,9 @@
  "seed": "play/w-pescador",
  "state": {
   "schema_version": 1,
-  "turn": 1,
+  "turn": 4,
   "timeline_id": "main",
-  "world_s": 0,
+  "world_s": 13190061,
   "bible": {
    "title": "La Sirena de Cadaqués",
    "genre": "realisme màgic mariner",
@@ -171,7 +171,7 @@
     "death_certainty": null,
     "status_history": [],
     "activity": "active",
-    "location_id": "barca-player",
+    "location_id": "casa-player",
     "personal_offset_s": 0,
     "memberships": [
      {
@@ -371,7 +371,7 @@
     "death_certainty": null,
     "status_history": [],
     "activity": "active",
-    "location_id": "barca-player",
+    "location_id": "mar-oberta",
     "personal_offset_s": 0,
     "memberships": [],
     "sheet": {
@@ -430,137 +430,20 @@
         "grudges": [],
         "attraction": 0,
         "heart_moved_s": null
-       }
-      }
-     },
-     "resources": {
-      "items": [],
-      "money": 0,
-      "currency": "",
-      "title": "",
-      "rank": "",
-      "family_name": "",
-      "connections": []
-     },
-     "condition": {
-      "health": "unhurt",
-      "wounds": [],
-      "fatigue": 0,
-      "hunger": 0,
-      "stress": 0,
-      "states": [],
-      "reserves": [],
-      "weakened_tiers": 0
-     },
-     "axes": {
-      "might": 1,
-      "influence": 1,
-      "wealth": 1,
-      "knowledge": 1,
-      "stealth": 1
-     },
-     "ladders": [],
-     "rungs_heard": [],
-     "rulings": [],
-     "growth": [],
-     "practice": [],
-     "talent_rulings": [],
-     "bridges": [],
-     "backstory": []
-    },
-    "agenda": null,
-    "secrets": [],
-    "origin": {
-     "kind": "premise",
-     "ref_id": null,
-     "text": ""
-    },
-    "known_by": [
-     "player"
-    ],
-    "met_by": [
-     "player"
-    ],
-    "parent_ids": [],
-    "expecting": null,
-    "faith": null,
-    "solitary": false,
-    "born_s": null,
-    "lifespan_years": null,
-    "old_age_span": null,
-    "seen_s": 0,
-    "near_s": null,
-    "met_s": null
-   },
-   "mateu": {
-    "id": "mateu",
-    "name": "Mateu 'El Vell'",
-    "aliases": [],
-    "prominence": "key",
-    "description": "Un vell pescador jubilat, amic teu de tota la vida, que passa els dies remendant xarxes al port i recordant el passat.",
-    "appearance": "",
-    "look_version": 1,
-    "age": 80,
-    "people_id": "humans",
-    "status": "alive",
-    "death_certainty": null,
-    "status_history": [],
-    "activity": "active",
-    "location_id": "cadaques",
-    "personal_offset_s": 0,
-    "memberships": [],
-    "sheet": {
-     "attributes": {
-      "strength": 2,
-      "speed": 2,
-      "toughness": 3,
-      "wits": 3,
-      "knowledge": 5,
-      "willpower": 4,
-      "charm": 3,
-      "nerve": 4,
-      "bearing": 3
-     },
-     "skills": [
-      {
-       "name": "Històries de la mar",
-       "level": "expert",
-       "notes": ""
-      },
-      {
-       "name": "Navegació",
-       "level": "master",
-       "notes": ""
-      }
-     ],
-     "traits": [],
-     "talents": [],
-     "powers": [],
-     "techniques": [],
-     "disposition": {
-      "temperament": {
-       "traits": [
-        "tossut",
-        "lleial",
-        "parlador"
-       ],
-       "values": [
-        "l'amistat vella",
-        "el silenci de la cala"
-       ],
-       "loves": [],
-       "fears": [
-        "la solitud",
-        "morir lluny de la mar"
-       ],
-       "wants": [],
-       "voice": ""
-      },
-      "attitudes": {
-       "player": {
-        "affinity": 80,
+       },
+       "sergent-torres": {
+        "affinity": -12,
         "fear": 0,
-        "trust": 90,
+        "trust": 0,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       },
+       "mateu": {
+        "affinity": 12,
+        "fear": 0,
+        "trust": 0,
         "apparent_affinity": null,
         "grudges": [],
         "attraction": 0,
@@ -621,10 +504,163 @@
     "faith": null,
     "solitary": false,
     "born_s": null,
-    "lifespan_years": null,
+    "lifespan_years": 0,
     "old_age_span": null,
-    "seen_s": null,
-    "near_s": null,
+    "seen_s": 91920,
+    "near_s": 10599320,
+    "met_s": null
+   },
+   "mateu": {
+    "id": "mateu",
+    "name": "Mateu 'El Vell'",
+    "aliases": [],
+    "prominence": "key",
+    "description": "Un vell pescador jubilat, amic teu de tota la vida, que passa els dies remendant xarxes al port i recordant el passat.",
+    "appearance": "",
+    "look_version": 1,
+    "age": 80,
+    "people_id": "humans",
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "casa-player",
+    "personal_offset_s": 0,
+    "memberships": [],
+    "sheet": {
+     "attributes": {
+      "strength": 2,
+      "speed": 2,
+      "toughness": 3,
+      "wits": 3,
+      "knowledge": 5,
+      "willpower": 4,
+      "charm": 3,
+      "nerve": 4,
+      "bearing": 3
+     },
+     "skills": [
+      {
+       "name": "Històries de la mar",
+       "level": "expert",
+       "notes": ""
+      },
+      {
+       "name": "Navegació",
+       "level": "master",
+       "notes": ""
+      }
+     ],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "tossut",
+        "lleial",
+        "parlador"
+       ],
+       "values": [
+        "l'amistat vella",
+        "el silenci de la cala"
+       ],
+       "loves": [],
+       "fears": [
+        "la solitud",
+        "morir lluny de la mar"
+       ],
+       "wants": [],
+       "voice": ""
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 80,
+        "fear": 0,
+        "trust": 90,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       },
+       "sirena": {
+        "affinity": 5,
+        "fear": 0,
+        "trust": 0,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       },
+       "sergent-torres": {
+        "affinity": 11,
+        "fear": 0,
+        "trust": 0,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": 0,
+    "old_age_span": null,
+    "seen_s": 13190061,
+    "near_s": 10599320,
     "met_s": null
    },
    "sergent-torres": {
@@ -756,10 +792,10 @@
     "faith": null,
     "solitary": false,
     "born_s": null,
-    "lifespan_years": null,
+    "lifespan_years": 0,
     "old_age_span": null,
-    "seen_s": null,
-    "near_s": null,
+    "seen_s": 0,
+    "near_s": 10599320,
     "met_s": null
    }
   },
@@ -812,7 +848,9 @@
      "fear": 0
     },
     "threat": 0,
-    "relations": {},
+    "relations": {
+     "confraria-pescadors": 11
+    },
     "survivors": [],
     "secrets": [],
     "origin": {
@@ -938,7 +976,9 @@
     "known_by": [
      "player"
     ],
-    "visited_by": [],
+    "visited_by": [
+     "player"
+    ],
     "judged": []
    },
    "barca-player": {
@@ -964,14 +1004,56 @@
     "visited_by": [
      "player"
     ],
-    "judged": []
+    "judged": [
+     {
+      "key": "cobreixo cut cànem indiscret lona mirad navalla protegir sirena tallo xarxa",
+      "what": "Tallo la xarxa de cànem amb la navalla i cobreixo la sirena amb una lona per protegir-la de mirades indiscretes.",
+      "level": 1
+     },
+     {
+      "key": "amagat cap casa cua curar emporto ferida li travel",
+      "what": "Me l'emporto cap a casa d'amagat per curar-li la ferida a la cua.",
+      "level": 2
+     }
+    ]
    }
   },
   "deeds": {},
-  "rumors": {},
+  "rumors": {
+   "rumor-1": {
+    "id": "rumor-1",
+    "text": "La febre de la sirena ferida: La ferida és mortal si no es guareix a temps.",
+    "is_true": true,
+    "accuracy": 95,
+    "deed_id": null,
+    "about_ids": [],
+    "origin_place_id": null,
+    "reached_place_ids": [],
+    "started_s": 345600,
+    "timeline_id": "main",
+    "believed_by": [],
+    "heard_at": {},
+    "seen_by": []
+   },
+   "rumor-2": {
+    "id": "rumor-2",
+    "text": "La vigilància del Sergent Torres: La teva casa i la barca són registrades oficialment.",
+    "is_true": true,
+    "accuracy": 95,
+    "deed_id": null,
+    "about_ids": [],
+    "origin_place_id": null,
+    "reached_place_ids": [],
+    "started_s": 518400,
+    "timeline_id": "main",
+    "believed_by": [],
+    "heard_at": {},
+    "seen_by": []
+   }
+  },
   "bonds": {},
   "lives": {},
-  "aged_s": null,
+  "aged_s": 0,
   "changes": {},
   "strife_s": {},
   "facts": {
@@ -1031,6 +1113,485 @@
      "ref_id": null,
      "text": ""
     }
+   },
+   "fact-4": {
+    "id": "fact-4",
+    "text": "La febre de la sirena ferida: La sirena respira amb dificultat i necessita aigua marina neta per netejar la ferida de la cua.",
+    "kind": "observation",
+    "importance": 3,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 3,
+    "world_s": 86400,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "clock",
+     "ref_id": "supervivencia-sirena",
+     "text": ""
+    }
+   },
+   "fact-5": {
+    "id": "fact-5",
+    "text": "La vigilància del Sergent Torres: El sergent nota un moviment estrany a la teva barca al port.",
+    "kind": "observation",
+    "importance": 3,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [],
+    "turn": 4,
+    "world_s": 129600,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "clock",
+     "ref_id": "sospita-guardia-civil",
+     "text": ""
+    }
+   },
+   "fact-6": {
+    "id": "fact-6",
+    "text": "La febre de la sirena ferida: La ferida comença a infectar-se; calen herbes de cala o aigua molt pura de mar profunda.",
+    "kind": "observation",
+    "importance": 3,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 4,
+    "world_s": 172800,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "clock",
+     "ref_id": "supervivencia-sirena",
+     "text": ""
+    }
+   },
+   "fact-7": {
+    "id": "fact-7",
+    "text": "La vigilància del Sergent Torres: La Guàrdia Civil comença a preguntar als altres pescadors sobre els teus horaris.",
+    "kind": "observation",
+    "importance": 3,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [],
+    "turn": 4,
+    "world_s": 259200,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "clock",
+     "ref_id": "sospita-guardia-civil",
+     "text": ""
+    }
+   },
+   "fact-8": {
+    "id": "fact-8",
+    "text": "La febre de la sirena ferida: La sirena entra en deliri i fa petits cants que es podrien sentir des de la platja.",
+    "kind": "observation",
+    "importance": 3,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 4,
+    "world_s": 259200,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "clock",
+     "ref_id": "supervivencia-sirena",
+     "text": ""
+    }
+   },
+   "fact-9": {
+    "id": "fact-9",
+    "text": "La febre de la sirena ferida: La ferida és mortal si no es guareix a temps.",
+    "kind": "observation",
+    "importance": 3,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 4,
+    "world_s": 345600,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "clock",
+     "ref_id": "supervivencia-sirena",
+     "text": ""
+    }
+   },
+   "fact-10": {
+    "id": "fact-10",
+    "text": "La vigilància del Sergent Torres: Torres decideix fer una inspecció sorpresa a les propietats de la badia.",
+    "kind": "observation",
+    "importance": 3,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [],
+    "turn": 4,
+    "world_s": 388800,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "clock",
+     "ref_id": "sospita-guardia-civil",
+     "text": ""
+    }
+   },
+   "fact-11": {
+    "id": "fact-11",
+    "text": "La vigilància del Sergent Torres: La teva casa i la barca són registrades oficialment.",
+    "kind": "observation",
+    "importance": 3,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [],
+    "turn": 4,
+    "world_s": 518400,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "clock",
+     "ref_id": "sospita-guardia-civil",
+     "text": ""
+    }
+   },
+   "fact-19": {
+    "id": "fact-19",
+    "text": "Confraria de Pescadors works toward Mantenir la pesca tradicional i evitar que els de fora o les noves lleis els prenguin la feina.",
+    "kind": "observation",
+    "importance": 1,
+    "is_true": true,
+    "subject_ids": [
+     "confraria-pescadors"
+    ],
+    "known_by": [
+     "player"
+    ],
+    "turn": 4,
+    "world_s": 5342860,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "agenda",
+     "ref_id": "confraria-pescadors",
+     "text": ""
+    }
+   },
+   "fact-20": {
+    "id": "fact-20",
+    "text": "Destacament de la Guàrdia Civil works toward Controlar el litoral i arrestar qualsevol que sembli sospitós d'activitats clandestines.",
+    "kind": "observation",
+    "importance": 1,
+    "is_true": true,
+    "subject_ids": [
+     "guardia-civil-local"
+    ],
+    "known_by": [],
+    "turn": 4,
+    "world_s": 5342860,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "agenda",
+     "ref_id": "guardia-civil-local",
+     "text": ""
+    }
+   },
+   "fact-21": {
+    "id": "fact-21",
+    "text": "Mateu 'El Vell' cools toward La Sirena ferida.",
+    "kind": "observation",
+    "importance": 1,
+    "is_true": true,
+    "subject_ids": [
+     "mateu",
+     "sirena"
+    ],
+    "known_by": [
+     "mateu"
+    ],
+    "turn": 4,
+    "world_s": 5342860,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "agenda",
+     "ref_id": "mateu",
+     "text": ""
+    }
+   },
+   "fact-23": {
+    "id": "fact-23",
+    "text": "La Sirena ferida works toward their own affairs",
+    "kind": "observation",
+    "importance": 1,
+    "is_true": true,
+    "subject_ids": [
+     "sirena"
+    ],
+    "known_by": [
+     "sirena"
+    ],
+    "turn": 4,
+    "world_s": 5342860,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "agenda",
+     "ref_id": "sirena",
+     "text": ""
+    }
+   },
+   "fact-25": {
+    "id": "fact-25",
+    "text": "Confraria de Pescadors works toward Mantenir la pesca tradicional i evitar que els de fora o les noves lleis els prenguin la feina.",
+    "kind": "observation",
+    "importance": 1,
+    "is_true": true,
+    "subject_ids": [
+     "confraria-pescadors"
+    ],
+    "known_by": [
+     "player"
+    ],
+    "turn": 4,
+    "world_s": 7971090,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "agenda",
+     "ref_id": "confraria-pescadors",
+     "text": ""
+    }
+   },
+   "fact-26": {
+    "id": "fact-26",
+    "text": "Destacament de la Guàrdia Civil works toward Controlar el litoral i arrestar qualsevol que sembli sospitós d'activitats clandestines.",
+    "kind": "observation",
+    "importance": 1,
+    "is_true": true,
+    "subject_ids": [
+     "guardia-civil-local"
+    ],
+    "known_by": [],
+    "turn": 4,
+    "world_s": 7971090,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "agenda",
+     "ref_id": "guardia-civil-local",
+     "text": ""
+    }
+   },
+   "fact-27": {
+    "id": "fact-27",
+    "text": "Mateu 'El Vell' warms to Sergent Torres.",
+    "kind": "observation",
+    "importance": 1,
+    "is_true": true,
+    "subject_ids": [
+     "mateu",
+     "sergent-torres"
+    ],
+    "known_by": [
+     "mateu"
+    ],
+    "turn": 4,
+    "world_s": 7971090,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "agenda",
+     "ref_id": "mateu",
+     "text": ""
+    }
+   },
+   "fact-28": {
+    "id": "fact-28",
+    "text": "Sergent Torres goes to Mar d'Amunt.",
+    "kind": "observation",
+    "importance": 1,
+    "is_true": true,
+    "subject_ids": [
+     "sergent-torres"
+    ],
+    "known_by": [
+     "sergent-torres"
+    ],
+    "turn": 4,
+    "world_s": 7971090,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "agenda",
+     "ref_id": "sergent-torres",
+     "text": ""
+    }
+   },
+   "fact-29": {
+    "id": "fact-29",
+    "text": "La Sirena ferida warms to Mateu 'El Vell'.",
+    "kind": "observation",
+    "importance": 1,
+    "is_true": true,
+    "subject_ids": [
+     "sirena",
+     "mateu"
+    ],
+    "known_by": [
+     "sirena"
+    ],
+    "turn": 4,
+    "world_s": 7971090,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "agenda",
+     "ref_id": "sirena",
+     "text": ""
+    }
+   },
+   "fact-30": {
+    "id": "fact-30",
+    "text": "Sergent Torres comes back to Cadaqués.",
+    "kind": "observation",
+    "importance": 1,
+    "is_true": true,
+    "subject_ids": [
+     "sergent-torres"
+    ],
+    "known_by": [
+     "sergent-torres"
+    ],
+    "turn": 4,
+    "world_s": 8111726,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "agenda",
+     "ref_id": "sergent-torres",
+     "text": ""
+    }
+   },
+   "fact-31": {
+    "id": "fact-31",
+    "text": "Confraria de Pescadors works toward Mantenir la pesca tradicional i evitar que els de fora o les noves lleis els prenguin la feina.",
+    "kind": "observation",
+    "importance": 1,
+    "is_true": true,
+    "subject_ids": [
+     "confraria-pescadors"
+    ],
+    "known_by": [
+     "player"
+    ],
+    "turn": 4,
+    "world_s": 10599320,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "agenda",
+     "ref_id": "confraria-pescadors",
+     "text": ""
+    }
+   },
+   "fact-32": {
+    "id": "fact-32",
+    "text": "Destacament de la Guàrdia Civil draws closer to Confraria de Pescadors.",
+    "kind": "observation",
+    "importance": 1,
+    "is_true": true,
+    "subject_ids": [
+     "guardia-civil-local",
+     "confraria-pescadors"
+    ],
+    "known_by": [],
+    "turn": 4,
+    "world_s": 10599320,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "agenda",
+     "ref_id": "guardia-civil-local",
+     "text": ""
+    }
+   },
+   "fact-33": {
+    "id": "fact-33",
+    "text": "Mateu 'El Vell' warms to La Sirena ferida.",
+    "kind": "observation",
+    "importance": 1,
+    "is_true": true,
+    "subject_ids": [
+     "mateu",
+     "sirena"
+    ],
+    "known_by": [
+     "mateu"
+    ],
+    "turn": 4,
+    "world_s": 10599320,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "agenda",
+     "ref_id": "mateu",
+     "text": ""
+    }
+   },
+   "fact-34": {
+    "id": "fact-34",
+    "text": "Sergent Torres goes to Mar d'Amunt.",
+    "kind": "observation",
+    "importance": 1,
+    "is_true": true,
+    "subject_ids": [
+     "sergent-torres"
+    ],
+    "known_by": [
+     "sergent-torres"
+    ],
+    "turn": 4,
+    "world_s": 10599320,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "agenda",
+     "ref_id": "sergent-torres",
+     "text": ""
+    }
+   },
+   "fact-35": {
+    "id": "fact-35",
+    "text": "La Sirena ferida works toward their own affairs",
+    "kind": "observation",
+    "importance": 1,
+    "is_true": true,
+    "subject_ids": [
+     "sirena"
+    ],
+    "known_by": [
+     "sirena"
+    ],
+    "turn": 4,
+    "world_s": 10599320,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "agenda",
+     "ref_id": "sirena",
+     "text": ""
+    }
+   },
+   "fact-36": {
+    "id": "fact-36",
+    "text": "Sergent Torres comes back to Cadaqués.",
+    "kind": "observation",
+    "importance": 1,
+    "is_true": true,
+    "subject_ids": [
+     "sergent-torres"
+    ],
+    "known_by": [
+     "sergent-torres"
+    ],
+    "turn": 4,
+    "world_s": 10869053,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "agenda",
+     "ref_id": "sergent-torres",
+     "text": ""
+    }
    }
   },
   "goals": {
@@ -1067,8 +1628,8 @@
     },
     "status": "open",
     "opened_turn": 0,
-    "last_active_turn": 0,
-    "taken_up_turn": null,
+    "last_active_turn": 4,
+    "taken_up_turn": 4,
     "closed_turn": null,
     "arc": null,
     "known_by": [
@@ -1090,9 +1651,33 @@
      "ref_id": null,
      "text": ""
     },
-    "status": "open",
+    "status": "resolved_without_player",
     "opened_turn": 0,
-    "last_active_turn": 0,
+    "last_active_turn": 2,
+    "taken_up_turn": 2,
+    "closed_turn": 4,
+    "arc": null,
+    "known_by": [
+     "player"
+    ]
+   },
+   "thread-1": {
+    "id": "thread-1",
+    "title": "Una vella amistat en un mal pas",
+    "kind": "quest",
+    "stakes": "Someone from the character's past turns up needing help that won't be easy to give.",
+    "involved_ids": [
+     "player"
+    ],
+    "clock_id": null,
+    "origin": {
+     "kind": "event",
+     "ref_id": "old-friend",
+     "text": "An old friend in trouble"
+    },
+    "status": "open",
+    "opened_turn": 4,
+    "last_active_turn": 4,
     "taken_up_turn": null,
     "closed_turn": null,
     "arc": null,
@@ -1111,14 +1696,14 @@
      "La sirena entra en deliri i fa petits cants que es podrien sentir des de la platja.",
      "La ferida és mortal si no es guareix a temps."
     ],
-    "filled": 0,
+    "filled": 4,
     "advances_on": [],
     "reverses_on": [],
     "interval_s": 86400,
-    "next_step_s": 86400,
+    "next_step_s": 432000,
     "owner_id": null,
     "thread_id": null,
-    "status": "running",
+    "status": "ended",
     "known_by": [
      "player"
     ]
@@ -1132,14 +1717,14 @@
      "Torres decideix fer una inspecció sorpresa a les propietats de la badia.",
      "La teva casa i la barca són registrades oficialment."
     ],
-    "filled": 0,
+    "filled": 4,
     "advances_on": [],
     "reverses_on": [],
     "interval_s": 129600,
-    "next_step_s": 129600,
+    "next_step_s": 648000,
     "owner_id": null,
     "thread_id": "esquivar-la-llei",
-    "status": "running",
+    "status": "ended",
     "known_by": []
    }
   },
@@ -1151,7 +1736,7 @@
     "due_s": 129600,
     "timeline_id": "main",
     "needs_player": false,
-    "status": "pending",
+    "status": "applied",
     "subject_ids": [],
     "place_id": null,
     "origin": {
@@ -1165,8 +1750,8 @@
     "seed": "story=play%2Fw-pescador/timeline=main/turn=1/world/schedule/event-1",
     "created_turn": 1,
     "created_s": 0,
-    "applied_turn": null,
-    "applied_s": null
+    "applied_turn": 4,
+    "applied_s": 129600
    },
    "event-2": {
     "id": "event-2",
@@ -1175,7 +1760,7 @@
     "due_s": 86400,
     "timeline_id": "main",
     "needs_player": false,
-    "status": "pending",
+    "status": "applied",
     "subject_ids": [],
     "place_id": null,
     "origin": {
@@ -1189,8 +1774,8 @@
     "seed": "story=play%2Fw-pescador/timeline=main/turn=1/world/schedule/event-2",
     "created_turn": 1,
     "created_s": 0,
-    "applied_turn": null,
-    "applied_s": null
+    "applied_turn": 3,
+    "applied_s": 86400
    },
    "event-3": {
     "id": "event-3",
@@ -1224,7 +1809,7 @@
     "due_s": 86400,
     "timeline_id": "main",
     "needs_player": false,
-    "status": "pending",
+    "status": "applied",
     "subject_ids": [],
     "place_id": null,
     "origin": null,
@@ -1235,6 +1820,509 @@
     "seed": "story=play%2Fw-pescador/timeline=main/turn=1/world/schedule/event-4",
     "created_turn": 1,
     "created_s": 0,
+    "applied_turn": 3,
+    "applied_s": 86400
+   },
+   "event-5": {
+    "id": "event-5",
+    "kind": "world.clock_step",
+    "title": "La febre de la sirena ferida: La ferida comença a infectar-se; calen herbes de cala o aigua molt pura de mar profunda.",
+    "due_s": 172800,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "applied",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": {
+     "kind": "clock",
+     "ref_id": "supervivencia-sirena",
+     "text": ""
+    },
+    "payload": {
+     "clock_id": "supervivencia-sirena"
+    },
+    "seed": "story=play%2Fw-pescador/timeline=main/turn=1/world/schedule/event-2/schedule/event-5",
+    "created_turn": 3,
+    "created_s": 86400,
+    "applied_turn": 4,
+    "applied_s": 172800
+   },
+   "event-6": {
+    "id": "event-6",
+    "kind": "world.tick",
+    "title": "The world moves on",
+    "due_s": 2714630,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "applied",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "last_s": 86400,
+     "stride_s": 2628230
+    },
+    "seed": "story=play%2Fw-pescador/timeline=main/turn=1/world/schedule/event-4/schedule/event-6",
+    "created_turn": 3,
+    "created_s": 86400,
+    "applied_turn": 4,
+    "applied_s": 2714630
+   },
+   "director-event-1": {
+    "id": "director-event-1",
+    "kind": "director.event",
+    "title": "An old friend in trouble",
+    "due_s": 13190061,
+    "timeline_id": "main",
+    "needs_player": true,
+    "status": "applied",
+    "subject_ids": [],
+    "place_id": "casa-player",
+    "origin": {
+     "kind": "engine",
+     "ref_id": null,
+     "text": "W16 roll inside a time skip (E7)"
+    },
+    "payload": {
+     "pick": {
+      "event": {
+       "size": "personal",
+       "kind": "arrival",
+       "source": "deck",
+       "source_id": null,
+       "card_id": "old-friend",
+       "title": "An old friend in trouble",
+       "brief": "Someone from the character's past turns up needing help that won't be easy to give.",
+       "themes": [],
+       "thread_id": null,
+       "cast_ids": [],
+       "place_id": "casa-player",
+       "needs_decision": true,
+       "consequence": "Turned away or left waiting, they leave, and their trouble finds its way back to the character's door.",
+       "plays_out_s": null
+      },
+      "key": "deck:old-friend",
+      "window_s": 86400,
+      "lingers": true,
+      "lead": false,
+      "thread_kind": "quest",
+      "thread_title": "An old friend in trouble",
+      "involved_ids": [
+       "player"
+      ]
+     }
+    },
+    "seed": "story=play%2Fw-pescador/timeline=main/turn=4/director/stretch/0/step/2",
+    "created_turn": 4,
+    "created_s": 91920,
+    "applied_turn": 4,
+    "applied_s": 13190061
+   },
+   "event-7": {
+    "id": "event-7",
+    "kind": "world.clock_step",
+    "title": "La vigilància del Sergent Torres: La Guàrdia Civil comença a preguntar als altres pescadors sobre els teus horaris.",
+    "due_s": 259200,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "applied",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": {
+     "kind": "clock",
+     "ref_id": "sospita-guardia-civil",
+     "text": ""
+    },
+    "payload": {
+     "clock_id": "sospita-guardia-civil"
+    },
+    "seed": "story=play%2Fw-pescador/timeline=main/turn=1/world/schedule/event-1/schedule/event-7",
+    "created_turn": 4,
+    "created_s": 129600,
+    "applied_turn": 4,
+    "applied_s": 259200
+   },
+   "event-8": {
+    "id": "event-8",
+    "kind": "world.clock_step",
+    "title": "La febre de la sirena ferida: La sirena entra en deliri i fa petits cants que es podrien sentir des de la platja.",
+    "due_s": 259200,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "applied",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": {
+     "kind": "clock",
+     "ref_id": "supervivencia-sirena",
+     "text": ""
+    },
+    "payload": {
+     "clock_id": "supervivencia-sirena"
+    },
+    "seed": "story=play%2Fw-pescador/timeline=main/turn=1/world/schedule/event-2/schedule/event-5/schedule/event-8",
+    "created_turn": 4,
+    "created_s": 172800,
+    "applied_turn": 4,
+    "applied_s": 259200
+   },
+   "event-9": {
+    "id": "event-9",
+    "kind": "world.clock_step",
+    "title": "La vigilància del Sergent Torres: Torres decideix fer una inspecció sorpresa a les propietats de la badia.",
+    "due_s": 388800,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "applied",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": {
+     "kind": "clock",
+     "ref_id": "sospita-guardia-civil",
+     "text": ""
+    },
+    "payload": {
+     "clock_id": "sospita-guardia-civil"
+    },
+    "seed": "story=play%2Fw-pescador/timeline=main/turn=1/world/schedule/event-1/schedule/event-7/schedule/event-9",
+    "created_turn": 4,
+    "created_s": 259200,
+    "applied_turn": 4,
+    "applied_s": 388800
+   },
+   "event-10": {
+    "id": "event-10",
+    "kind": "world.clock_step",
+    "title": "La febre de la sirena ferida: La ferida és mortal si no es guareix a temps.",
+    "due_s": 345600,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "applied",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": {
+     "kind": "clock",
+     "ref_id": "supervivencia-sirena",
+     "text": ""
+    },
+    "payload": {
+     "clock_id": "supervivencia-sirena"
+    },
+    "seed": "story=play%2Fw-pescador/timeline=main/turn=1/world/schedule/event-2/schedule/event-5/schedule/event-8/schedule/event-10",
+    "created_turn": 4,
+    "created_s": 259200,
+    "applied_turn": 4,
+    "applied_s": 345600
+   },
+   "event-11": {
+    "id": "event-11",
+    "kind": "clock_end",
+    "title": "La ferida és mortal si no es guareix a temps.",
+    "due_s": 345600,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "applied",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": {
+     "kind": "clock",
+     "ref_id": "supervivencia-sirena",
+     "text": ""
+    },
+    "payload": {
+     "clock_id": "supervivencia-sirena"
+    },
+    "seed": "story=play%2Fw-pescador/timeline=main/turn=1/world/schedule/event-2/schedule/event-5/schedule/event-8/schedule/event-10/schedule/event-11",
+    "created_turn": 4,
+    "created_s": 345600,
+    "applied_turn": 4,
+    "applied_s": 345600
+   },
+   "event-12": {
+    "id": "event-12",
+    "kind": "world.clock_step",
+    "title": "La vigilància del Sergent Torres: La teva casa i la barca són registrades oficialment.",
+    "due_s": 518400,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "applied",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": {
+     "kind": "clock",
+     "ref_id": "sospita-guardia-civil",
+     "text": ""
+    },
+    "payload": {
+     "clock_id": "sospita-guardia-civil"
+    },
+    "seed": "story=play%2Fw-pescador/timeline=main/turn=1/world/schedule/event-1/schedule/event-7/schedule/event-9/schedule/event-12",
+    "created_turn": 4,
+    "created_s": 388800,
+    "applied_turn": 4,
+    "applied_s": 518400
+   },
+   "event-13": {
+    "id": "event-13",
+    "kind": "clock_end",
+    "title": "La teva casa i la barca són registrades oficialment.",
+    "due_s": 518400,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "applied",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": {
+     "kind": "clock",
+     "ref_id": "sospita-guardia-civil",
+     "text": ""
+    },
+    "payload": {
+     "clock_id": "sospita-guardia-civil"
+    },
+    "seed": "story=play%2Fw-pescador/timeline=main/turn=1/world/schedule/event-1/schedule/event-7/schedule/event-9/schedule/event-12/schedule/event-13",
+    "created_turn": 4,
+    "created_s": 518400,
+    "applied_turn": 4,
+    "applied_s": 518400
+   },
+   "event-14": {
+    "id": "event-14",
+    "kind": "world.return",
+    "title": "Mateu 'El Vell' comes back to Cadaqués",
+    "due_s": 2827829,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "applied",
+    "subject_ids": [
+     "mateu"
+    ],
+    "place_id": "cadaques",
+    "origin": null,
+    "payload": {
+     "character_id": "mateu",
+     "at_id": "platja-portlligat"
+    },
+    "seed": "story=play%2Fw-pescador/timeline=main/turn=1/world/schedule/event-4/schedule/event-6/schedule/event-14",
+    "created_turn": 4,
+    "created_s": 2714630,
+    "applied_turn": 4,
+    "applied_s": 2827829
+   },
+   "event-15": {
+    "id": "event-15",
+    "kind": "world.return",
+    "title": "Sergent Torres comes back to Cadaqués",
+    "due_s": 2821886,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "applied",
+    "subject_ids": [
+     "sergent-torres"
+    ],
+    "place_id": "cadaques",
+    "origin": null,
+    "payload": {
+     "character_id": "sergent-torres",
+     "at_id": "mar-oberta"
+    },
+    "seed": "story=play%2Fw-pescador/timeline=main/turn=1/world/schedule/event-4/schedule/event-6/schedule/event-15",
+    "created_turn": 4,
+    "created_s": 2714630,
+    "applied_turn": 4,
+    "applied_s": 2821886
+   },
+   "event-16": {
+    "id": "event-16",
+    "kind": "world.tick",
+    "title": "The world moves on",
+    "due_s": 5342860,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "applied",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "last_s": 2714630,
+     "stride_s": 2628230
+    },
+    "seed": "story=play%2Fw-pescador/timeline=main/turn=1/world/schedule/event-4/schedule/event-6/schedule/event-16",
+    "created_turn": 4,
+    "created_s": 2714630,
+    "applied_turn": 4,
+    "applied_s": 5342860
+   },
+   "event-17": {
+    "id": "event-17",
+    "kind": "world.return",
+    "title": "Sergent Torres comes back to Cadaqués",
+    "due_s": 5584278,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "applied",
+    "subject_ids": [
+     "sergent-torres"
+    ],
+    "place_id": "cadaques",
+    "origin": null,
+    "payload": {
+     "character_id": "sergent-torres",
+     "at_id": "platja-portlligat"
+    },
+    "seed": "story=play%2Fw-pescador/timeline=main/turn=1/world/schedule/event-4/schedule/event-6/schedule/event-16/schedule/event-17",
+    "created_turn": 4,
+    "created_s": 5342860,
+    "applied_turn": 4,
+    "applied_s": 5584278
+   },
+   "event-18": {
+    "id": "event-18",
+    "kind": "world.tick",
+    "title": "The world moves on",
+    "due_s": 7971090,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "applied",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "last_s": 5342860,
+     "stride_s": 2628230
+    },
+    "seed": "story=play%2Fw-pescador/timeline=main/turn=1/world/schedule/event-4/schedule/event-6/schedule/event-16/schedule/event-18",
+    "created_turn": 4,
+    "created_s": 5342860,
+    "applied_turn": 4,
+    "applied_s": 7971090
+   },
+   "event-19": {
+    "id": "event-19",
+    "kind": "world.return",
+    "title": "Sergent Torres comes back to Cadaqués",
+    "due_s": 8111726,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "applied",
+    "subject_ids": [
+     "sergent-torres"
+    ],
+    "place_id": "cadaques",
+    "origin": null,
+    "payload": {
+     "character_id": "sergent-torres",
+     "at_id": "mar-oberta"
+    },
+    "seed": "story=play%2Fw-pescador/timeline=main/turn=1/world/schedule/event-4/schedule/event-6/schedule/event-16/schedule/event-18/schedule/event-19",
+    "created_turn": 4,
+    "created_s": 7971090,
+    "applied_turn": 4,
+    "applied_s": 8111726
+   },
+   "event-20": {
+    "id": "event-20",
+    "kind": "world.tick",
+    "title": "The world moves on",
+    "due_s": 10599320,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "applied",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "last_s": 7971090,
+     "stride_s": 2628230
+    },
+    "seed": "story=play%2Fw-pescador/timeline=main/turn=1/world/schedule/event-4/schedule/event-6/schedule/event-16/schedule/event-18/schedule/event-20",
+    "created_turn": 4,
+    "created_s": 7971090,
+    "applied_turn": 4,
+    "applied_s": 10599320
+   },
+   "event-21": {
+    "id": "event-21",
+    "kind": "world.return",
+    "title": "Sergent Torres comes back to Cadaqués",
+    "due_s": 10869053,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "applied",
+    "subject_ids": [
+     "sergent-torres"
+    ],
+    "place_id": "cadaques",
+    "origin": null,
+    "payload": {
+     "character_id": "sergent-torres",
+     "at_id": "mar-oberta"
+    },
+    "seed": "story=play%2Fw-pescador/timeline=main/turn=1/world/schedule/event-4/schedule/event-6/schedule/event-16/schedule/event-18/schedule/event-20/schedule/event-21",
+    "created_turn": 4,
+    "created_s": 10599320,
+    "applied_turn": 4,
+    "applied_s": 10869053
+   },
+   "event-22": {
+    "id": "event-22",
+    "kind": "world.tick",
+    "title": "The world moves on",
+    "due_s": 13227550,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "last_s": 10599320,
+     "stride_s": 2628230
+    },
+    "seed": "story=play%2Fw-pescador/timeline=main/turn=1/world/schedule/event-4/schedule/event-6/schedule/event-16/schedule/event-18/schedule/event-20/schedule/event-22",
+    "created_turn": 4,
+    "created_s": 10599320,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "director-event-2": {
+    "id": "director-event-2",
+    "kind": "director.plays_out",
+    "title": "An old friend in trouble: left alone",
+    "due_s": 13276461,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": "casa-player",
+    "origin": {
+     "kind": "event",
+     "ref_id": "thread-1",
+     "text": "An old friend in trouble"
+    },
+    "payload": {
+     "event": {
+      "size": "personal",
+      "kind": "arrival",
+      "source": "deck",
+      "source_id": null,
+      "card_id": "old-friend",
+      "title": "An old friend in trouble",
+      "brief": "Someone from the character's past turns up needing help that won't be easy to give.",
+      "themes": [],
+      "thread_id": "thread-1",
+      "cast_ids": [],
+      "place_id": "casa-player",
+      "needs_decision": true,
+      "consequence": "Turned away or left waiting, they leave, and their trouble finds its way back to the character's door.",
+      "plays_out_s": 13276461
+     },
+     "thread_id": "thread-1",
+     "lingers": true
+    },
+    "seed": null,
+    "created_turn": 4,
+    "created_s": 13190061,
     "applied_turn": null,
     "applied_s": null
    }
@@ -1242,76 +2330,102 @@
   "transfers": [],
   "time_effects": [],
   "scene": {
-   "place_id": "barca-player",
+   "place_id": "casa-player",
    "present_ids": [
-    "player",
-    "sirena"
+    "mateu"
    ],
    "positions": [
-    "Ets dret a la coberta, a un pas de la popa del 'Sardinal'.",
-    "La sirena es troba a la popa, gairebé sense forces, mirant-te fixa."
+    "Ets dret al llindar de la porta de casa teva, aguantant el pom.",
+    "En Mateu 'El Vell' es troba dempeus sota la pluja fina de la cala, aguantant-se el pit."
    ],
    "props": [
-    "Una xarxa de pesca estripada",
-    "Un cubell d'aigua de mar"
+    "La pipa de fusta de bruc"
    ],
-   "ended_on": "La sirena respira amb dificultat i manté la seva mirada clavada en tu mentre es mou feblement entre el cànem.",
+   "ended_on": "En Mateu es recolza al marc de la porta, tremolant de fred, i et demana entrar d'un fil de veu.",
    "encounter": null
   },
   "director": {
    "turns_without_stakes": 0,
    "low_stakes_streak": 0,
    "last_action_key": null,
-   "last_event_turn": null,
-   "last_event_size": null,
-   "last_event_s": {},
+   "last_event_turn": 4,
+   "last_event_size": "personal",
+   "last_event_s": {
+    "personal": 13190061
+   },
    "last_small_s": null,
    "recent_moments": [],
    "recent_clock": [
-    0
+    0,
+    5520,
+    91920,
+    13190061
    ],
    "frequency_drift": 0.0,
-   "recent_sources": [],
-   "auto_pictures": 1,
-   "picture_credit": 1.1,
+   "recent_sources": [
+    "deck:old-friend"
+   ],
+   "auto_pictures": 4,
+   "picture_credit": 1.4,
    "pictured": [
     "portrait:player",
-    "portrait:player:v1"
+    "portrait:player:v1",
+    "cover",
+    "portrait:sirena",
+    "portrait:sirena:v1",
+    "place:casa-player",
+    "place:casa-player:v1"
    ],
    "fight": null,
    "deck_draws": 0,
    "road_stops": 0
   },
-  "summary": "Un vell pescador de Cadaqués de setanta-vuit anys troba una sirena ferida a la seva xarxa durant una matinada de feina. Ara ha d'actuar amb compte per guarir-la i protegir-la d'un poble suspicaç i de les autoritats que vigilen el port.",
+  "summary": "El vell Pere troba una sirena ferida per l'hèlix d'un motor i l'amaga a casa seva. Davant la manca de remeis, decideix retornar-la a l'aigua perquè es curi sola. Cinc mesos després, mentre la busca cada vespre a la cala, el seu vell amic Mateu es presenta a la seva porta a la nit, amarat i espantat.",
   "chapters": [],
   "id_counters": {
-   "fact": 3,
+   "fact": 36,
    "goal": 1,
    "bond": 0,
-   "event": 4
+   "event": 22,
+   "director-event": 2,
+   "rumor": 2,
+   "thread": 1
   },
   "fallen": [],
   "opening_due": false,
   "misses_in_a_row": 0,
   "openings": [],
   "journey": null,
-  "untold": [
-   "person:mateu"
-  ]
+  "untold": []
  },
  "scenes": [
   {
    "turn": 1,
    "narration": "La fusta vella del llagut 'Sardinal' cruix sota els teus peus mentre la claror de l'alba comença a pintar de lila el cel de la Mar d'Amunt. La llevantada d'ahir s'ha calmat, deixant només un balanceig suau i una olor espessa de sal i algues. Però el pes que has arrossegat a bord no s'assembla a cap captura dels teus setanta-vuit anys de mariner. Allà, a la popa de la barca, mig embolicada entre els nusos aspres de la teva xarxa de cànem, hi ha una sirena de debò. Les seves escates platejades brillen amb feblesa sota el cel grisenc, i la pell fina del seu tors de dona tremola de fred i por. Una ferida lletja, un tall profund causat per l'hèlix d'algun vaixell de motor que deu haver creuat de nit el Cap de Creus, li sagna lentament a la cua. Els seus ulls, grans i foscos com les profunditats on no arriba la llum del sol, et miren fixament, demanant un auxili que no pot demanar amb paraules. Saps molt bé que amagar una criatura de la mar és buscar-se la ruïna en aquest poble ple de tafaners, i la Guàrdia Civil del Sergent Torres aviat vigilarà el port. Però no pots deixar-la morir així.",
    "player_action": null
+  },
+  {
+   "turn": 2,
+   "narration": "Treus la navalla de banya de la butxaca, obres la fulla desgastada i comences a tallar, amb pols tremolós però segur, els nusos aspres de cànem que empresonen la criatura. Els ulls de la sirena segueixen cada moviment teu, plens d'un recel antic. Un cop lliure, agafes una lona de vela vella de sota la bancada de la barca i la cobreixes amb delicadesa, amagant les escates platejades de qualsevol mirada indiscreta de bon matí.\n\nCarregues la criatura, sorprenentment lleugera però freda com el gel profund, i amures el 'Sardinal' aprofitant el vent suau que comença a bufar de xaloc. Governes el timó amb una sola mà, buscant els racons més ombrívols de la costa que tan bé coneixes. Arribes a la petita cala privada davant de la teva llar sense aixecar cap sospita. Amb l'esforç que et demanen els teus setanta-vuit anys, transportes la sirena embolicada en la lona fins a l'interior de la teva casa de pescador, on l'olor de fusta, fum de pipa i salitrosa ho impregna tot. La deixes suaument sobre la taula gran de fusta, on ella comença a respirar amb un xiulet feble.",
+   "player_action": "Tallo la xarxa amb la navalla, la tapo amb una lona i me l'emporto a casa d'amagat per curar-li la ferida."
+  },
+  {
+   "turn": 3,
+   "narration": "Agafes ràpidament un drap net i aigua dolça per netejar la lletja ferida de la cua de la sirena, disposat a buscar les herbes de la contrada que tant et convenen per tancar el tall.\n\nEl teu intent de guarir-la topa immediatament amb la realitat de la teva vellesa i d'un rebost buit de remeis. En obrir el calaix on guardaves la farigola seca i l'oli de cop de tota la vida, trobes els pots buits, només amb pols i olor de ranci. Mentrestant, la cua platejada de la criatura batega feblement sobre la taula, deixant anar una mica més de sang sota la llum tènue del matí de Cadaqués. Sense les herbes adequades, saps que un tall així, fet pel ferro d'un motor, s'acabarà podrint amb el salnitre. A fora, el dia comença a moure's: el soroll de les primeres xarxes a la platja i el pas d'un carro pel carreró et recorden que la teva tranquil·litat és molt prima. Sents el xiulet feble del pit de la sirena, que et mira de reüll amb uns ulls foscos on el recel es barreja amb una freda resignació marinera.",
+   "player_action": "La cuido fins que està curada i la torno al mar. Després segueixo amb la meva vida de pescador: deixo passar els mesos, pescant cada matí."
+  },
+  {
+   "turn": 4,
+   "narration": "T'assegues a la cadira de boga, mirant el calaix buit, i penses en els dies que vindran, en les matinades de feina i en les nits que passaràs buscant la seva lluentor a la cala.\n\nEl temps s'escola com la sorra fina entre els dits. Cinc mesos passen ràpids sota la fressa de la tramuntana i el balanceig diari del 'Sardinal'. Cada matí surts a feinejar, i cada vespre, quan el sol es pon darrere el Pení, camines fins al racó de la cala amb els ulls posats en l'aigua fosca, somiant retrobar aquella mirada de mar profunda. Avui, la nit de tardor ja ha caigut sobre Cadaqués. Ets dins de casa, amb el caliu de la llar i la pipa encesa, quan sentis un truc fort i precipitat a la porta de fusta emblanquinada. Quan obres, et trobes la silueta de l'amic Mateu. Va amarat d'aigua, esbufegant, amb la cara pàl·lida i els ulls plens de por sota la gorra de llana.",
+   "player_action": "Deixo passar dos anys més, pescant i anant cada vespre a la cala per si la torno a veure."
   }
  ],
  "choices": [
-  "Aparcar les teves pors i parlar-li amb veu suau per calmar-la",
-  "Tallar la xarxa amb la navalla per alliberar-la amb cura",
-  "Netejar la ferida de la cua amb aigua del cubell"
+  "Fer entrar en Mateu de pressa i tancar de cop la porta.",
+  "Preguntar-li què ha passat abans de deixar-lo passar a dins.",
+  "Oferir-li un vas de conyac vell vora el caliu de la llar."
  ],
- "cost_usd": 0.1322205,
+ "cost_usd": 0.26201364,
  "draft": {
   "premise": "Sóc un pescador vell de Cadaqués, de setanta-vuit anys. Un matí trobo una sirena ferida a la xarxa.",
   "proposal": {

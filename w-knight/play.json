@@ -15,9 +15,9 @@
  "seed": "play/w-knight",
  "state": {
   "schema_version": 1,
-  "turn": 1,
+  "turn": 3,
   "timeline_id": "main",
-  "world_s": 0,
+  "world_s": 9030,
   "bible": {
    "title": "The Border Knight",
    "genre": "grounded medieval drama",
@@ -142,7 +142,7 @@
     "death_certainty": null,
     "status_history": [],
     "activity": "active",
-    "location_id": "border-keep",
+    "location_id": "border-village",
     "personal_offset_s": 0,
     "memberships": [
      {
@@ -256,7 +256,7 @@
         "history": ""
        }
       ],
-      "money": 15,
+      "money": 14,
       "currency": "silver coins",
       "title": "Ser",
       "rank": "Knight",
@@ -454,7 +454,7 @@
     "born_s": null,
     "lifespan_years": null,
     "old_age_span": null,
-    "seen_s": 0,
+    "seen_s": 30,
     "near_s": null,
     "met_s": null
    },
@@ -472,7 +472,7 @@
     "death_certainty": null,
     "status_history": [],
     "activity": "active",
-    "location_id": "border-keep",
+    "location_id": "border-village",
     "personal_offset_s": 0,
     "memberships": [
      {
@@ -583,7 +583,7 @@
     "born_s": null,
     "lifespan_years": null,
     "old_age_span": null,
-    "seen_s": 0,
+    "seen_s": 9030,
     "near_s": null,
     "met_s": null
    },
@@ -713,6 +713,106 @@
     "seen_s": null,
     "near_s": null,
     "met_s": null
+   },
+   "clara-widow": {
+    "id": "clara-widow",
+    "name": "Clara",
+    "aliases": [],
+    "prominence": "minor",
+    "description": "",
+    "appearance": "",
+    "look_version": 1,
+    "age": null,
+    "people_id": null,
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "border-village",
+    "personal_offset_s": 0,
+    "memberships": [],
+    "sheet": {
+     "attributes": {
+      "strength": 3,
+      "speed": 3,
+      "toughness": 3,
+      "wits": 3,
+      "knowledge": 3,
+      "willpower": 3,
+      "charm": 3,
+      "nerve": 3,
+      "bearing": 3
+     },
+     "skills": [],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [],
+       "values": [],
+       "loves": [],
+       "fears": [],
+       "wants": [],
+       "voice": ""
+      },
+      "attitudes": {}
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "narrator",
+     "ref_id": "turn-3",
+     "text": ""
+    },
+    "known_by": [],
+    "met_by": [],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": 9030,
+    "near_s": null,
+    "met_s": null
    }
   },
   "factions": {
@@ -816,7 +916,13 @@
     "visited_by": [
      "player"
     ],
-    "judged": []
+    "judged": [
+     {
+      "key": "buy drink find inn persuad seduc try widow",
+      "what": "Find the widow at the inn, buy her a drink, and try to seduce her",
+      "level": 2
+     }
+    ]
    },
    "garrison-yard": {
     "id": "garrison-yard",
@@ -878,7 +984,9 @@
     "known_by": [
      "player"
     ],
-    "visited_by": [],
+    "visited_by": [
+     "player"
+    ],
     "judged": []
    },
    "wild-woods": {
@@ -911,7 +1019,48 @@
     "judged": []
    }
   },
-  "deeds": {},
+  "deeds": {
+   "deed-1": {
+    "id": "deed-1",
+    "actor_id": "player",
+    "kind": "persuade",
+    "text": "I offer to lead a patrol to Lowbridge at dawn and ask Ser Rodrick to ride with me. (it worked)",
+    "turn": 2,
+    "world_s": 30,
+    "timeline_id": "main",
+    "place_id": "border-keep",
+    "victim_ids": [],
+    "target_ids": [
+     "lord-oswald",
+     "ser-rodrick"
+    ],
+    "wronged_ids": [],
+    "severity": 1,
+    "visibility": "witnessed",
+    "witness_ids": [
+     "lord-oswald",
+     "ser-rodrick"
+    ],
+    "unnoticed_witness_ids": [],
+    "traces": [],
+    "in_stopped_time": false,
+    "discovered": false,
+    "known_by": [
+     "player",
+     "lord-oswald",
+     "ser-rodrick"
+    ],
+    "known_by_factions": [
+     "house-oswald"
+    ],
+    "heard_by": {},
+    "heard_by_factions": {},
+    "terms": null,
+    "broke_terms": false,
+    "went_to_tell": {},
+    "word_out_s": null
+   }
+  },
   "rumors": {},
   "bonds": {},
   "lives": {},
@@ -979,8 +1128,8 @@
     },
     "status": "open",
     "opened_turn": 0,
-    "last_active_turn": 0,
-    "taken_up_turn": null,
+    "last_active_turn": 3,
+    "taken_up_turn": 3,
     "closed_turn": null,
     "arc": null,
     "known_by": [
@@ -1080,26 +1229,158 @@
     "created_s": 0,
     "applied_turn": null,
     "applied_s": null
+   },
+   "event-4": {
+    "id": "event-4",
+    "kind": "world.report",
+    "title": "Ser Rodrick tells House Oswald",
+    "due_s": 84,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "applied",
+    "subject_ids": [
+     "ser-rodrick",
+     "house-oswald",
+     "player"
+    ],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "deed_id": "deed-1",
+     "faction_id": "house-oswald",
+     "witness_id": "ser-rodrick",
+     "moves": false
+    },
+    "seed": "story=play%2Fw-knight/timeline=main/turn=2/play_out/step/0/deed/0/schedule/event-4",
+    "created_turn": 2,
+    "created_s": 30,
+    "applied_turn": 3,
+    "applied_s": 84
+   },
+   "event-5": {
+    "id": "event-5",
+    "kind": "world.word",
+    "title": "Word of a deed may get out",
+    "due_s": 1341,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "applied",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "deed_id": "deed-1",
+     "again": false
+    },
+    "seed": "story=play%2Fw-knight/timeline=main/turn=2/play_out/step/0/deed/0/schedule/event-5",
+    "created_turn": 2,
+    "created_s": 30,
+    "applied_turn": 3,
+    "applied_s": 1341
+   },
+   "event-6": {
+    "id": "event-6",
+    "kind": "world.word",
+    "title": "Word of a deed may get out",
+    "due_s": 2652,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "applied",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "deed_id": "deed-1",
+     "again": true
+    },
+    "seed": "story=play%2Fw-knight/timeline=main/turn=2/play_out/step/0/deed/0/schedule/event-5/schedule/event-6",
+    "created_turn": 3,
+    "created_s": 1341,
+    "applied_turn": 3,
+    "applied_s": 2652
+   },
+   "event-7": {
+    "id": "event-7",
+    "kind": "world.word",
+    "title": "Word of a deed may get out",
+    "due_s": 5274,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "applied",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "deed_id": "deed-1",
+     "again": true
+    },
+    "seed": "story=play%2Fw-knight/timeline=main/turn=2/play_out/step/0/deed/0/schedule/event-5/schedule/event-6/schedule/event-7",
+    "created_turn": 3,
+    "created_s": 2652,
+    "applied_turn": 3,
+    "applied_s": 5274
+   },
+   "event-8": {
+    "id": "event-8",
+    "kind": "world.word",
+    "title": "Word of a deed may get out",
+    "due_s": 10518,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "deed_id": "deed-1",
+     "again": true
+    },
+    "seed": "story=play%2Fw-knight/timeline=main/turn=2/play_out/step/0/deed/0/schedule/event-5/schedule/event-6/schedule/event-7/schedule/event-8",
+    "created_turn": 3,
+    "created_s": 5274,
+    "applied_turn": null,
+    "applied_s": null
    }
   },
-  "transfers": [],
+  "transfers": [
+   {
+    "name": "silver coins",
+    "quantity": 1,
+    "money": true,
+    "currency": "silver coins",
+    "item_id": null,
+    "from_id": "player",
+    "to_id": null,
+    "how": "persuade",
+    "known_by": [
+     "player",
+     "lord-oswald",
+     "ser-rodrick"
+    ],
+    "turn": 3,
+    "world_s": 9030,
+    "timeline_id": "main",
+    "origin": "engine"
+   }
+  ],
   "time_effects": [],
   "scene": {
-   "place_id": "border-keep",
+   "place_id": "border-village",
    "present_ids": [
-    "lord-oswald",
+    "player",
+    "clara-widow",
     "ser-rodrick"
    ],
    "positions": [
-    "lord-oswald is studying the map on the oak table",
-    "ser-rodrick is warming his hands by the hearth",
-    "you are standing near the long oak table"
+    "you are sitting on a wooden bench at the table",
+    "clara-widow is sitting close to you, holding her cup",
+    "ser-rodrick is standing near the doorway, watching with a furrowed brow"
    ],
    "props": [
-    "a half-empty pitcher of small beer",
-    "a map of the southern borderlands"
+    "cups of small beer",
+    "a warm hearth fire"
    ],
-   "ended_on": "Lord Oswald looks up from the map, his stern eyes settling on you as he waits for your response.",
+   "ended_on": "Clara sips her small beer, her dark eyes fixed on yours as she laughs softly at your words.",
    "encounter": null
   },
   "director": {
@@ -1112,15 +1393,20 @@
    "last_small_s": null,
    "recent_moments": [],
    "recent_clock": [
-    0
+    0,
+    30,
+    9030
    ],
-   "frequency_drift": 0.0,
+   "frequency_drift": 0.1,
    "recent_sources": [],
-   "auto_pictures": 1,
-   "picture_credit": 1.1,
+   "auto_pictures": 3,
+   "picture_credit": 1.3,
    "pictured": [
     "portrait:player",
-    "portrait:player:v1"
+    "portrait:player:v1",
+    "cover",
+    "portrait:lord-oswald",
+    "portrait:lord-oswald:v1"
    ],
    "fight": null,
    "deck_draws": 0,
@@ -1132,7 +1418,8 @@
    "fact": 2,
    "goal": 0,
    "bond": 0,
-   "event": 3
+   "event": 8,
+   "deed": 1
   },
   "fallen": [],
   "opening_due": false,
@@ -1148,14 +1435,24 @@
    "turn": 1,
    "narration": "You stand in the drafty great hall of Oswald Keep, the damp cold of a border morning seeping right through your weathered chainmail. Heavy grey clouds loom outside the narrow arrow slits, and the fire in the hearth does little to dispel the chill. Lord Oswald is studying a crude parchment map on the long oak table, his heavy brow furrowed as he traces the line of the river. By the hearth, Ser Rodrick stands warming his hands, his scarred face grim. Lord Oswald taps a thick finger on the parchment, right over the mark for Lowbridge Village. 'The Red Cap Bandits were spotted at the ford yesterday,' the old lord says, his voice raspy. 'They are raiding closer to our walls than they dare in summer. Thomas, Rodrick, we cannot let them burn the winter stores.' Rodrick spits into the embers with a dry sigh. 'Our men are tired, my Lord, and we have no coin for steel.' Lord Oswald looks up, his stern eyes settling on you, waiting to hear how you intend to secure the border road.",
    "player_action": null
+  },
+  {
+   "turn": 2,
+   "narration": "You step closer to the long oak table, your hand resting naturally near the hilt of your iron sword. Looking directly at the old lord, you say, \"I will lead a patrol to Lowbridge at dawn.\" You then turn your gaze to the older knight by the hearth. \"Rodrick, ride with me.\"\n\nYour words carry the quiet weight of your decades of service, and your duty-bound tone leaves little room for argument. Lord Oswald pauses, his calloused hand remaining flat upon the map. He looks from the parchment to you, a faint nod of approval touching his grim features. \"Lowbridge is where they will strike first if they mean to starve us out,\" the lord says, his raspy voice low. Ser Rodrick lets out a dry cough, rubbing his scarred hands together before pulling them away from the warmth of the fire. He looks at you with tired, dark eyes, but the cynical edge of his expression softens slightly at your readiness. \"The dawn is damp, Thomas, and my joints are already screaming,\" Rodrick grunts, though he reaches for his heavy wool cloak hanging by the door. \"But I'll not have you riding into a hornets' nest alone. We ride at dawn.\"",
+   "player_action": "I offer to lead a patrol to Lowbridge at dawn and ask Ser Rodrick to ride with me."
+  },
+  {
+   "turn": 3,
+   "narration": "That evening, though you had spoken of dawn, you ride early to Lowbridge Village. In the dim, drafty tavern, you find the widow who runs the place. You pull up a bench, call for a cup of small beer, and slide a coin across the scarred wood to buy her a drink. Leaning close, you speak softly, letting your rugged charm do the work.\n\nThe journey down the muddy border road takes you through the damp, quiet woods under the grey morning sky. You arrive in Lowbridge Village, a cluster of thatched roofs clinging to the wet earth. Inside the damp warmth of the inn, the widow, a weary woman named Clara, looks you over with cautious interest. She accepts the drink, the silver coin clinking on the wood as the tavern keeper pours the brew. Your quiet confidence and smooth words find their mark; she smiles faintly, the sharp lines of her face softening as she leans in to listen to your low voice.",
+   "player_action": "That evening I find the widow who keeps the inn at Lowbridge, buy her a drink and try to seduce her."
   }
  ],
  "choices": [
-  "Offer to lead a patrol down to Lowbridge Village immediately.",
-  "Ask Rodrick how many able-bodied men remain in the garrison.",
-  "Suggest strengthening the guard at the keep's gate first."
+  "Ask Clara if she has heard rumors of the Red Caps.",
+  "Whisper a promise to return to her bed once patrol ends.",
+  "Settle your tab and walk out to check the horses."
  ],
- "cost_usd": 0.137637,
+ "cost_usd": 0.21684521,
  "draft": {
   "premise": "A knight in his thirties serving a minor lord on the border. Decent with a sword, nothing special.",
   "proposal": {
