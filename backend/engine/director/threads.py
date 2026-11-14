@@ -10,6 +10,10 @@ Threads open from events, premises, deeds and agendas. The director keeps their 
   took it up at some point, and resolved without the player otherwise. An ignored event's thread
   closes without the player when it plays out, unless the matter lingers, in which case it goes
   dormant and can return later.
+- A clock whose end happened with the player (E2, `engine.world.clocks.ended_with_player`: the
+  commander is at their door) leaves its thread theirs to play out: it is active on the turn
+  the end came and stays open while they are at it, and closes as resolved, never without
+  them, once nobody has touched it for `DORMANT_AFTER_TURNS` turns.
 
 Each scene, one or two dormant threads the player knows are pulled into context for callbacks
 (C4), preferring those whose people or places are in the scene.
@@ -23,15 +27,25 @@ from engine.director.themes import fits
 from engine.director.turn import TurnFacts
 from engine.rng import SeededRng
 from engine.state.cast import CharacterStatus
-from engine.state.records import ClockStatus, Thread, ThreadKind, ThreadStatus
+from engine.state.records import ClockStatus, PendingEvent, Thread, ThreadKind, ThreadStatus
 from engine.state.world import WorldState, natural_key
+from engine.world.clocks import ended_with_player
 
 # Threads that end when everyone they pit the player against is dead.
 OPPOSED = (ThreadKind.THREAT, ThreadKind.RIVALRY)
 
 
-def _closed_by_world(state: WorldState, thread: Thread) -> str | None:
-    """Why the world has closed this thread, if it has."""
+def _came(state: WorldState, thread: Thread) -> PendingEvent | None:
+    """The end of the thread's clock, when it happened with the player character."""
+    clock = state.clocks.get(thread.clock_id) if thread.clock_id else None
+    if clock is None or clock.status is not ClockStatus.ENDED:
+        return None
+    return ended_with_player(state, clock.id)
+
+
+def _closed_by_world(state: WorldState, thread: Thread, *, held: bool = False) -> str | None:
+    """Why the world has closed this thread, if it has. `held`: its clock's end came to the
+    player and they are still at it, so the clock running out closes nothing yet."""
     mysteries = [m for m in state.bible.mysteries if m.thread_id == thread.id]
     if any(m.solved for m in mysteries):
         return "its mystery was solved"
@@ -41,6 +55,7 @@ def _closed_by_world(state: WorldState, thread: Thread) -> str | None:
         and clock.status is ClockStatus.ENDED
         and thread.kind is not ThreadKind.MYSTERY
         and not mysteries
+        and not held
     ):
         # A mystery outlives its clock: the council can name a boss and the killer stay unknown.
         return f"its clock ran out: {clock.steps[-1]}"
@@ -87,24 +102,34 @@ def lifecycle(
                     )
                 )
                 continue
-        why = _closed_by_world(state, thread)
+        idle = ctx.turn - thread.last_active_turn
+        # E2: the end of its clock came to the player. It is theirs to play out from the turn
+        # it came, for as long as they are at it.
+        came = _came(state, thread)
+        arrived = came is not None and came.applied_turn == ctx.turn
+        back = thread.id in woken or touched or arrived
+        held = came is not None and (back or idle < rules.DORMANT_AFTER_TURNS)
+        why = _closed_by_world(state, thread, held=held)
         if why is not None:
-            player_in = taken_up or thread.taken_up_turn is not None
+            player_in = taken_up or thread.taken_up_turn is not None or came is not None
             status = ThreadStatus.RESOLVED if player_in else ThreadStatus.RESOLVED_WITHOUT_PLAYER
             changes.append(ThreadChange(thread_id=thread.id, status=status, reason=why))
             continue
-        if thread.id in woken or touched:
+        if back:
             changes.append(
                 ThreadChange(
                     thread_id=thread.id,
                     status=ThreadStatus.OPEN if thread.status is ThreadStatus.DORMANT else None,
                     active=True,
                     taken_up=taken_up,
-                    reason="taken up" if taken_up else "back in the scene",
+                    reason="taken up"
+                    if taken_up
+                    else "back in the scene"
+                    if thread.id in woken or touched
+                    else "its clock's end came to the player",
                 )
             )
             continue
-        idle = ctx.turn - thread.last_active_turn
         if thread.status is ThreadStatus.OPEN and idle >= rules.DORMANT_AFTER_TURNS:
             changes.append(
                 ThreadChange(
