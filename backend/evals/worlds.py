@@ -1579,7 +1579,10 @@ def millbrook_at_sixty(*, peach: bool = False) -> WorldState:
     he never left. The record gives him eighty years, as a new world's draft says of its
     character, so he is old at sixty-eight and old age takes him some years on.
     With `peach` he has kept a peach from the Orchard of the Undying all his life, which gives
-    whoever eats it three hundred years."""
+    whoever eats it three hundred years, and the world allows it: the valley's own rule is
+    that nothing is supernatural, and by it the real model told the peach as a fruit like any
+    other twice running ("It is not magic, but it is rich, ripe", 2026-11-14), which kept to
+    the world and failed the check of a scene that lengthens a life."""
     state = millbrook_he_knows()
     tomas = state.characters["tomas"]
     tomas.age = 60
@@ -1587,6 +1590,26 @@ def millbrook_at_sixty(*, peach: bool = False) -> WorldState:
     tomas.appearance = "60, broad shoulders gone lean, grey hair, a farmer's hands."
     state.summary = "Tomas Weller has farmed a small plot in the Long Valley all his life, alone."
     if peach:
+        state.bible.extraordinary = [
+            Extraordinary(
+                id="undying-fruit",
+                kind="the fruit of the Orchard of the Undying",
+                prevalence=Prevalence.RARE,
+                reach="Whoever eats one of its peaches lives three hundred years.",
+                rule_ids=["undying-fruit"],
+            )
+        ]
+        state.bible.rules = [
+            WorldRule(
+                id="undying-fruit",
+                text=(
+                    "Nothing is supernatural but the fruit of the Orchard of the Undying, far "
+                    "to the east: whoever eats one of its peaches lives three hundred years."
+                ),
+                fixed=True,
+                topic=RuleTopic.EXISTENCE,
+            )
+        ]
         fruit = Item(
             id=PEACH,
             name="peach from the Orchard of the Undying",
