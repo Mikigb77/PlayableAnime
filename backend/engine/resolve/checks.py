@@ -36,6 +36,7 @@ from dataclasses import dataclass, field
 from engine.context import TurnContext
 from engine.contracts.intent import (
     BeatUse,
+    GrowthKind,
     IntentStep,
     OutcomeClass,
     Plausibility,
@@ -112,7 +113,13 @@ class Drawn:
 def world_check(state: WorldState, actor: Character, step: IntentStep) -> Settled | None:
     """G8, G7. What the world rules out, nobody can do. A step against one of the world's rules
     plays as what it really is, and the reason names the rule. In a world with nothing
-    extraordinary, using a power is ruled out whatever the interpret step proposed."""
+    extraordinary, using a power is ruled out whatever the interpret step proposed.
+
+    G19. Work toward the next rung of a ladder stops only at a rule the world holds for good,
+    as `growth.check` has it: what an open rule says of a climb (that it kills without a pill,
+    that it takes a master) is a way there or a danger, never a wall. A reading filed just
+    such a rule against an attempt the player chose to risk, and the attempt was refused where
+    it should have been thrown for (2026-11-14)."""
     if not actor.alive:
         return Settled(
             OutcomeClass.RULED_OUT,
@@ -120,6 +127,8 @@ def world_check(state: WorldState, actor: Character, step: IntentStep) -> Settle
             f"{cap(name(state, actor.id))} {is_are(state, actor.id)} dead.",
         )
     rules = [r for r in (state.bible.rule(i) for i in step.facts.against_rule_ids) if r]
+    if step.training is not None and step.training.kind is GrowthKind.BREAKTHROUGH:
+        rules = [r for r in rules if r.fixed]
     uses_power = any(u.part is SheetPart.POWER for u in step.uses) or any(
         use.source is UseSource.POWER for beat in step.beats for use in beat.uses
     )
@@ -490,6 +499,19 @@ def _at_hand(state: WorldState, actor: Character, words: str, ref: str | None = 
     if energy_move(state, actor, words) or _in_scene(state, words, ref):
         return True
     return mentions(actor.appearance, words) and not gone_to(state, actor, words, money=False)
+
+
+def not_theirs(state: WorldState, actor: Character, words: str, ref: str | None = None) -> bool:
+    """C10. Whether something a step files as the actor's own, an item it draws on or a thing a
+    beat carries, is nothing they hold in any way the step could use: no item of theirs, no
+    money, no move of their own, nothing the scene's record holds and nothing they wear. Such
+    a use is refused ("You have no healing draught on you."), which is right for what the
+    player's own words claimed and wrong for a prop the reading added by itself
+    (`graph.turn.check`)."""
+    item = (actor.sheet.item(ref) if ref else None) or _owned_item(actor, words)
+    if item is not None or is_money(words, actor.sheet.resources.currency):
+        return False
+    return not _at_hand(state, actor, words, ref)
 
 
 def _item_missing(state: WorldState, actor: Character, item: Item | None, words: str) -> str:

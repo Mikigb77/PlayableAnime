@@ -268,15 +268,16 @@ async def ladder_grows(ev: Eval) -> None:
         first = realms(story.state)
         gap = path.above_tier(first)
         had = rules(story.state)
-        ceiling = next(rule.text for rule in story.state.bible.rules if rule.id == CEILING)
         played = await story.act(
             REACH, reach(against_the_rule=filed), narration=naming(BARRIER, listed=filed)
         )
         stopped = played.step(0)
+        # An open rule filed against a climb is no wall (G19): the top of the ladder is what
+        # stops it, whatever the reading filed.
         ev.check(
             "a climb stops on the highest realm, with the reason in the world's words",
             stopped.outcome_class is OutcomeClass.RULED_OUT
-            and stopped.reason == (ceiling if filed else growth.no_rung_above(first)),
+            and stopped.reason == growth.no_rung_above(first),
             f"{seed}: {stopped.outcome_class.value}, {stopped.reason}",
         )
         ev.check(

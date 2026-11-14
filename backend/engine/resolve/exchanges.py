@@ -5,15 +5,19 @@ over something they don't hold.
 - **Before the step.** Everything the actor gives or spends must be theirs, counting what earlier
   steps of the same plan moved: short of it, the step is ruled out with no roll, and the reason
   says where it went ("You have no copper coins. They went to Milo."). Letting someone keep what
-  they already took from the actor moves nothing, so it never fails for want of it.
+  they already took from the actor moves nothing, so it never fails for want of it. Neither does
+  an everyday thing of the place that the step's own beats reach for there, such as a drink
+  poured for a guest at home: whether it is there is the beat's to say (R2), and handing it on
+  moves nothing on record (`_of_the_place`).
 - **When it works.** What is given or taken moves on a success or a partial success; what is
   spent is gone whenever the step is tried, since a thrown knife leaves the hand whether it hits
-  or not. Each move is an `ItemChange` in the step's effects, applied by `engine.possessions`
+  or not. What is bought from a seller the record doesn't hold arrives with its price
+  (`_bought`). Each move is an `ItemChange` in the step's effects, applied by `engine.possessions`
   before narration (F4), and the narrator is told it happened.
 """
 
 from engine.contracts.delta import WORLD, ItemChange
-from engine.contracts.intent import Exchange, ExchangeKind, IntentStep, OutcomeClass
+from engine.contracts.intent import Exchange, ExchangeKind, IntentStep, OutcomeClass, UseSource
 from engine.possessions import (
     Holding,
     already_given,
@@ -25,12 +29,15 @@ from engine.possessions import (
     is_money,
 )
 from engine.resolve.checks import Settled
-from engine.resolve.words import cap, name, possessive
+from engine.resolve.words import cap, mentions, name, possessive
 from engine.state.cast import Character
 from engine.state.records import StepResult
 from engine.state.world import WorldState
 
 _WHERE_IT_STANDS = ("vehicle", "property")
+# R2. Where a beat finds a thing of the place: in the scene, in what this turn made canon, or as
+# something the engine has no record of, judged by whether a place like this would hold it.
+_IN_THE_PLACE = (UseSource.SCENE, UseSource.CANON, UseSource.NEW)
 
 
 def check(
@@ -54,6 +61,8 @@ def check(
             continue
         if _kept(state, actor, exchange, need):
             continue  # they already have it: letting them keep it moves nothing
+        if held == 0 and _of_the_place(state, actor, step, exchange):
+            continue  # the beats find it where they are: nothing of theirs moves
         return Settled(
             OutcomeClass.RULED_OUT, StepResult.FAILURE, _short(state, actor, exchange, held, away)
         )
@@ -95,7 +104,9 @@ def _change(
     if exchange.kind is ExchangeKind.TAKE:
         other = state.characters.get(exchange.with_id or "")
         if other is None or other.id == actor.id:
-            return None  # what the world holds is found by the beats, and told by the narrator
+            # What the world holds is found by the beats and told by the narrator, unless the
+            # step paid for it.
+            return _bought(actor, step, exchange, how)
         holder = holder_of(state, exchange.item_id) if exchange.item_id else None
         if holder is not None and holder is not other:
             return None  # someone else has it: the narrator tells what the step got instead
@@ -148,6 +159,33 @@ def _kept(state: WorldState, actor: Character, exchange: Exchange, need: int) ->
     return kept >= max(need, 1)
 
 
+def _of_the_place(
+    state: WorldState, actor: Character, step: IntentStep, exchange: Exchange
+) -> bool:
+    """R2, C10. Whether what the actor gives or uses up is a thing of the place that the step's
+    own beats reach for there: a drink poured for a guest at home, bread passed across the
+    table. The record never held it as theirs, so nothing of theirs moves, and whether it is
+    there is the beat's to say, as for any other thing of the place. Never money, never an item
+    by its id, and never something the record says was theirs and went elsewhere: those are the
+    belongings, and the belongings are the truth: so is what anyone else holds, which has to
+    be taken from them first. In play, a fisherman who poured a frightened
+    neighbour a glass of brandy in his own kitchen was told he had none, and the question he
+    asked with it was never played (2026-11-14)."""
+    if exchange.item_id or _money(actor, exchange):
+        return False
+    if gone_to(state, actor, exchange.thing, money=False):
+        return False
+    others = [c for c in state.characters.values() if c.id != actor.id and c.alive]
+    if any(holding(c, exchange.thing, money=False).amount > 0 for c in others):
+        return False  # someone's own: taking it from them is a move the step has to make
+    return any(
+        mentions(use.thing, exchange.thing) or mentions(exchange.thing, use.thing)
+        for beat in step.beats
+        for use in beat.uses
+        if use.source in _IN_THE_PLACE
+    )
+
+
 def _money(actor: Character, exchange: Exchange) -> bool:
     return exchange.money or (
         not exchange.item_id and is_money(exchange.thing, actor.sheet.resources.currency)
@@ -159,6 +197,28 @@ def _recipient(state: WorldState, actor: Character, exchange: Exchange) -> str |
     as a stallholder nobody named, takes it out of the record."""
     other = exchange.with_id
     return other if other in state.characters and other != actor.id else None
+
+
+def _bought(actor: Character, step: IntentStep, exchange: Exchange, how: str) -> ItemChange | None:
+    """C10. Something taken from nobody on record that the same step pays money for is bought:
+    it comes to the actor with the payment, from a stall, a market or a shop the story never
+    gave a keeper. In play an old cultivator paid his last hundred and twenty spirit stones
+    for a pill at a market: the stones left his purse, and the pill never reached his
+    belongings, because only the scene could have put it there and the scene left it lying
+    about (2026-11-14). What is taken with nothing paid stays the beats' to find and the
+    scene's to tell, and so does money, which nobody buys."""
+    if _money(actor, exchange):
+        return None
+    paid = any(e.kind is not ExchangeKind.TAKE and _money(actor, e) for e in step.exchanges)
+    if not paid:
+        return None
+    return ItemChange(
+        name=exchange.thing,
+        from_id=WORLD,
+        to_id=actor.id,
+        quantity=count(exchange.thing, exchange.amount) or 1,
+        how=how,
+    )
 
 
 def _held(actor: Character, exchange: Exchange, moved: list[ItemChange]) -> tuple[int, Holding]:
