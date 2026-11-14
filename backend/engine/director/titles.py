@@ -34,6 +34,7 @@ _FIXED: dict[str, tuple[str, str]] = {
     COMES_DUE: ("Algo pendiente llega", "Arriba una cosa pendent"),
     # The player character's own old age (`engine.world.last_years`).
     "Your years run short": ("Te quedan pocos años", "Et queden pocs anys"),
+    "The weight of your years": ("El peso de tus años", "El pes dels teus anys"),
     "Your years run out": ("Se te acaban los años", "Se t'acaben els anys"),
     # Personal.
     "An old friend in trouble": ("Una vieja amistad en apuros", "Una vella amistat en un mal pas"),

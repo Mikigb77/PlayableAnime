@@ -11,7 +11,7 @@ from engine.base import DAY, YEAR
 from engine.context import Language, StorySettings
 from engine.state import EventStatus, PendingEvent, WorldState
 from engine.world import last_years, lives, old_age
-from engine.world.last_years import NEAR_TITLE, TAKES, TAKES_TITLE
+from engine.world.last_years import ASKED_TITLE, NEAR_TITLE, TAKES, TAKES_TITLE
 from engine.world.scheduling import Kind
 from graph.llm import Node, Reply
 from graph.turn import prompts
@@ -210,7 +210,8 @@ def test_the_scene_of_the_stop_can_answer_that_the_story_has_them_living_far_lon
     fake, make_client
 ):
     """A world drafted before peoples said how long they live: eighty years is the world's
-    assumption, the scene is told so, and its update can put the real span on record."""
+    assumption, the scene is asked before it is told, and its update can put the real span on
+    record."""
     scene = SCENE | {
         "narration": "Tomas is an elf, and his winters sit on him like one.",
         "update": SCENE["update"] | {"characters": [{"id": YOU, "lifespan_years": 800}]},
@@ -218,12 +219,43 @@ def test_the_scene_of_the_stop_can_answer_that_the_story_has_them_living_far_lon
 
     result, told = a_turn(fake, make_client, aged(60), 40, scene=scene)
 
-    asked = _section(told, "EVENT")["brief"]
-    assert "The record doesn't say how long they live" in asked and "lifespan_years" in asked
+    # Nothing the scene reads says flatly that their end is close: not its title, not its
+    # event, not what it reads of the character.
+    assert result.scene.event.title == ASKED_TITLE
+    event = _section(told, "EVENT")
+    assert (event["title"], event["kind"]) == (ASKED_TITLE, "discovery")
+    assert event["brief"].startswith("The record doesn't say how long Tomas Weller lives")
+    assert "Decide first" in event["brief"] and "lifespan_years" in event["brief"]
+    you = result.state.characters[YOU]
+    view = _section(told, "PLAYER CHARACTER")
+    assert view["old_age"].startswith(
+        f"{you.age}. The record doesn't say how long they live, and takes it for a human life "
+        "of about 80 years. If that is what they are, the end of their life is close"
+    )
+    assert "they are not old, and the update says how long they live" in view["old_age"]
     state = result.state
     assert "rejected" not in [issue.code for issue in result.issues]
     assert state.characters[YOU].lifespan_years == 800
     # The day drawn for eighty years is gone, and old age is centuries off.
+    state = until_old_age(state, 1)[0]
+    assert waiting(state) == [("near", 800)]
+    assert "old_age" not in _section(brief(state).user, "PLAYER CHARACTER")
+
+
+def test_every_scene_after_an_unanswered_stop_reads_the_question_until_the_record_says(
+    fake, make_client
+):
+    # The scene of the stop says nothing of how long they live: they are told for eighty years.
+    result, _ = a_turn(fake, make_client, aged(60), 40)
+    state = result.state
+    assert state.characters[YOU].old_age_span == 80 and state.characters[YOU].lifespan_years == 0
+
+    asked = _section(brief(state).user, "PLAYER CHARACTER")["old_age"]
+    assert "The record doesn't say how long they live" in asked
+    assert "lifespan_years, 1000000 for never" in asked
+
+    # A later scene answers that they live far longer: the day is gone and nothing is asked.
+    state.characters[YOU].lifespan_years = 800
     state = until_old_age(state, 1)[0]
     assert waiting(state) == [("near", 800)]
     assert "old_age" not in _section(brief(state).user, "PLAYER CHARACTER")
