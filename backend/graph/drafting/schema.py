@@ -572,6 +572,11 @@ class ClockP(Proposal):
     step_every_hours: float | None = Field(
         default=None, description="In-world hours per step when time alone advances it."
     )
+    own_lifespan: bool = Field(
+        default=False,
+        description="True only for a clock that counts the player character's own years of "
+        "life running out, which is their old age. False for every other clock.",
+    )
     owner_id: str = ""
     thread_id: str = ""
     known_to_player: bool = True
