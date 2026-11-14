@@ -546,6 +546,89 @@ def test_a_scene_brings_in_nobody_the_record_has_elsewhere(way):
     assert "only the world brings them here" in " ".join(reasons(applied))
 
 
+@pytest.mark.parametrize("way", ["listed", "meets", "comes"])
+def test_someone_near_enough_to_have_walked_over_is_in_the_scene_that_has_them(way):
+    """W10. The narrator is told that whoever the record has elsewhere stays there, and in the
+    first plays by hand on the real models (2026-11-14) it told such a person in all the same
+    in four scenes of ninety-nine, so the story and its Memory parted ways. Where the world
+    allows it (`near`, from `engine.pipeline.within_reach`) the record follows the scene:
+    whoever its end lists or it puts where it plays is there, having come from where the
+    record had them. Someone it only has meet the player character came and went."""
+    state = cultivation_world()  # Lin and Zhao at the well; Elder Mo is in the inner court
+    change, end = resents("elder-mo"), None
+    if way == "listed":
+        end = SceneEnd(ended_on="Elder Mo looks on.", present_ids=["lin", "zhao", "elder-mo"])
+    elif way == "meets":
+        change = resents("elder-mo", meets_player=True)
+    else:
+        change = resents("elder-mo", location_id="well")
+    delta = StateDelta(characters=[change], scene_end=end)
+
+    applied = apply_delta(state, delta, ctx(3), source=NARRATOR, near=["elder-mo"])
+
+    elder = applied.state.characters["elder-mo"]
+    assert not applied.rejected
+    assert feelings(applied.state, "elder-mo").grudges
+    if way == "meets":
+        assert elder.location_id == "inner-court" and applied.came == ()
+        assert "lin" in elder.met_by
+    else:
+        assert elder.location_id == "well"
+        assert applied.came == (("elder-mo", "inner-court"),)
+    assert ("elder-mo" in applied.state.scene.present_ids) == (way == "listed")
+
+
+def test_someone_who_walked_over_is_where_the_scene_plays_and_nowhere_else():
+    """The scene can't send them on to a third place: only the world moves them from where
+    the record has them, and the scene only has them come to it."""
+    state = cultivation_world()
+    state.places["gate"] = state.places["inner-court"].model_copy(
+        update={"id": "gate", "name": "the Mountain Gate", "routes": []}
+    )
+    sent = CharacterChange(id="elder-mo", location_id="gate")
+
+    applied = apply_delta(
+        state, StateDelta(characters=[sent]), ctx(3), source=NARRATOR, near=["elder-mo"]
+    )
+
+    assert applied.state.characters["elder-mo"].location_id == "inner-court"
+    assert applied.came == ()
+    assert [(r.subject, r.change) for r in applied.rejected] == [("character elder-mo", "location")]
+
+
+def test_nobody_walks_over_into_a_scene_that_is_barred_from_them():
+    """W17 comes first: whoever a move in a romance wrongs has no part in the scene that
+    tells it, however near they are."""
+    state = cultivation_world()
+    end = SceneEnd(ended_on="Elder Mo looks on.", present_ids=["lin", "zhao", "elder-mo"])
+
+    applied = apply_delta(
+        state,
+        StateDelta(scene_end=end),
+        ctx(3),
+        source=NARRATOR,
+        near=["elder-mo"],
+        barred=["elder-mo"],
+    )
+
+    assert applied.state.scene.present_ids == ["lin", "zhao"]
+    assert applied.state.characters["elder-mo"].location_id == "inner-court"
+    assert applied.came == ()
+    assert [(r.subject, r.change) for r in applied.rejected] == [("character elder-mo", "presence")]
+
+
+def test_whoever_is_in_the_scene_already_came_from_nowhere():
+    """Being near is nothing to someone the scene has anyway: they are where they were, and
+    the world has nobody to send back."""
+    state = cultivation_world()
+    end = SceneEnd(ended_on="Zhao spits.", present_ids=["lin", "zhao"])
+
+    applied = apply_delta(state, StateDelta(scene_end=end), ctx(3), source=NARRATOR, near=["zhao"])
+
+    assert not applied.rejected and applied.came == ()
+    assert applied.state.characters["zhao"].location_id == "well"
+
+
 @pytest.mark.parametrize("named", ["inner-court", "the Inner Court"])
 def test_a_scene_that_ends_somewhere_else_has_the_people_the_record_puts_there(named):
     """The scene walks Lin to the inner court, where Elder Mo is: he is in it as it ends,

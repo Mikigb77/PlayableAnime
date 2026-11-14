@@ -334,6 +334,52 @@ def test_a_scene_that_walks_the_wronged_partner_in_changes_nothing_on_record(fak
     assert feels(after.state) == (80, 80, 80)
 
 
+def test_the_wronged_partner_walks_into_no_quiet_scene_by_the_scenes_word(fake, make_client):
+    """W10, W17. Someone near whom a scene names may walk into it on a quiet turn, and the
+    record follows (`engine.world.visits`, 2026-11-14). Never whoever a romance of the player
+    character's wrongs: Tomas is courting Mara in the village, his wife is at the farm forty
+    minutes off, and a scene that has her come round the corner while the two only talk is
+    refused as it was. With nothing between Tomas and Mara, she comes."""
+
+    def talked(stage: BondStage | None):
+        state = farm(60, stage)
+        for who in ("tomas", "mara"):
+            state.characters[who].location_id = "village"
+        state.scene.place_id = "village"
+        talk = {
+            "summary": "Tomas talks with Mara.",
+            "steps": [
+                {
+                    "text": "talk with Mara about the harvest",
+                    "verb": "talk",
+                    "target_ids": ["mara"],
+                    "kind": "conversation",
+                    "proposed_duration_s": 600,
+                }
+            ],
+        }
+        told = scene()
+        told["narration"] = "Mara laughs, and Ilse Weller comes round the corner with a basket."
+        told["update"]["scene_end"] |= {
+            "place_id": "village",
+            "present_ids": ["tomas", "mara", "ilse"],
+        }
+        result = play(fake, make_client, state, talk, told, "I talk with Mara about the harvest")
+        assert not result.state.deeds
+        noted = [(i.code, i.area) for i in result.issues if i.code in ("rejected", "walked_in")]
+        return result.state, noted
+
+    state, noted = talked(BondStage.COURTING)
+    assert noted == [("rejected", "character.presence")]
+    assert state.scene.present_ids == ["tomas", "mara"]
+    assert state.characters["ilse"].location_id == "farm"
+
+    state, noted = talked(None)
+    assert noted == [("walked_in", None)]
+    assert state.scene.present_ids == ["tomas", "mara", "ilse"]
+    assert state.characters["ilse"].location_id == "village"
+
+
 def test_a_move_that_wrongs_nobody_names_nobody(fake, make_client):
     state = farm(60, BondStage.COURTING)
     bonds.end(state.bonds["bond-1"], by_id="ilse", how="She left.", turn=0, world_s=0)

@@ -308,6 +308,12 @@ NPC_MOVE_MEAN_S = 5 * DAY
 # took them, to bring word or to face someone, once it is done. The way back comes on top.
 OUTING_STAY_S = (DAY, 4 * DAY)
 ERRAND_STAY_S = (2 * HOUR, DAY)
+# W10: how far off, by the map, someone can be and still walk into a scene, and the start they
+# may have had on the time since the player character was last with them. And how long they
+# stay where the scene was before they go back.
+WALK_IN_MAX_S = DAY
+WALK_IN_S = HOUR
+VISIT_STAY_S = (HOUR, 4 * HOUR)
 # Someone held where they went sets out for home this long after: a day at first, and then as
 # long again as they have been held so far, up to a week, so a year in a cell asks once a week.
 HELD_S = DAY

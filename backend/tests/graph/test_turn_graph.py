@@ -1780,6 +1780,43 @@ def quiet_farm(turn: int = 3):
     return state
 
 
+def test_someone_near_whom_the_scene_names_walks_into_it_on_a_quiet_turn(fake, make_client):
+    """W10: the narrator is told that whoever the record has elsewhere stays there, and on the
+    real models it told someone in all the same in four scenes of ninety-nine (2026-11-14).
+    On a turn with nothing to walk in on, someone the scene's own words name who is near
+    enough to have come is in it: the record has him at the farm, the turn's result says he
+    walked in, and the world sends him home. A scene whose end only lists him has nobody."""
+    from engine.samples import farm_world
+    from engine.world.returns import trip_of
+
+    def played(narration: str):
+        state = farm_world()  # Tomas and Ilse on the farm; Bram in Millbrook, forty minutes off
+        state.turn = 2
+        end = {
+            "ended_on": "Bram nods at the fence.",
+            "place_id": "farm",
+            "present_ids": ["tomas", "ilse", "bram"],
+        }
+        scene = {"narration": narration, "suggestions": [], "update": {"scene_end": end}}
+        fake.script(Node.INTERPRET, Reply(json=FARMING))
+        fake.script(Node.NARRATOR, Reply(json=scene))
+        _, result = play(make_client(), turn_input(state, action="I work the fields"))
+        noted = [(i.code, i.subject) for i in result.issues if i.code in ("walked_in", "rejected")]
+        return result.state, noted
+
+    state, noted = played("Old Bram comes up the lane and leans on the gate.")
+    assert noted == [("walked_in", "bram")]
+    assert state.scene.present_ids == ["tomas", "ilse", "bram"]
+    assert state.characters["bram"].location_id == "farm"
+    home = trip_of(state, "bram")
+    assert home is not None and home.place_id == "village"
+
+    state, noted = played("The furrows run straight and the day goes by.")
+    assert noted == [("rejected", "character bram: presence")]
+    assert state.scene.present_ids == ["tomas", "ilse"]
+    assert state.characters["bram"].location_id == "village" and trip_of(state, "bram") is None
+
+
 def test_the_directors_event_and_its_records_are_in_place_before_narration(fake, make_client):
     """W16, N1: the event's thread and its play-out are recorded in the turn's state, and the
     narrator is told the event."""

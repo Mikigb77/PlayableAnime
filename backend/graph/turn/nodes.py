@@ -654,9 +654,17 @@ async def apply_update(state: TurnState) -> dict[str, Any]:
             # nobody a move in a romance wronged who didn't see it.
             brought=came,
             barred=pipeline.kept_out(world, turn.ctx, came),
+            # W10: but whoever the scene tells who is near enough to have walked over, on a
+            # turn with nothing for them to walk in on. The record follows a scene that has
+            # them.
+            near=pipeline.within_reach(world, turn.ctx, scene_text, delta),
         )
-        world = applied.state
+        world = pipeline.settle_walk_ins(applied.state, applied.came, turn.ctx, turn_rng(turn))
         issues += [_rejected("rejected", r) for r in applied.rejected]
+        issues += [
+            Issue("walked_in", "near enough to have come: in the scene", subject=who)
+            for who, _ in applied.came
+        ]
         ended = delta.scene_end is not None
         if narration.told_talk:
             # W2, C6: only talk a scene told is heard, so Memory never lists what no scene said.
