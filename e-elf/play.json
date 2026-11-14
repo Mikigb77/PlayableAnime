@@ -1,0 +1,689 @@
+{
+ "premise": "A 300-year-old elf ranger, still young for her kind, guarding a forest that humans have started to cut down.",
+ "language": "en",
+ "rating": "teen",
+ "settings": {
+  "narration_length": "medium",
+  "tone": null,
+  "difficulty": "balanced",
+  "event_frequency": "normal",
+  "images": "key_moments",
+  "suggestions": true,
+  "language": "en",
+  "accent": null
+ },
+ "seed": "play/w-elf",
+ "state": null,
+ "scenes": [],
+ "choices": [],
+ "cost_usd": 0.3100494,
+ "draft": {
+  "premise": "A 300-year-old elf ranger, still young for her kind, guarding a forest that humans have started to cut down.",
+  "proposal": {
+   "world": {
+    "title": "The Whispering Border",
+    "genre": "high fantasy nature conflict",
+    "tone": "tense and melancholic",
+    "era": "Medieval era with early logging mills: steel axes, ropes, and draft horses.",
+    "extraordinary": [
+     {
+      "id": "wood-magic",
+      "kind": "wood magic",
+      "prevalence": "rare",
+      "reach": "Allows practitioners to sense the vitality of plants, accelerate growth, or meld into foliage."
+     }
+    ],
+    "rules": [
+     {
+      "id": "wood-magic-limits",
+      "text": "Wood magic requires a direct connection to living plant life and fails completely in dead or deforested zones.",
+      "fixed": true,
+      "topic": "nature",
+      "about": [
+       "wood-magic"
+      ]
+     },
+     {
+      "id": "elven-lifespan",
+      "text": "Elves can live for thousands of years, remaining physically in their prime for centuries.",
+      "fixed": true,
+      "topic": "peoples",
+      "about": []
+     },
+     {
+      "id": "wood-magic-exists",
+      "text": "Wood magic: real, and rare.",
+      "fixed": true,
+      "topic": "existence",
+      "about": [
+       "wood-magic"
+      ]
+     }
+    ],
+    "dropped_rule_ids": [],
+    "peoples": [
+     {
+      "id": "elves",
+      "name": "Elves",
+      "description": "An ancient, slow-lived people deeply attuned to the natural balance of the deep forests.",
+      "lifespan_years": 2000,
+      "gifts": [
+       "Keen night vision",
+       "Perfect balance"
+      ],
+      "culture": "A protective, insular society centered around preserving the great forest's ancient heartwood.",
+      "relations": [
+       "Strained peace with the expanding human kingdoms, now bordering on active skirmishes."
+      ],
+      "path": ""
+     },
+     {
+      "id": "humans",
+      "name": "Humans",
+      "description": "A short-lived, highly adaptable, and ambitious people seeking land and raw materials.",
+      "lifespan_years": 80,
+      "gifts": [
+       "Great ambition",
+       "Rapid learning"
+      ],
+      "culture": "Resource-hungry, focused on expansion, trade, and building settlements.",
+      "relations": [
+       "Eager to clear the forest for valuable timber, disregarding ancient elven territorial warnings."
+      ],
+      "path": ""
+     }
+    ],
+    "creatures": [
+     {
+      "id": "grove-guardian",
+      "name": "Grove Guardian",
+      "description": "Massive, moss-furred stag spirits that defend the deepest parts of the forest.",
+      "rung": "",
+      "habitat": "Heartwood",
+      "worth": "Sacred antlers capable of amplifying nature magic.",
+      "can_be_tamed": false
+     }
+    ],
+    "nature": [
+     "The forest is dense, old, and highly responsive to violence against its trees, growing darker and more tangled where blood is spilled."
+    ],
+    "ladders": [],
+    "calendar": {
+     "style": "gregorian",
+     "clock_time": false,
+     "epoch": "0001-11-15T06:00",
+     "start_hour": 6,
+     "months": [],
+     "start_year": 1,
+     "start_month": 11,
+     "start_day": 15,
+     "era": ""
+    },
+    "travel": {
+     "description": "Travel is slow and arduous through the trackless undergrowth on foot, though humans use heavy barges along the Whispering River.",
+     "instant_messages": false
+    },
+    "medicine": {
+     "healing": "Elven herbalism can close wounds overnight, while humans rely on field surgeons and splints.",
+     "resurrection": "none",
+     "resurrection_means": ""
+    },
+    "laws": [
+     {
+      "id": "treaty-law",
+      "text": "The Whispering River is the boundary; no human axe may bite the wood north of its banks.",
+      "enforcer": "Greenwood Rangers",
+      "enforcer_faction_id": "greenwood-rangers",
+      "zeal": "high",
+      "corruptible": false
+     }
+    ],
+    "norms": [
+     "tree-felling"
+    ],
+    "several_partners": false,
+    "unions": "held",
+    "places": [
+     {
+      "id": "canopy-outpost",
+      "name": "The Canopy Outpost",
+      "kind": "building",
+      "description": "A hidden wooden platform built high in the branches of an ancient Sentinel Fir, overlooking the river valley, now dusted with late autumn frost.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "greenwood-rangers",
+      "mood": "tense and windy",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "whispering-river",
+        "travel_hours": 2.0,
+        "mode": "on foot"
+       },
+       {
+        "to_id": "heartwood",
+        "travel_hours": 4.0,
+        "mode": "on foot"
+       }
+      ]
+     },
+     {
+      "id": "whispering-river",
+      "name": "The Whispering River",
+      "kind": "wilds",
+      "description": "A wide, rushing river, swollen with cold autumn rains and bordered by skeletal trees, that marks the ancient boundary between elven and human territory.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "noisy and cold",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "lumber-camp",
+        "travel_hours": 1.0,
+        "mode": "on foot"
+       }
+      ]
+     },
+     {
+      "id": "heartwood",
+      "name": "The Heartwood",
+      "kind": "wilds",
+      "description": "The sacred, shadowed core of the forest where the oldest trees grow, their leaves now a brilliant amber and gold, and the magic of the woods is thickest.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "greenwood-rangers",
+      "mood": "mystical and silent",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "lumber-camp",
+      "name": "The Ironwood Lumber Camp",
+      "kind": "village",
+      "description": "A chaotic, muddy settlement of loggers, raw timber, and simple wooden shacks directly south of the river.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "ironwood-syndicate",
+      "mood": "hostile, smelling of sawdust and sweat",
+      "known_to_player": true,
+      "routes": []
+     }
+    ],
+    "factions": [
+     {
+      "id": "greenwood-rangers",
+      "name": "Greenwood Rangers",
+      "kind": "sect",
+      "description": "The elite elven scouts and wardens who patrol the boundaries and protect the forest from outside threats.",
+      "parent_id": "",
+      "leader_ids": [
+       "celene"
+      ],
+      "goal": "Enforce the boundary treaty and repel any human logging incursions.",
+      "methods": "Silent ambush, tracking, and localized wood-magic sabotage.",
+      "strength": "Dozens of highly skilled archers intimately familiar with the forest terrain.",
+      "relations": [],
+      "secrets": [
+       "Their numbers have dwindled dangerously over the last century."
+      ],
+      "known_to_player": true
+     },
+     {
+      "id": "ironwood-syndicate",
+      "name": "The Ironwood Syndicate",
+      "kind": "crew",
+      "description": "A ruthless human guild of loggers and merchants contracted to harvest high-quality timber.",
+      "parent_id": "",
+      "leader_ids": [
+       "harlan"
+      ],
+      "goal": "Clear the ancient forest across the river to fulfill their valuable crown contracts.",
+      "methods": "Hiring mercenaries for defense, clear-cutting systematically, and building roads.",
+      "strength": "Dozens of heavy laborers, well-equipped mercenaries, and heavy iron tools.",
+      "relations": [],
+      "secrets": [
+       "They are secretly funded by a desperate border Duke facing massive war debts."
+      ],
+      "known_to_player": true
+     }
+    ],
+    "npcs": [
+     {
+      "id": "celene",
+      "name": "Commander Celene",
+      "aliases": [],
+      "description": "A battle-hardened elf ranger captain whose eyes are as cold as winter frost.",
+      "appearance": "Tall, wearing dark leather armor adorned with leaves, with silver hair pulled back tightly.",
+      "age": 650,
+      "people_id": "elves",
+      "location_id": "canopy-outpost",
+      "memberships": [
+       {
+        "faction_id": "greenwood-rangers",
+        "rank": "Commander",
+        "loyalty": 100
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "stern",
+        "tactical",
+        "unyielding"
+       ],
+       "values": [
+        "duty",
+        "the forest",
+        "tradition"
+       ],
+       "loves": [
+        "silence",
+        "precision archery"
+       ],
+       "fears": [
+        "the complete destruction of the wood"
+       ],
+       "wants": [
+        "To drive the humans back across the river forever."
+       ],
+       "voice": "Quiet, sharp, and commanding."
+      },
+      "attributes": {
+       "strength": 3,
+       "speed": 4,
+       "toughness": 3,
+       "wits": 4,
+       "knowledge": 4,
+       "willpower": 5,
+       "charm": 3,
+       "nerve": 5,
+       "bearing": 4
+      },
+      "skills": [
+       {
+        "name": "Archery",
+        "level": "expert",
+        "notes": ""
+       },
+       {
+        "name": "Wood Magic",
+        "level": "skilled",
+        "notes": ""
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 3,
+       "influence": 4,
+       "wealth": 2,
+       "knowledge": 3,
+       "stealth": 4
+      },
+      "attitude_to_player": {
+       "affinity": 30,
+       "fear": 0,
+       "trust": 40,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": true,
+      "agenda": {
+       "goal": "Force a decisive confrontation with the lumber camp to halt their advance before they reach the Heartwood.",
+       "method": "Execute a series of guerrilla strikes on the camp's main supply lines.",
+       "secret": "She is willing to sacrifice the border outposts completely to buy time for the Heartwood's defenses.",
+       "clock_id": "the_logging_push"
+      },
+      "secrets": [],
+      "player_knows": "met"
+     },
+     {
+      "id": "harlan",
+      "name": "Overseer Harlan",
+      "aliases": [],
+      "description": "An aggressive, burly human syndicate manager who smells of sour ale and tobacco.",
+      "appearance": "Broad-shouldered with a thick black beard, wearing a heavy leather coat stained with pitch.",
+      "age": 45,
+      "people_id": "humans",
+      "location_id": "lumber-camp",
+      "memberships": [
+       {
+        "faction_id": "ironwood-syndicate",
+        "rank": "Overseer",
+        "loyalty": 85
+       }
+      ],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "greedy",
+        "pragmatic",
+        "ruthless"
+       ],
+       "values": [
+        "profit",
+        "efficiency",
+        "progress"
+       ],
+       "loves": [
+        "gold",
+        "the sound of trees falling"
+       ],
+       "fears": [
+        "ruin by his creditors"
+       ],
+       "wants": [
+        "To clear the entire valley of its ancient timber."
+       ],
+       "voice": "Loud, raspy, and dismissive."
+      },
+      "attributes": {
+       "strength": 4,
+       "speed": 2,
+       "toughness": 4,
+       "wits": 3,
+       "knowledge": 3,
+       "willpower": 4,
+       "charm": 2,
+       "nerve": 4,
+       "bearing": 3
+      },
+      "skills": [
+       {
+        "name": "Intimidation",
+        "level": "skilled",
+        "notes": ""
+       },
+       {
+        "name": "Commerce",
+        "level": "skilled",
+        "notes": ""
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 3,
+       "influence": 3,
+       "wealth": 4,
+       "knowledge": 2,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": -50,
+       "fear": 20,
+       "trust": -40,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": {
+       "goal": "Clear-cut the outer borders of the elven forest within the month.",
+       "method": "Using armed guards to shield the loggers while they work.",
+       "secret": "He has hired dangerous outlaws to hunt down any elven rangers who interfere.",
+       "clock_id": "the_logging_push"
+      },
+      "secrets": [],
+      "player_knows": "heard_of"
+     }
+    ],
+    "clocks": [
+     {
+      "id": "the_logging_push",
+      "name": "The Logging Push",
+      "steps": [
+       "Loggers finish bridging the Whispering River with a heavy timber span.",
+       "Mercenaries establish defensive watchtowers on the elven side of the river.",
+       "The first axes begin biting into the ancient boundary trees near the Canopy Outpost."
+      ],
+      "step_every_hours": 48.0,
+      "owner_id": "harlan",
+      "thread_id": "encroaching-axes",
+      "known_to_player": true
+     }
+    ],
+    "threads": [
+     {
+      "id": "encroaching-axes",
+      "title": "The Encroaching Axes",
+      "kind": "threat",
+      "stakes": "The destruction of the border forest and the exposure of the inner Heartwood to human expansion.",
+      "involved_ids": [
+       "player",
+       "celene",
+       "harlan"
+      ],
+      "clock_id": "the_logging_push",
+      "known_to_player": true
+     }
+    ],
+    "mysteries": [
+     {
+      "id": "broken-treaty",
+      "question": "Why have the humans suddenly broken the boundary treaty after two centuries of peace?",
+      "answer": "The local human Duke's iron mines collapsed, bankrupting him. He secretly contracted the Ironwood Syndicate to harvest the elven Heartwood for its magical charcoal, which burns hot enough to smelt substandard ores, promising them immunity from royal law.",
+      "clues": [
+       "A signed ducal ledger found in the lumber camp detailing charcoal shipments to the royal capital.",
+       "A dispatch from the Duke's court ordering the Syndicate to disregard the border at all costs."
+      ],
+      "thread_id": "encroaching-axes",
+      "known_to_player": true
+     }
+    ],
+    "known_facts": [
+     "The Whispering River has served as the undisputed treaty border for over two hundred years.",
+     "Axe-men from the Ironwood Syndicate have recently crossed the river and begun clearing timber."
+    ],
+    "opening": {
+     "place_id": "canopy-outpost",
+     "present_ids": [
+      "celene"
+     ],
+     "positions": [
+      "perched on the high wooden platform"
+     ],
+     "props": [
+      "recurve bow",
+      "quiver of arrows"
+     ],
+     "situation": "From your perch high in the branches of the Canopy Outpost, the chill of late autumn bites through your gear as the rhythmic, metallic bite of iron axes echoes through the mist and falling golden leaves."
+    },
+    "summary": "A 300-year-old elf ranger patrols the ancient border of her forest home. Suddenly, human loggers have breached the long-held boundary treaty, pushing into elven territory with heavy axes. You must protect the forest from this encroaching destruction before it reaches the sacred Heartwood."
+   },
+   "character": {
+    "name": "Yvanna",
+    "aliases": [
+     "The Sentinel",
+     "Woodwalker"
+    ],
+    "age": 300,
+    "lifespan_years": 2000,
+    "people_id": "elves",
+    "description": "A silent, sharp-eyed warden of the deep canopy who moves with fluid, predator-like grace.",
+    "appearance": "Slender and athletic, with long silver-braided hair, piercing green eyes, and wearing practical, forest-green leather armor that blends into the leaves.",
+    "location_id": "canopy-outpost",
+    "attributes": {
+     "strength": 3,
+     "speed": 5,
+     "toughness": 3,
+     "wits": 4,
+     "knowledge": 3,
+     "willpower": 3,
+     "charm": 3,
+     "nerve": 3,
+     "bearing": 3
+    },
+    "skills": [
+     {
+      "name": "Archery",
+      "level": "expert",
+      "notes": "Deadly accurate with a recurve bow from the treetops."
+     },
+     {
+      "name": "Stealth",
+      "level": "expert",
+      "notes": "Able to move through dense foliage without disturbing a single leaf."
+     },
+     {
+      "name": "Tracking",
+      "level": "skilled",
+      "notes": "Can easily follow footprints, bent twigs, and crushed moss."
+     },
+     {
+      "name": "Cooking",
+      "level": "fair",
+      "notes": "Capable of preparing decent and nourishing meals from forest foraging and wild game."
+     }
+    ],
+    "traits": [
+     {
+      "name": "Lightfooted",
+      "kind": "gift",
+      "description": "Leaves no tracks on normal forest terrain and makes no sound when walking on dry leaves."
+     },
+     {
+      "name": "Arbor Bond",
+      "kind": "flaw",
+      "description": "Becomes deeply unsettled and angry in areas of clear-cut forest."
+     }
+    ],
+    "talents": [
+     {
+      "said": "the longbow",
+      "name": "The Longbow",
+      "covers": "any shot or maneuver executed with a traditional bow",
+      "strength": "knack",
+      "general": false,
+      "reason": ""
+     }
+    ],
+    "powers": [
+     {
+      "id": "forest-meld",
+      "name": "Forest Meld",
+      "description": "Allows you to meld seamlessly into trees or foliage to become virtually invisible, as long as you remain perfectly still.",
+      "kind_id": "wood-magic",
+      "gift": true,
+      "strength": "small",
+      "limits": [
+       "Must remain perfectly still.",
+       "Only works while in direct contact with living trees or thick brush."
+      ],
+      "costs": [
+       {
+        "kind": "fatigue",
+        "text": "Requires a brief rest after holding the meld for more than an hour."
+       }
+      ],
+      "secret": false,
+      "time": null
+     }
+    ],
+    "techniques": [],
+    "temperament": {
+     "traits": [
+      "observant",
+      "vigilant",
+      "protective"
+     ],
+     "values": [
+      "nature",
+      "the treaty",
+      "stealth"
+     ],
+     "loves": [],
+     "fears": [],
+     "wants": [
+      "To stop the human lumberjacks and preserve the forest border."
+     ],
+     "voice": "Soft, melodic, but carrying an underlying sharpness."
+    },
+    "items": [
+     {
+      "name": "Elven Recurve Bow",
+      "kind": "weapon",
+      "description": "Crafted from flexible heartwood, whisper-quiet when drawn.",
+      "quantity": 1,
+      "carried": true
+     },
+     {
+      "name": "Quiver of Arrows",
+      "kind": "gear",
+      "description": "Fletched with hawk feathers, tipped with sharp steel.",
+      "quantity": 24,
+      "carried": true
+     },
+     {
+      "name": "Forest-Green Cloak",
+      "kind": "armour",
+      "description": "Muted green wool that breaks up your silhouette against the foliage.",
+      "quantity": 1,
+      "carried": true
+     }
+    ],
+    "money": 15,
+    "currency": "silver coins",
+    "title": "Warden of the Southern Border",
+    "rank": "Ranger",
+    "family_name": "",
+    "connections": [
+     {
+      "name": "Commander Celene",
+      "kind": "ally",
+      "character_id": "celene",
+      "note": "Your commanding officer, who has guided your patrols for a century."
+     }
+    ],
+    "parent_ids": [],
+    "memberships": [
+     {
+      "faction_id": "greenwood-rangers",
+      "rank": "Border Warden",
+      "loyalty": 95
+     }
+    ],
+    "ladders": [],
+    "axes": {
+     "might": 3,
+     "influence": 1,
+     "wealth": 1,
+     "knowledge": 1,
+     "stealth": 5
+    },
+    "reserves": [
+     {
+      "name": "Stamina",
+      "level": 100
+     }
+    ],
+    "goals": [
+     "Guard the forest from the human lumberjacks."
+    ],
+    "backstory": [
+     "You have spent the last century patrolling this very border, knowing every tree, stream, and deer path. The sudden human push across the river threatens everything you have sworn to protect."
+    ],
+    "hidden_past": []
+   }
+  },
+  "rating": "teen",
+  "premise_id": null,
+  "physics": "fun_first",
+  "gift": null,
+  "released_rules": [],
+  "language": "en",
+  "told": []
+ }
+}

@@ -15,9 +15,9 @@
  "seed": "play/o-teacher",
  "state": {
   "schema_version": 1,
-  "turn": 6,
+  "turn": 7,
   "timeline_id": "main",
-  "world_s": 128859793,
+  "world_s": 128946193,
   "bible": {
    "title": "Oakhaven's Autumn",
    "genre": "Grounded drama",
@@ -424,8 +424,8 @@
     "born_s": null,
     "lifespan_years": 0,
     "old_age_span": null,
-    "seen_s": 128859793,
-    "near_s": 128856193,
+    "seen_s": 128946193,
+    "near_s": 128942593,
     "met_s": null
    },
    "clara-milton": {
@@ -554,7 +554,7 @@
     "lifespan_years": 0,
     "old_age_span": null,
     "seen_s": 51460248,
-    "near_s": 128856193,
+    "near_s": 128942593,
     "met_s": null
    }
   },
@@ -1966,7 +1966,7 @@
     "due_s": 128942593,
     "timeline_id": "main",
     "needs_player": false,
-    "status": "pending",
+    "status": "applied",
     "subject_ids": [],
     "place_id": null,
     "origin": null,
@@ -1977,6 +1977,27 @@
     "seed": "story=play%2Fo-teacher/timeline=main/turn=1/world/schedule/event-3/schedule/event-5/schedule/event-7/schedule/event-9/schedule/event-11/schedule/event-13/schedule/event-14/schedule/event-15/schedule/event-16/schedule/event-17/schedule/event-18/schedule/event-19/schedule/event-20/schedule/event-21/schedule/event-23",
     "created_turn": 6,
     "created_s": 128856193,
+    "applied_turn": 7,
+    "applied_s": 128942593
+   },
+   "event-24": {
+    "id": "event-24",
+    "kind": "world.tick",
+    "title": "The world moves on",
+    "due_s": 129028993,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "last_s": 128942593,
+     "stride_s": 86400
+    },
+    "seed": "story=play%2Fo-teacher/timeline=main/turn=1/world/schedule/event-3/schedule/event-5/schedule/event-7/schedule/event-9/schedule/event-11/schedule/event-13/schedule/event-14/schedule/event-15/schedule/event-16/schedule/event-17/schedule/event-18/schedule/event-19/schedule/event-20/schedule/event-21/schedule/event-23/schedule/event-24",
+    "created_turn": 7,
+    "created_s": 128942593,
     "applied_turn": null,
     "applied_s": null
    }
@@ -1989,19 +2010,21 @@
     "barnaby-cat"
    ],
    "positions": [
-    "Arthur sits at his desk",
+    "Arthur sits by the woodstove",
     "Barnaby lies near the woodstove"
    ],
    "props": [
-    "finished memoirs"
+    "finished memoirs",
+    "thick-woolen-blanket",
+    "woodstove"
    ],
-   "ended_on": "You rest your hands on the desk beside your closed memoirs, looking down at your sleeping cat.",
+   "ended_on": "You sit comfortably by the warm woodstove under your woolen blanket as the soft knock rattles the front door.",
    "encounter": null
   },
   "director": {
-   "turns_without_stakes": 1,
+   "turns_without_stakes": 2,
    "low_stakes_streak": 1,
-   "last_action_key": "write",
+   "last_action_key": "rest",
    "last_event_turn": 5,
    "last_event_size": "personal",
    "last_event_s": {
@@ -2015,15 +2038,16 @@
     1130071,
     51460248,
     128856193,
-    128859793
+    128859793,
+    128946193
    ],
-   "frequency_drift": 0.1,
+   "frequency_drift": 0.2,
    "recent_sources": [
     "deck:secret",
     "deck:visitor"
    ],
    "auto_pictures": 5,
-   "picture_credit": 1.6,
+   "picture_credit": 1.7,
    "pictured": [
     "portrait:player",
     "portrait:player:v1",
@@ -2045,7 +2069,7 @@
    "fact": 41,
    "goal": 2,
    "bond": 0,
-   "event": 23,
+   "event": 24,
    "director-event": 5,
    "rumor": 1,
    "thread": 2,
@@ -2090,14 +2114,19 @@
    "turn": 6,
    "narration": "You dip your fountain pen into the inkpot, your fingers steady despite their frailty, and touch the nib to the final blank pages of your journal.\n\nYou write with the elegant, cursive hand you spent decades teaching the children of Oakhaven. For an hour, the soft scratching of your pen is the only sound in the cottage besides the gentle hum of the woodstove. You chronicle the laughter of pupils, the changing faces of the town, and the quiet dignity of a life spent in service of others. As you pen the last sentence and sign your name, a profound sense of closure settles over you. You have left your mark, and your story is complete.\n\nBeside the stove, Barnaby lets out a soft, rattling purr, shifting his weight on his blanket. The dusk has fully deepened into night outside your window, cold and still. The finished memoirs lie open on your desk, the ink glinting faintly in the firelight. It is time to rest, or perhaps to share what you have done.",
    "player_action": "I write the final chapter of my memoirs and make my peace with the end."
+  },
+  {
+   "turn": 7,
+   "narration": "You slowly move away from your desk, sliding your finished memoirs to one side as you rise with deliberate, careful effort, your frail limbs carrying you across the room to the warmth of the woodstove where Barnaby lies.\n\nThe next day passes in a quiet, unbroken rhythm. You do not venture out into the cold November air. Instead, you keep the woodstove fed with a few small logs, watching the embers glow behind the glass door. You wrap your thick woolen blanket tightly around your shoulders, sitting peacefully in the warmth with Barnaby curled near your feet. The old calico shifts occasionally, letting out a soft, dry purr that fills the quiet kitchen. You look out the window at the gray sky and the bare maple trees, feeling a deep, restful contentment. The memoirs are finished, and your mind is entirely at peace. As dusk begins to settle over Oakhaven once more, casting soft shadows across your floor, a gentle knock sounds at your door.",
+   "player_action": "I live out the days I have left quietly, by the stove with Barnaby, for as long as they last."
   }
  ],
  "choices": [
-  "Call Clara to let her know the memoirs are finished.",
-  "Gently close the journal and prepare a warm cup of tea.",
-  "Sit by the woodstove to keep old Barnaby company."
+  "Call out for the visitor to come inside.",
+  "Rise slowly to open the door and greet your visitor.",
+  "Ignore the knock and remain resting quietly with Barnaby."
  ],
- "cost_usd": 0.29433329,
+ "cost_usd": 0.34104299,
  "draft": {
   "premise": "I'm a 97-year-old retired schoolteacher living my last quiet days in a small Vermont town with my cat.",
   "proposal": {

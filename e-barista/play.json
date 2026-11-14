@@ -1,0 +1,525 @@
+{
+ "premise": "I'm a 28-year-old barista in Seattle. My grandmother just died and left me her old bookstore, and I think it's haunted.",
+ "language": "en",
+ "rating": "teen",
+ "settings": {
+  "narration_length": "medium",
+  "tone": null,
+  "difficulty": "balanced",
+  "event_frequency": "normal",
+  "images": "key_moments",
+  "suggestions": true,
+  "language": "en",
+  "accent": null
+ },
+ "seed": "play/w-barista",
+ "state": null,
+ "scenes": [],
+ "choices": [],
+ "cost_usd": 0.0803745,
+ "draft": {
+  "premise": "I'm a 28-year-old barista in Seattle. My grandmother just died and left me her old bookstore, and I think it's haunted.",
+  "proposal": {
+   "world": {
+    "title": "The Whispering Pages",
+    "genre": "paranormal mystery",
+    "tone": "cozy and mysterious",
+    "era": "Seattle, 2024: smartphones, electric transit, and craft coffee culture",
+    "extraordinary": [
+     {
+      "id": "ghosts",
+      "kind": "ghosts and spirits",
+      "prevalence": "hidden",
+      "reach": "Spirits can manifest faintly, move small items, or project emotions to those sensitive to them."
+     }
+    ],
+    "rules": [
+     {
+      "id": "ghost-binding",
+      "text": "Ghosts are bound to places or items of deep personal significance in life.",
+      "fixed": true,
+      "topic": "nature",
+      "about": [
+       "ghosts"
+      ]
+     },
+     {
+      "id": "perception-limit",
+      "text": "Ordinary people cannot see or hear ghosts unless the spirit exerts significant energy or the person has a natural sensitivity.",
+      "fixed": true,
+      "topic": "nature",
+      "about": [
+       "ghosts"
+      ]
+     },
+     {
+      "id": "resolving-spirits",
+      "text": "A spirit can be put to rest by resolving their unfinished business, though some may choose to linger.",
+      "fixed": false,
+      "topic": "nature",
+      "about": [
+       "ghosts"
+      ]
+     }
+    ],
+    "dropped_rule_ids": [],
+    "peoples": [
+     {
+      "id": "human",
+      "name": "Human",
+      "description": "",
+      "lifespan_years": 80,
+      "gifts": [],
+      "culture": "Modern Pacific Northwest: coffee-loving, rain-adapted, and tech-adjacent.",
+      "relations": [],
+      "path": ""
+     }
+    ],
+    "creatures": [],
+    "nature": [
+     "The heavy Seattle rain sometimes seems to amplify spiritual activity and make the veil thinner."
+    ],
+    "ladders": [],
+    "calendar": {
+     "style": "gregorian",
+     "clock_time": true,
+     "epoch": "2024-10-15T08:00",
+     "start_hour": 8,
+     "months": [],
+     "start_year": 2024,
+     "start_month": 10,
+     "start_day": 15,
+     "era": ""
+    },
+    "travel": {
+     "description": "City buses, light rail, rideshares, and walking.",
+     "instant_messages": true
+    },
+    "medicine": {
+     "healing": "Modern metropolitan hospitals and local clinics.",
+     "resurrection": "none",
+     "resurrection_means": ""
+    },
+    "laws": [
+     {
+      "id": "municipal-law",
+      "text": "Standard United States civil and criminal laws apply.",
+      "enforcer": "Seattle Police Department",
+      "enforcer_faction_id": "",
+      "zeal": "medium",
+      "corruptible": false
+     }
+    ],
+    "norms": [
+     "supernatural-skepticism"
+    ],
+    "several_partners": false,
+    "unions": "easy",
+    "places": [
+     {
+      "id": "seattle",
+      "name": "Seattle",
+      "kind": "city",
+      "description": "The emerald city, draped in mist and autumn leaves.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "espresso-oasis",
+      "name": "Espresso Oasis",
+      "kind": "building",
+      "description": "A bustling, hip coffee shop where you worked your barista shifts.",
+      "parent_id": "seattle",
+      "setting": "indoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "whispering-pages-shop",
+        "travel_hours": 0.5,
+        "mode": "on foot"
+       }
+      ]
+     },
+     {
+      "id": "whispering-pages-shop",
+      "name": "The Whispering Pages",
+      "kind": "building",
+      "description": "A dusty, multi-level bookstore smelling of vanilla, aged leather, and damp timber.",
+      "parent_id": "seattle",
+      "setting": "indoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "apartment-upstairs",
+      "name": "Upstairs Apartment",
+      "kind": "room",
+      "description": "Your grandmother's cozy, cluttered apartment directly above the bookstore.",
+      "parent_id": "whispering-pages-shop",
+      "setting": "indoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     }
+    ],
+    "factions": [
+     {
+      "id": "historic-preservation",
+      "name": "Seattle Historical Preservation Society",
+      "kind": "sect",
+      "description": "A group of passionate locals dedicated to protecting old brick buildings from corporate developers.",
+      "parent_id": "",
+      "leader_ids": [],
+      "goal": "To list the bookstore as a landmark, stopping any modern redevelopment.",
+      "methods": "Filing legal petitions and organizing peaceful sit-ins.",
+      "strength": "High local public sympathy but limited financial power.",
+      "relations": [],
+      "secrets": [],
+      "known_to_player": true
+     }
+    ],
+    "npcs": [
+     {
+      "id": "clara-ghost",
+      "name": "Grandmother Clara",
+      "aliases": [
+       "Clara Miller"
+      ],
+      "description": "The lingering spirit of your recently passed grandmother, appearing as a warm, translucent figure in a cardigan.",
+      "appearance": "Grey hair in a loose bun, kind eyes behind reading glasses, smelling faintly of lavender.",
+      "age": 78,
+      "people_id": "human",
+      "location_id": "whispering-pages-shop",
+      "memberships": [],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "stubborn",
+        "maternal",
+        "protective"
+       ],
+       "values": [
+        "knowledge",
+        "family",
+        "independence"
+       ],
+       "loves": [
+        "poetry",
+        "earl grey tea",
+        "her grandchild"
+       ],
+       "fears": [
+        "her shop being demolished"
+       ],
+       "wants": [
+        "To help you transition to running the bookstore before she crosses over."
+       ],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 1,
+       "speed": 2,
+       "toughness": 1,
+       "wits": 4,
+       "knowledge": 4,
+       "willpower": 5,
+       "charm": 4,
+       "nerve": 3,
+       "bearing": 4
+      },
+      "skills": [
+       {
+        "name": "Book Appraisal",
+        "level": "expert",
+        "notes": ""
+       }
+      ],
+      "traits": [],
+      "powers": [
+       {
+        "id": "faint-manifestation",
+        "name": "Faint Manifestation",
+        "description": "",
+        "kind_id": "ghosts",
+        "gift": false,
+        "strength": null,
+        "limits": [
+         "Can only happen in the shop",
+         "Requires significant concentration"
+        ],
+        "costs": [
+         {
+          "kind": "fatigue",
+          "text": "Must rest for several hours after whispering or moving an object."
+         }
+        ],
+        "secret": false,
+        "time": null
+       }
+      ],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 0,
+       "fear": 0,
+       "trust": 0,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [
+       "She hid a rare, valuable first-edition folio inside the shop walls to pay off its outstanding mortgage."
+      ],
+      "player_knows": "met"
+     },
+     {
+      "id": "arthur-vane",
+      "name": "Arthur Vane",
+      "aliases": [],
+      "description": "An orderly estate lawyer managing Clara's will.",
+      "appearance": "Sharp charcoal suit, immaculate thinning hair, carrying a leather briefcase.",
+      "age": 52,
+      "people_id": "human",
+      "location_id": "whispering-pages-shop",
+      "memberships": [],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "meticulous",
+        "dry",
+        "impartial"
+       ],
+       "values": [
+        "procedure",
+        "punctuality"
+       ],
+       "loves": [
+        "crossword puzzles"
+       ],
+       "fears": [
+        "unresolved legal disputes"
+       ],
+       "wants": [
+        "To finalize the property transfer and collect his standard fee."
+       ],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 3,
+       "speed": 3,
+       "toughness": 3,
+       "wits": 4,
+       "knowledge": 4,
+       "willpower": 3,
+       "charm": 3,
+       "nerve": 3,
+       "bearing": 4
+      },
+      "skills": [
+       {
+        "name": "Property Law",
+        "level": "expert",
+        "notes": ""
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 0,
+       "fear": 0,
+       "trust": 0,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "met"
+     }
+    ],
+    "clocks": [
+     {
+      "id": "estate-tax-deadline",
+      "name": "The Inheritance Tax Deadline",
+      "steps": [
+       "The state issues the preliminary probate evaluation.",
+       "Lawyer Arthur Vane requests proof of funds for the estate tax.",
+       "A formal warning letter is delivered to the bookstore.",
+       "The estate taxes are overdue, triggering foreclosure proceedings."
+      ],
+      "step_every_hours": 84.0,
+      "owner_id": "",
+      "thread_id": "",
+      "known_to_player": true
+     }
+    ],
+    "threads": [
+     {
+      "id": "the-ghost-of-clara",
+      "title": "Understanding the Haunting",
+      "kind": "mystery",
+      "stakes": "Discovering why your grandmother's spirit cannot rest.",
+      "involved_ids": [
+       "clara-ghost"
+      ],
+      "clock_id": "",
+      "known_to_player": true
+     },
+     {
+      "id": "saving-the-bookstore",
+      "title": "The Shop's Future",
+      "kind": "ambition",
+      "stakes": "Finding a way to pay the steep inheritance tax and keep the bookstore.",
+      "involved_ids": [
+       "arthur-vane"
+      ],
+      "clock_id": "estate-tax-deadline",
+      "known_to_player": true
+     }
+    ],
+    "mysteries": [
+     {
+      "id": "why-is-grandma-here",
+      "question": "Why is my grandmother's ghost lingering in the bookstore?",
+      "answer": "Clara is bound to the physical realm because she died with the secret of a rare folio hidden in the wall, which is needed to pay the bookstore's steep inheritance taxes.",
+      "clues": [
+       "A draft of cool air always points toward a specific hollow mahogany bookshelf.",
+       "Clara's old ledgers have a recurring, highlighted bookmark in a book about rare Pacific Northwest history.",
+       "The faint scent of lavender drifts near the store's oldest plaster wall whenever the inheritance tax is mentioned."
+      ],
+      "thread_id": "the-ghost-of-clara",
+      "known_to_player": true
+     }
+    ],
+    "known_facts": [
+     "Your grandmother Clara passed away peacefully two weeks ago.",
+     "She left you 'The Whispering Pages,' her lifelong bookstore.",
+     "Lately, books have been falling off shelves on their own, and you keep hearing faint footsteps upstairs."
+    ],
+    "opening": {
+     "place_id": "whispering-pages-shop",
+     "present_ids": [
+      "arthur-vane"
+     ],
+     "positions": [
+      "You are standing behind the old wooden counter.",
+      "Arthur Vane is tapping his pen on a stack of inheritance documents."
+     ],
+     "props": [
+      "The heavy brass key to the front door",
+      "A warm mug of black coffee"
+     ],
+     "situation": "You stand in the dusty air of your late grandmother's bookstore as her lawyer prepares to hand over the keys and the daunting paperwork."
+    },
+    "summary": "Having inherited your late grandmother's historic Seattle bookstore, you find yourself facing steep inheritance taxes and a series of eerie, inexplicable occurrences. It seems your new shop is haunted, and the secrets of the dead might be the only way to save your future."
+   },
+   "character": {
+    "name": "Nora",
+    "aliases": [],
+    "age": 28,
+    "lifespan_years": 80,
+    "people_id": "human",
+    "description": "",
+    "appearance": "",
+    "location_id": "",
+    "attributes": {
+     "strength": 3,
+     "speed": 3,
+     "toughness": 3,
+     "wits": 3,
+     "knowledge": 3,
+     "willpower": 3,
+     "charm": 3,
+     "nerve": 3,
+     "bearing": 3
+    },
+    "skills": [],
+    "traits": [
+     {
+      "name": "Observant",
+      "kind": "gift",
+      "description": ""
+     },
+     {
+      "name": "Grieving",
+      "kind": "flaw",
+      "description": ""
+     }
+    ],
+    "talents": [],
+    "powers": [],
+    "techniques": [],
+    "temperament": {
+     "traits": [],
+     "values": [],
+     "loves": [],
+     "fears": [],
+     "wants": [],
+     "voice": ""
+    },
+    "items": [],
+    "money": 0,
+    "currency": "",
+    "title": "",
+    "rank": "",
+    "family_name": "Miller",
+    "connections": [],
+    "parent_ids": [],
+    "memberships": [],
+    "ladders": [],
+    "axes": {
+     "might": 1,
+     "influence": 1,
+     "wealth": 1,
+     "knowledge": 1,
+     "stealth": 1
+    },
+    "reserves": [],
+    "goals": [],
+    "backstory": [],
+    "hidden_past": []
+   }
+  },
+  "rating": "teen",
+  "premise_id": null,
+  "physics": "fun_first",
+  "gift": null,
+  "released_rules": [],
+  "language": "en",
+  "told": []
+ }
+}

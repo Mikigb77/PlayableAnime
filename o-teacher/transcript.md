@@ -1224,3 +1224,319 @@ Beside the stove, Barnaby lets out a soft, rattling purr, shifting his weight on
 }
 ```
 
+## Turn 7 (action), 7.9 s, $0.047
+
+> I live out the days I have left quietly, by the stove with Barnaby, for as long as they last.
+
+_From 14 November 2028, 18:23, 18:23 to 15 November 2028, 18:23, 18:23 (1.0 days). Arthur Vance is 101, alive._
+
+**Read and decided:**
+- read as rest, 'rest', 86400 s: I live out the days I have left quietly, by the stove with Barnaby, for as long as they last.
+- I live out the days I have left quietly, by the stove with Barnaby, for as long as they last. [certain, success]: Nothing stands in the way.
+- heading: The next day
+
+You slowly move away from your desk, sliding your finished memoirs to one side as you rise with deliberate, careful effort, your frail limbs carrying you across the room to the warmth of the woodstove where Barnaby lies.
+
+The next day passes in a quiet, unbroken rhythm. You do not venture out into the cold November air. Instead, you keep the woodstove fed with a few small logs, watching the embers glow behind the glass door. You wrap your thick woolen blanket tightly around your shoulders, sitting peacefully in the warmth with Barnaby curled near your feet. The old calico shifts occasionally, letting out a soft, dry purr that fills the quiet kitchen. You look out the window at the gray sky and the bare maple trees, feeling a deep, restful contentment. The memoirs are finished, and your mind is entirely at peace. As dusk begins to settle over Oakhaven once more, casting soft shadows across your floor, a gentle knock sounds at your door.
+
+**Suggestions:**
+1. Call out for the visitor to come inside. (thread)
+2. Rise slowly to open the door and greet your visitor. (personal)
+3. Ignore the knock and remain resting quietly with Barnaby. (side)
+
+**Issues:**
+- unknown_response (goal-1): not an open thread or lead
+- unknown_response (goal-2): not an open thread or lead
+
+**Counted:** {"goals_open": 2}
+
+## What the screens show (turn 7)
+
+### The Character screen
+
+```json
+{
+ "character": {
+  "name": "Arthur Vance",
+  "lines": [
+   "Unhurt",
+   "Weakened",
+   "120 dollars",
+   "Reading Glasses",
+   "Thick Woolen Blanket"
+  ]
+ },
+ "sheet": {
+  "about": [
+   "Mr. Vance",
+   "Retired Teacher",
+   "101 years old"
+  ],
+  "description": "A respected retired educator with a gentle, patient soul and a wealth of local memories.",
+  "condition": {
+   "health": "unhurt",
+   "health_label": "Unhurt",
+   "states": [
+    {
+     "name": "Weakened"
+    }
+   ]
+  },
+  "money_label": "120 dollars",
+  "items": [
+   {
+    "name": "Reading Glasses",
+    "kind": "gear",
+    "kind_label": "Gear",
+    "description": "Strong wire-rimmed spectacles essential for reading small print.",
+    "quantity": 1,
+    "carried": true
+   },
+   {
+    "name": "Thick Woolen Blanket",
+    "kind": "gear",
+    "kind_label": "Gear",
+    "description": "An incredibly warm, hand-knit quilt that keeps the drafty Vermont wind at bay.",
+    "quantity": 1,
+    "carried": true
+   }
+  ],
+  "skills": [
+   {
+    "name": "Teaching",
+    "level": "master",
+    "level_label": "Master",
+    "dice": 5,
+    "notes": "Decades of explaining complex things with immense clarity and patience."
+   },
+   {
+    "name": "Local History",
+    "level": "expert",
+    "level_label": "Expert",
+    "dice": 4,
+    "notes": "Deep knowledge of the town's founding families, old secrets, and folklore."
+   },
+   {
+    "name": "Storytelling",
+    "level": "expert",
+    "level_label": "Expert",
+    "dice": 4,
+    "notes": "Capable of holding anyone's attention with gentle, captivating tales from the past."
+   }
+  ],
+  "traits": [
+   {
+    "name": "Frail Age",
+    "kind": "flaw",
+    "kind_label": "Flaw",
+    "description": "Your physical movements are slow, deliberate, and easily tire your body."
+   },
+   {
+    "name": "Sharpened Mind",
+    "kind": "gift",
+    "kind_label": "Gift",
+    "description": "Despite your physical wear, your memories, wit, and analytical focus remain remarkably clear."
+   }
+  ],
+  "temperament": [
+   "patient",
+   "contemplative",
+   "warm-hearted"
+  ]
+ },
+ "reputation": [
+  {
+   "name": "Oakhaven Town Council",
+   "label": "Neutral"
+  }
+ ],
+ "clock": {
+  "world_s": 128946193,
+  "label": "15 November 2028, 18:23",
+  "timeline_id": "main"
+ },
+ "since": [
+  {
+   "text": "I ask Clara what is troubling her. (it worked)",
+   "ago_label": "4 years ago"
+  },
+  {
+   "text": "Most of the middle-aged adults in town were once students in your classroom.",
+   "ago_label": "4 years ago"
+  },
+  {
+   "text": "You spent over forty years teaching the children of Oakhaven in the old schoolhouse.",
+   "ago_label": "4 years ago"
+  }
+ ]
+}
+```
+
+### On record (the player never sees this)
+
+```json
+{
+ "world": {
+  "title": "Oakhaven's Autumn",
+  "genre": "Grounded drama",
+  "era": "Modern day Vermont: smartphones, pickup trucks, and wood-burning stoves"
+ },
+ "character": {
+  "id": "player",
+  "name": "Arthur Vance",
+  "prominence": "key",
+  "description": "A respected retired educator with a gentle, patient soul and a wealth of local memories.",
+  "appearance": "Frail build, clean-shaved but deeply lined face, thin wispy white hair, kind blue eyes behind wire-rimmed spectacles. Dressed in a thick woolen sweater.",
+  "age": 101,
+  "location_id": "player-cottage",
+  "origin": {
+   "kind": "premise"
+  },
+  "known_by": [
+   "player"
+  ],
+  "met_by": [
+   "player"
+  ],
+  "lifespan_years": 100,
+  "old_age_span": 100
+ },
+ "sheet": {
+  "attributes": {
+   "strength": 1,
+   "speed": 1,
+   "toughness": 1,
+   "wits": 4,
+   "knowledge": 4,
+   "willpower": 4,
+   "charm": 4,
+   "bearing": 4
+  },
+  "skills": [
+   {
+    "name": "Teaching",
+    "level": "master",
+    "notes": "Decades of explaining complex things with immense clarity and patience."
+   },
+   {
+    "name": "Local History",
+    "level": "expert",
+    "notes": "Deep knowledge of the town's founding families, old secrets, and folklore."
+   },
+   {
+    "name": "Storytelling",
+    "level": "expert",
+    "notes": "Capable of holding anyone's attention with gentle, captivating tales from the past."
+   }
+  ],
+  "traits": [
+   {
+    "name": "Frail Age",
+    "kind": "flaw",
+    "description": "Your physical movements are slow, deliberate, and easily tire your body."
+   },
+   {
+    "name": "Sharpened Mind",
+    "kind": "gift",
+    "description": "Despite your physical wear, your memories, wit, and analytical focus remain remarkably clear."
+   }
+  ],
+  "disposition": {
+   "temperament": {
+    "traits": [
+     "patient",
+     "contemplative",
+     "warm-hearted"
+    ],
+    "values": [
+     "education",
+     "peace",
+     "legacy"
+    ],
+    "loves": [
+     "Barnaby",
+     "hot tea",
+     "classic literature"
+    ],
+    "fears": [
+     "unresolved regrets",
+     "being unable to care for Barnaby"
+    ],
+    "wants": [
+     "A peaceful remaining time",
+     "Ensuring Barnaby is cared for"
+    ]
+   }
+  },
+  "resources": {
+   "items": [
+    {
+     "id": "thick-woolen-blanket",
+     "name": "Thick Woolen Blanket",
+     "kind": "gear",
+     "description": "An incredibly warm, hand-knit quilt that keeps the drafty Vermont wind at bay."
+    },
+    {
+     "id": "reading-glasses",
+     "name": "Reading Glasses",
+     "kind": "gear",
+     "description": "Strong wire-rimmed spectacles essential for reading small print."
+    }
+   ],
+   "money": 120,
+   "currency": "dollars",
+   "title": "Mr. Vance",
+   "rank": "Retired Teacher",
+   "connections": [
+    {
+     "name": "Clara Milton",
+     "kind": "trusts_them",
+     "character_id": "clara-milton",
+     "note": "A former student of yours who regularly stops by to check on your health."
+    }
+   ]
+  },
+  "condition": {
+   "states": [
+    {
+     "name": "weakened"
+    }
+   ]
+  }
+ },
+ "gift": "none",
+ "extraordinary": [
+  "magic or anything supernatural (none)"
+ ],
+ "peoples": [
+  {
+   "id": "humans",
+   "name": "Humans",
+   "description": "Standard mortal humans living in rural New England.",
+   "lifespan_years": 80,
+   "culture": "Cozy, tightly-knit community with a deep respect for elders and local history."
+  }
+ ],
+ "rules": [
+  "The world is entirely grounded in reality; there are no supernatural forces, ghosts, or magic.",
+  "The human body naturally wears down with advanced age, and life is ultimately finite."
+ ],
+ "others": [
+  "Barnaby, 18, peak attribute 4",
+  "Clara Milton, 58, peak attribute 4"
+ ],
+ "people_in_the_world": 2,
+ "years": {
+  "age": 101.1,
+  "lives_about": 100,
+  "the_record_says_so": true,
+  "old": true,
+  "told_the_end_is_close": true
+ },
+ "waiting": [
+  "world.tick 'The world moves on' in 23.0 hours",
+  "world.old_age 'Your years run out' in 1.2 years (stops the player)"
+ ]
+}
+```
+
