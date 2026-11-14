@@ -159,6 +159,11 @@ MAX = {
 }
 TEXT_LIMIT = 600
 NAME_LIMIT = 120
+# The story's title and its tone. A draft's plain fields may be sent back at these lengths
+# (`drafts.api`): an edit is never refused for text the draft itself may hold.
+TITLE_LIMIT = 120
+TONE_LIMIT = 200
+RULE_LIMIT = 300
 
 GROUNDED_KIND = Extraordinary(
     id="supernatural",
@@ -464,7 +469,7 @@ class _Assembler:
         rules: dict[str, WorldRule] = {}
         links: dict[str, list[str]] = {}
         for proposed in w.rules[: MAX["rules"]]:
-            text = _text(proposed.text, 300)
+            text = _text(proposed.text, RULE_LIMIT)
             if not text:
                 continue
             rule_id = self.rules.add(proposed.id, text)
@@ -500,9 +505,9 @@ class _Assembler:
                 kinds[kind_id].rule_ids = _unique(r for r in rule_ids if r in rules)
 
         return WorldBible(
-            title=_text(w.title, 120),
+            title=_text(w.title, TITLE_LIMIT),
             genre=_text(w.genre, 80),
-            tone=_text(w.tone, 200),
+            tone=_text(w.tone, TONE_LIMIT),
             era=_text(w.era, 300),
             extraordinary=list(kinds.values()),
             peoples=list(peoples.values()),

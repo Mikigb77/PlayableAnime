@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:playable_anime/core/api/api_client.dart';
 import 'package:playable_anime/core/api/api_error.dart';
@@ -181,7 +183,7 @@ void main() {
         (blank! as ApiException).fields.single,
         allOf(containsPair('field', 'character.name'), containsPair('type', 'empty')),
       );
-      final long = await flow.edit(DraftEdit(title: 'x' * (DraftLimits.short + 1)));
+      final long = await flow.edit(DraftEdit(title: 'x' * (DraftLimits.title + 1)));
       expect((long! as ApiException).fields.single, containsPair('field', 'title'));
       final old = await flow.edit(const DraftEdit(age: DraftLimits.ageMax + 1));
       expect((old! as ApiException).fields.single, containsPair('field', 'character.age'));
@@ -390,6 +392,115 @@ void main() {
     expect(flow.draft!.version, draft.version);
   });
 
+  group('a change whose reply was lost', () {
+    // The server finishes a change whatever becomes of the connection. On 2026-11-11 a change
+    // to one row took the model 111 s, the phone had dropped the request by then, and asking
+    // again failed against the draft the first one had changed.
+    CreateFlow lossy(
+      Future<Draft> Function(Future<Draft> Function() save) reply, {
+      Duration wait = const Duration(milliseconds: 200),
+    }) {
+      final lossy = CreateFlow(
+        _Lossy(api, reply),
+        landingPoll: const Duration(milliseconds: 5),
+        landingWait: wait,
+      );
+      addTearDown(lossy.dispose);
+      return lossy;
+    }
+
+    Never dropped() => throw const ApiException(ApiErrorCode.network);
+
+    test('is found saved, and nothing is asked twice', () async {
+      final flow = lossy((save) async {
+        await save();
+        dropped();
+      });
+      await flow.create(premiseId: 'outer-disciple', rating: Rating.mature);
+      final draft = flow.draft!;
+
+      expect(await flow.revise(DraftPart.character, 'Add alchemy', about: LineKind.skills), isNull);
+
+      expect(flow.draft!.version, draft.version + 1);
+      expect(flow.draft!.linesOf(DraftPart.character, LineKind.skills).single, contains('Alchemy'));
+      expect(backend.requests.where((r) => r.uri.path.endsWith('/revise')), hasLength(1));
+      expect(flow.busy, isFalse);
+    });
+
+    test('is waited for while the server still works on it', () async {
+      final flow = lossy((save) async {
+        // The reply is lost at once; the change itself lands a little later.
+        unawaited(Future<void>.delayed(const Duration(milliseconds: 30), save));
+        dropped();
+      });
+      await flow.create(premiseId: 'outer-disciple', rating: Rating.mature);
+      final draft = flow.draft!;
+
+      final changing = flow.revise(DraftPart.world, 'Add hidden vampires');
+      expect(flow.busy, isTrue);
+      // Nothing else is sent under a change that may still land.
+      expect(await flow.edit(const DraftEdit(physics: Physics.strict)), isA<StateError>());
+
+      expect(await changing, isNull);
+      expect(flow.draft!.version, draft.version + 1);
+    });
+
+    test('shows its failure once the server has had its time, when nothing landed', () async {
+      final flow = lossy((save) async => dropped(), wait: const Duration(milliseconds: 20));
+      await flow.create(premiseId: 'outer-disciple', rating: Rating.mature);
+      final draft = flow.draft!;
+      final reads = backend.requests.where((r) => r.method == 'GET').length;
+
+      final failure = await flow.revise(DraftPart.world, 'Add hidden vampires');
+
+      expect(failure, isA<ApiException>().having((e) => e.code, 'code', ApiErrorCode.network));
+      expect(flow.draft!.version, draft.version);
+      expect(backend.requests.where((r) => r.method == 'GET').length, greaterThan(reads + 1));
+      expect(flow.busy, isFalse);
+    });
+
+    test('is looked for once after a free change, which the server saves at once', () async {
+      final flow = lossy((save) async => dropped());
+      await flow.create(premiseId: 'outer-disciple', rating: Rating.mature);
+      final reads = backend.requests.where((r) => r.method == 'GET').length;
+
+      final failure = await flow.edit(const DraftEdit(name: 'Mara Quill'));
+
+      expect(failure, isA<ApiException>());
+      expect(backend.requests.where((r) => r.method == 'GET').length, reads + 1);
+    });
+
+    test('is looked for once when a proxy answered in the server\'s place', () async {
+      // A 502 page says nothing of the change either way, and the server isn't known to be
+      // working on it: one look, with no wait.
+      final flow = lossy(
+        (save) async => throw const ApiException(ApiErrorCode.server, status: 502),
+        wait: const Duration(seconds: 30),
+      );
+      await flow.create(premiseId: 'outer-disciple', rating: Rating.mature);
+      final reads = backend.requests.where((r) => r.method == 'GET').length;
+
+      final failure = await flow.revise(DraftPart.world, 'Add hidden vampires');
+
+      expect(failure, isA<ApiException>().having((e) => e.code, 'code', ApiErrorCode.server));
+      expect(backend.requests.where((r) => r.method == 'GET').length, reads + 1);
+    });
+
+    test('is no reason to look when the server itself refused the change', () async {
+      final flow = lossy((save) => save());
+      await flow.create(premiseId: 'outer-disciple', rating: Rating.mature);
+      final reads = backend.requests.where((r) => r.method == 'GET').length;
+
+      final failure = await flow.revise(DraftPart.world, 'Add [fail:llm_unavailable]');
+
+      expect(
+        failure,
+        isA<ApiException>().having((e) => e.code, 'code', ApiErrorCode.llmUnavailable),
+      );
+      expect(backend.requests.where((r) => r.method == 'GET').length, reads);
+    });
+  });
+
   test('a failed draft says why, and a trigger names the failure', () async {
     await flow.create(premise: 'A quiet village [fail:llm_unavailable]', rating: Rating.teen);
     expect(flow.stage, CreateStage.premise);
@@ -400,4 +511,19 @@ void main() {
     flow.clearError();
     expect(flow.error, isNull);
   });
+}
+
+/// The drafts of a phone on a bad connection: each change is sent as [_reply] decides, which is
+/// handed the real request and may lose its answer.
+class _Lossy extends DraftRepository {
+  _Lossy(super.api, this._reply);
+
+  final Future<Draft> Function(Future<Draft> Function() save) _reply;
+
+  @override
+  Future<Draft> edit(Draft draft, DraftEdit edit) => _reply(() => super.edit(draft, edit));
+
+  @override
+  Future<Draft> revise(Draft draft, DraftPart part, String instruction, {LineKind? about}) =>
+      _reply(() => super.revise(draft, part, instruction, about: about));
 }

@@ -29,6 +29,7 @@ from engine.context import (
 )
 from engine.state import GiftStrength, PhysicsMode, WorldState
 from graph.drafting import chain
+from graph.drafting.assemble import MAX, NAME_LIMIT, RULE_LIMIT, TEXT_LIMIT, TITLE_LIMIT, TONE_LIMIT
 from graph.drafting.catalog import STARTER_PREMISES, starter
 from graph.drafting.direct import Fields
 from graph.drafting.prompts import current_rules
@@ -57,11 +58,20 @@ premises_router = Router(tags=["premises"])
 drafts_router = Router(tags=["drafts"])
 
 MAX_LINES = 20
-MAX_RULES = 12
-Line = Annotated[str, Field(max_length=300)]
-# The plain fields (G1, G2): a title, a tone or a name, and a look or a manner.
-Short = Annotated[str, Field(min_length=1, max_length=80)]
-Long = Annotated[str, Field(min_length=1, max_length=300)]
+# What an edit may send is never less than what a draft may hold (`graph.drafting.assemble`):
+# the app sends a text back with the player's change in it, and the whole list of rules with
+# one of them changed, so a tighter limit here refuses an edit for words the drafter wrote.
+# On 2026-11-07 six edits in a row were refused that way, each for a summary sent back whole.
+MAX_RULES = MAX["rules"]
+# A summary line the player rewrote. Lines sent back as they were read are no rewriting, and
+# may be as long as the summary wrote them (`_refuse_long_lines`).
+LINE_LIMIT = 300
+Line = Annotated[str, Field(max_length=4000)]
+# The plain fields (G1, G2): a title, a tone and a name, and a look or a manner.
+Title = Annotated[str, Field(min_length=1, max_length=TITLE_LIMIT)]
+Tone = Annotated[str, Field(min_length=1, max_length=TONE_LIMIT)]
+Name = Annotated[str, Field(min_length=1, max_length=NAME_LIMIT)]
+Long = Annotated[str, Field(min_length=1, max_length=TEXT_LIMIT)]
 
 
 # Starter premises (S1).
@@ -106,7 +116,7 @@ class RuleIn(Schema):
     """A rule as the player set it. Without an id, it is a new rule."""
 
     id: str | None = Field(default=None, max_length=64)
-    text: str = Field(min_length=1, max_length=300)
+    text: str = Field(min_length=1, max_length=RULE_LIMIT)
     fixed: bool = True
 
 
@@ -140,7 +150,7 @@ class CreateDraftIn(Schema):
 class CharacterIn(Schema):
     """The character's plain fields (G2), which code writes in at once, with no model call."""
 
-    name: Short | None = None
+    name: Name | None = None
     age: int | None = Field(default=None, ge=0, le=100_000)
     looks: Long | None = None
     manner: Long | None = None
@@ -149,8 +159,8 @@ class CharacterIn(Schema):
 class PatchDraftIn(Schema):
     """Direct edits (G1, G2). `expected_version` refuses an edit made on a stale copy (T10)."""
 
-    title: Short | None = None
-    tone: Short | None = None
+    title: Title | None = None
+    tone: Tone | None = None
     character: CharacterIn | None = None
     world_lines: list[Line] | None = Field(default=None, max_length=MAX_LINES)
     character_lines: list[Line] | None = Field(default=None, max_length=MAX_LINES)
@@ -354,6 +364,16 @@ def _refuse_real_people(fields: Iterable[tuple[str, str]]) -> None:
         raise field_error(found.field, found.message, type="real_person")
 
 
+def _refuse_long_lines(rewritten: Iterable[tuple[str, str]]) -> None:
+    """A summary line the player rewrote is at most `LINE_LIMIT` characters. A line sent back
+    as the draft has it is never refused, however long the summary wrote it."""
+    for field, text in rewritten:
+        if len(text) > LINE_LIMIT:
+            raise field_error(
+                field, f"Keep a line to {LINE_LIMIT} characters.", type="string_too_long"
+            )
+
+
 def _new_texts(
     field: str, texts: list[str] | None, kept: Iterable[str] = (), leaf: str = ""
 ) -> list[tuple[str, str]]:
@@ -435,11 +455,15 @@ async def edit_draft(request, draft_id: str, body: PatchDraftIn):
     fields, own = _plain_fields(body, state)
     world = _lines(world_parts(state, current.language, current.said), WORLD_LINES)
     character = _lines(character_parts(state, current.language, current.said), CHARACTER_LINES)
+    rewritten = [
+        *_new_texts("world_lines", body.world_lines, world),
+        *_new_texts("character_lines", body.character_lines, character),
+    ]
+    _refuse_long_lines(rewritten)
     _refuse_real_people(
         [
             *own,
-            *_new_texts("world_lines", body.world_lines, world),
-            *_new_texts("character_lines", body.character_lines, character),
+            *rewritten,
             *_new_texts(
                 "advanced.rules",
                 [r.text for r in advanced.rules or []],
@@ -481,27 +505,20 @@ async def revise_draft(request, draft_id: str, body: ReviseIn):
     service.check_version(row, body.expected_version)
     _refuse_real_people([("instruction", body.instruction)])
     draft = service.to_chain(row)
-    about = _about(draft, body.target, body.about)
+    about = chain.asked_at(draft, body.target, body.about)
     async with service.model_call(
         request, rating=draft.rating, action="revise", premise_id=draft.premise_id
     ) as call:
-        # G1: a change asked at the goal or at the nature row speaks of what the character is
-        # after, so the goal or the want it names shows from here on.
-        aim = body.about in (PartKind.GOAL, PartKind.NATURE)
         draft = await chain.revise(
-            call.client, draft, body.target, body.instruction, about, aim=aim
+            call.client,
+            draft,
+            body.target,
+            body.instruction,
+            about,
+            aim=chain.asks_an_aim(body.about),
         )
         row = await service.save_row(row, draft, call)
     return draft_out(row, draft.state())
-
-
-def _about(draft: chain.Draft, target: str, kind: PartKind | None) -> str:
-    """The lines of the summary of that kind, as the player read them, or "" for none."""
-    if kind is None:
-        return ""
-    parts = world_parts if target == "world" else character_parts
-    lines = parts(draft.state(), draft.language, draft.said)
-    return "\n".join(part.text for part in lines if part.kind is kind)
 
 
 @drafts_router.post("/{draft_id}/start", response=StartOut)

@@ -119,6 +119,16 @@ def test_a_change_asked_in_plain_words_is_drafted_again_until_the_story_starts(t
     assert "its draft can't change" in transcript(tmp_path, "farmer")
 
 
+def test_a_change_is_asked_at_a_row_of_the_draft_as_the_app_asks_it(tmp_path):
+    at_skills = {"target": "character", "about": "skills", "instruction": "Better with a bow."}
+    assert played(tmp_path, {"farmer": [CREATE, {"revise": at_skills}]}) == {"farmer": True}
+
+    told = transcript(tmp_path, "farmer")
+    assert "after asking at the skills row of the character: “Better with a bow.”" in told
+    # What the change cost the player in waiting: the model's thinking beside its answer.
+    assert "tokens of thinking" in told
+
+
 def test_a_suggestion_is_played_by_its_words(tmp_path):
     played(tmp_path, {"farmer": [CREATE, {"start": {}}]})
     # The offline model suggests nothing, so the last scene's suggestions are put on file.
@@ -147,6 +157,10 @@ def test_a_suggestion_is_played_by_its_words(tmp_path):
         ([CREATE, {"show": ["sheet", "dice"]}], "show takes any of sheet, memory, record"),
         ([{"create": {"premise": " "}}], "create takes the premise"),
         ([CREATE, {"revise": {"target": "plot", "instruction": "More."}}], "revise takes a target"),
+        (
+            [CREATE, {"revise": {"target": "world", "about": "plot", "instruction": "More."}}],
+            "about is a row of the draft: rule, era, ladder",
+        ),
         ("start", "A play's steps are a list"),
     ],
 )

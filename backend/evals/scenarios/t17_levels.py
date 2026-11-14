@@ -160,7 +160,8 @@ def _strengths(talents) -> list[str]:
         "the player's words, someone the premise makes ordinary has no power, the best at "
         "something is a master of it and someone nothing special is average, a gift the premise "
         "gives is as strong as it says, every power says what it does, and old age comes to "
-        "whoever the record can count, a sword saint of eighty included (G2, A4, A8, G22, W6)"
+        "whoever the record can count, a sword saint of eighty included, who is old unless "
+        "the record gives him longer (G2, A4, A8, G22, W6)"
     ),
     notes=(
         "Deterministic mode reads the offline drafter's outer disciple, whose premise speaks "
@@ -277,10 +278,13 @@ async def level_from_a_short_description(ev: Eval) -> None:
                 f"{who}: gifts {gifts}",
             )
         if case.grows_old:
+            # Old at eighty, unless the record itself gives them longer: a draft may put a
+            # sword saint on a ladder whose rung lives a hundred years, and then says so.
             years = last_years.years_of(state, state.world_s)
             ev.check(
-                "someone of eighty is old, and their years are counted",
-                years is not None and years.old,
+                "someone of eighty has their years counted, and is old unless the record gives "
+                "them longer",
+                years is not None and (years.old or (years.said and years.span > 80)),
                 f"{who}: {years}",
             )
         ranked = [c for c in state.npcs() if c.sheet.powers and state.bible.ladders]

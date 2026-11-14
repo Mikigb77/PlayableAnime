@@ -484,7 +484,12 @@ Map<String, Object> _plainFields(JsonMap draft, JsonMap body) {
   for (final MapEntry(key: field, value: text) in texts.entries) {
     if (text == null) continue;
     final words = _normal(text);
-    final most = field.endsWith('looks') || field.endsWith('manner') ? 300 : 80;
+    // As long as a draft may hold each (the backend's `graph.drafting.assemble`).
+    final most = switch (field) {
+      'tone' => 200,
+      'character.looks' || 'character.manner' => 600,
+      _ => 120,
+    };
     if (words.isEmpty) {
       throw _fieldError(field, 'Write something here, or leave it as it is.', 'empty');
     }

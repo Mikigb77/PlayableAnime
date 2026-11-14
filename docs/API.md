@@ -331,10 +331,12 @@ DraftLadder      {name, rungs: [string], more: bool,   # the rungs everyone has 
   clothes, which every picture of them is drawn from) and `manner` (how they come across), with
   their `people` and `standing` to tell them by. A text is "" when the draft has none.
 - **Direct edits.** Fields left out stay as they are. The plain fields are the player's to change
-  themselves (G1, G2): `title`, `tone` and `character.name` (1 to 80 characters), `character.age`
-  (0 to 100,000) and `character.looks` and `character.manner` (1 to 300 characters) are written
-  in by code at once, with no model call, and cost nothing. A new name takes the old one's place
-  wherever the draft says it, hidden parts included: the whole name, and each word of it that
+  themselves (G1, G2): `title` and `character.name` (1 to 120 characters), `tone` (1 to 200),
+  `character.age` (0 to 100,000) and `character.looks` and `character.manner` (1 to 600
+  characters) are written in by code at once, with no model call, and cost nothing. Each limit
+  is what a draft may hold of that field, and `advanced.rules` takes as many rules as a draft
+  may hold (20), so an edit is never refused for words the drafter wrote. A new name takes the
+  old one's place wherever the draft says it, hidden parts included: the whole name, and each word of it that
   nobody and nothing else in the draft is called by. A new age takes the old one's place where
   the looks give it as a number. One left empty or all spaces is a `validation_error` on its
   field with `type: "empty"`, and one sent back as it is changes nothing; `world_lines` and
@@ -342,8 +344,9 @@ DraftLadder      {name, rungs: [string], more: bool,   # the rungs everyone has 
   so a screen sent back whole with a new name calls no model. Changing `physics`, a
   rule's `fixed` flag,
   `gift_strength: "none"`, `difficulty`, `event_frequency`, or raising `rating` to `mature` needs no
-  model call and costs nothing either. Rewriting `world_lines` or `character_lines` (each line up to 300
-  characters), rewriting or adding rules, or choosing a different gift strength redrafts the world
+  model call and costs nothing either. Rewriting `world_lines` or `character_lines` (a rewritten
+  line is up to 300 characters; a line sent back as it was read is never refused), rewriting or
+  adding rules, or choosing a different gift strength redrafts the world
   or the character to match, in one model call each; lowering `rating` to `teen` redrafts both
   within Teen (F2). `advanced.rules` is the whole list the player sees, kept word for word.
   Removing, rewriting or opening up one of a starter's fixed rules lets the genre's rule go for

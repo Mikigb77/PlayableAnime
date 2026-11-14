@@ -44,13 +44,16 @@ from graph.drafting.schema import (
     WorldProposal,
 )
 from graph.drafting.view import (
+    PartKind,
     character_lines,
+    character_parts,
     gift_strength,
     public_rules,
     shown,
     world_lines,
+    world_parts,
 )
-from graph.llm import ModelClient, Node, Prompt
+from graph.llm import CallOptions, ModelClient, Node, Prompt
 from graph.words import WORD, core
 
 Target = Literal["world", "character"]
@@ -193,6 +196,31 @@ async def create(
             released_rules=_released_by(draft.template, forced),
         )
     return draft
+
+
+# A change to a draft the player is looking at thinks at `low`. The first draft keeps the
+# model's own thinking (`graph.llm.config`): nobody has read it yet, and it sets everything. A
+# change says in the player's own words what to change, and they wait on it at the row they
+# changed. Production's changes from 2026-11-04 to 2026-11-11 spent 4,100 to 8,300 tokens
+# thinking for about 1,400 of answer, which was 18 to 46 s of every one and 111 s of the
+# slowest, long enough for the phone to drop the request.
+CHANGE = CallOptions(thinking="low")
+
+
+def asked_at(draft: Draft, target: Target, kind: PartKind | None) -> str:
+    """The lines of the summary that tell of `kind`, as the player read them, or "" for none:
+    the `about` of a change asked at one row of the draft."""
+    if kind is None:
+        return ""
+    parts = world_parts if target == "world" else character_parts
+    lines = parts(draft.state(), draft.language, draft.said)
+    return "\n".join(part.text for part in lines if part.kind is kind)
+
+
+def asks_an_aim(kind: PartKind | None) -> bool:
+    """G1: a change asked at the goal or at the nature row speaks of what the character is
+    after, so the goal or the want it names shows from here on."""
+    return kind in (PartKind.GOAL, PartKind.NATURE)
 
 
 async def revise(
@@ -343,7 +371,10 @@ async def edit(llm: ModelClient, draft: Draft, edits: Edits) -> Draft:
 async def _revise_world(llm: ModelClient, draft: Draft, instruction: str, about: str = "") -> Draft:
     state = draft.state()
     change = await llm.structured(
-        Node.DRAFTER, _revise_prompt(draft, state, "world", instruction, about), WorldChange
+        Node.DRAFTER,
+        _revise_prompt(draft, state, "world", instruction, about),
+        WorldChange,
+        options=CHANGE,
     )
     world, let_go = apply_change(draft.proposal.world, current_rules(state), change)
     world = without_real_names(world)
@@ -363,6 +394,7 @@ async def _revise_character(
         Node.DRAFTER,
         _revise_prompt(draft, state, "character", instruction, about),
         CharacterProposal,
+        options=CHANGE,
     )
     character = without_real_names(character)
     return replace(draft, proposal=DraftProposal(world=draft.proposal.world, character=character))

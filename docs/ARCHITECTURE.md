@@ -1116,7 +1116,7 @@ environment, `backend/.env` and the repo-root `.env.local`:
 | `second_reading` | `gemini-3.5-flash`, thinking `low` | $1.50 / $9.00 | Reads the player's words once more, only on a turn whose first reading would end a friendly bout as an attack (B8, W1) or try a breakthrough at the peak of a rank (G19): about 2.2 cents and 4.7 s, against the interpret step's half a cent and 2.7 s, so it reads the few turns that need it. |
 | `wording` | `gemini-3.1-flash-lite`, thinking `low` | $0.25 / $1.50 | Says the engine's own lines of a turn in a Spanish or a Catalan story's language, beside the narrator (S10, B8): a few hundred tokens in and out, about a twentieth of a cent, with a 6 s deadline because the dice wait for it. |
 | `checker`, `tick`, `summarizer` | `gemini-3.1-flash-lite`, thinking `low` | $0.25 / $1.50 | The cheapest model (B8). |
-| `drafter` | `gemini-3.5-flash`, the model's own thinking | $1.50 / $9.00 | World and character drafts (WS12), off the turn path. |
+| `drafter` | `gemini-3.5-flash`, the model's own thinking for a first draft and `low` for a change to one | $1.50 / $9.00 | World and character drafts (WS12), off the turn path. A change to a draft (`chain.CHANGE`) says in the player's own words what to change, and they wait on it at the row they changed: production's changes spent 4,100 to 8,300 tokens thinking for about 1,400 of answer, 18 to 46 s each and 111 s at worst. |
 | `picture` | `gemini-3.1-flash-lite-image` | $0.034 a 1K picture (image tokens at $30 per 1M) | The cheapest image model (M8). Bigger sizes bill more tokens. |
 | `picture_note` | `gemini-3.1-flash-lite`, thinking `low` | $0.25 / $1.50 | A scene picture's description, written from the finished scene in the picture's own request (M5): about 1,500 tokens in and 300 out, well under a tenth of a cent, billed with the picture. |
 | `judge` | `gemini-3.1-pro-preview`, thinking `high` | $2.00 / $12.00 | The story evals' judge ([Story evals](#story-evals)), never in a turn. A judge that misreads a scene makes the scores worthless, so it gets a stronger model than the nodes it judges. |
@@ -2202,7 +2202,8 @@ scene before deciding the next move, a run by hand takes `play` (`backend/evals/
 `python -m evals play`): a JSON object of each play's name and the steps to play on it now, such
 as `{"farmer": [{"create": {"premise": "..."}}, {"start": {}}, {"act": "I ..."}]}`. The steps are
 `create` (a premise as a player types it, with `language`, `rating`, `premise_id`, `gift` and
-`settings` where wanted), `revise` (a change in plain words, to the world or the character),
+`settings` where wanted), `revise` (a change in plain words, to the world or the character, with
+`about` for the row of the draft it is asked at, as the app asks it),
 `start`, `act`, `choose` (a suggestion of the last scene, from 1), `wait`, `observe`, `show` (the
 Character screen, Memory, and the record) and `copy` (a new play as another stands, to try a
 different move from the same point). It drafts and plays through the same code as the app:

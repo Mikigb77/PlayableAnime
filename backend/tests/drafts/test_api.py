@@ -17,11 +17,11 @@ from drafts import service
 from drafts.models import Draft
 from engine import real_entities
 from engine.state import WorldState
-from graph.drafting import samples
+from graph.drafting import assemble, samples
 from graph.drafting.catalog import STARTER_PREMISES, starter
 from graph.drafting.catalog_ca import CATALAN
 from graph.drafting.catalog_es import SPANISH
-from graph.drafting.schema import ExtraordinaryP, PeopleP, RemovalP, WorldChange
+from graph.drafting.schema import ExtraordinaryP, PeopleP, RemovalP, RuleP, WorldChange
 from graph.drafting.view import hidden_texts
 from graph.llm import Block, Fail, Node, Reply, TurnTelemetry
 from stories.models import Engine, Story
@@ -198,6 +198,106 @@ def test_summary_lines_have_a_length_limit(player_client, model):
 
     assert response.status_code == 400
     assert _error(response)["code"] == "validation_error"
+    assert "world_lines.0" in json.dumps(_error(response)["details"])
+
+
+def _as_long_as(limit: int) -> str:
+    """A text of exactly `limit` characters, as long as a draft may hold."""
+    return ("stone water " * limit)[: limit - 1] + "s"
+
+
+def test_an_edit_takes_back_whatever_the_draft_holds(player_client, model):
+    """On 2026-11-07 the server refused six edits in a row within 70 ms each. The app sends a
+    text back with the player's change in it, and the whole list with one entry changed, so an
+    edit's limits must be the draft's own: here every plain field is as long as the drafter
+    may write it, and the world has more rules than a player would write."""
+    proposal = samples.naples()
+    proposal.world.title = _as_long_as(assemble.TITLE_LIMIT)
+    proposal.world.tone = _as_long_as(assemble.TONE_LIMIT)
+    proposal.world.rules += [
+        RuleP(id=f"custom-{i}", text=f"Custom number {i} holds on every street.", fixed=True)
+        for i in range(assemble.MAX["rules"] - len(proposal.world.rules))
+    ]
+    proposal.character.appearance = _as_long_as(assemble.TEXT_LIMIT)
+    proposal.character.description = _as_long_as(assemble.TEXT_LIMIT)
+    model.script(Node.DRAFTER, Reply(json=proposal))
+    draft = _draft(player_client, {"premise": MY_PREMISE, "rating": "mature"})
+    calls = len(model.requests)
+    character = draft["character"]
+    assert len(draft["title"]) == assemble.TITLE_LIMIT
+    assert len(character["looks"]) == assemble.TEXT_LIMIT
+    assert len(draft["advanced"]["rules"]) > 12
+    assert max(map(len, draft["character_lines"])) > 300
+
+    def changed(text: str) -> str:
+        return "Stone" + text[5:]
+
+    response = _patch(
+        player_client,
+        draft["id"],
+        {
+            "title": changed(draft["title"]),
+            "tone": changed(draft["tone"]),
+            "character": {
+                "looks": changed(character["looks"]),
+                "manner": changed(character["manner"]),
+            },
+        },
+    )
+
+    assert response.status_code == 200, response.content
+    edited = response.json()
+    assert edited["title"] == changed(draft["title"])
+    assert edited["character"]["looks"] == changed(character["looks"])
+    assert edited["character"]["manner"] == changed(character["manner"])
+
+    # The whole list of rules with one of them opened up, as the rule's sheet sends it.
+    rules = edited["advanced"]["rules"]
+    response = _patch(
+        player_client,
+        draft["id"],
+        {"advanced": {"rules": [rules[0] | {"fixed": not rules[0]["fixed"]}, *rules[1:]]}},
+    )
+
+    assert response.status_code == 200, response.content
+    assert response.json()["advanced"]["rules"][0]["fixed"] is not rules[0]["fixed"]
+
+    # The summary sent back as it was read, however long the draft wrote its lines.
+    lines = {key: response.json()[key] for key in ("world_lines", "character_lines")}
+    response = _patch(player_client, draft["id"], lines)
+
+    assert response.status_code == 200, response.content
+    assert len(model.requests) == calls
+
+    # A line the player rewrote keeps to the limit for their own words.
+    long = max(range(len(lines["character_lines"])), key=lambda i: len(lines["character_lines"][i]))
+    rewritten = [*lines["character_lines"]]
+    rewritten[long] = rewritten[long] + " And more."
+    response = _patch(player_client, draft["id"], {"character_lines": rewritten})
+
+    assert response.status_code == 400, response.content
+    assert f"character_lines.{long}" in json.dumps(_error(response)["details"])
+    assert len(model.requests) == calls
+
+
+def test_a_change_to_a_draft_thinks_less_than_the_first_draft(player_client, model):
+    """The player waits on a change at the row they changed. Production's changes spent four
+    fifths of their 18 to 46 s thinking, and one took 111 s (2026-11-11)."""
+    draft = _draft(player_client)
+    [first] = model.calls(Node.DRAFTER)
+    assert first.options.thinking is None
+
+    for target in ("world", "character"):
+        response = _revise(
+            player_client, draft["id"], {"target": target, "instruction": "Make it colder."}
+        )
+        assert response.status_code == 200, response.content
+    response = _patch(player_client, draft["id"], {"rating": "teen"})
+    assert response.status_code == 200, response.content
+
+    changes = model.requests[1:]
+    assert len(changes) == 4
+    assert {request.options.thinking for request in changes} == {"low"}
 
 
 def test_lowering_the_rating_redrafts_within_teen(player_client, model):
@@ -1036,8 +1136,10 @@ def test_a_plain_field_sent_back_as_it_is_changes_nothing(player_client, model):
     [
         ({"character": {"name": "   "}}, "character.name"),
         ({"title": "  "}, "title"),
-        ({"character": {"name": "x" * 81}}, "character.name"),
-        ({"character": {"looks": "x" * 301}}, "character.looks"),
+        ({"character": {"name": "x" * 121}}, "character.name"),
+        ({"character": {"looks": "x" * 601}}, "character.looks"),
+        ({"title": "x" * 121}, "title"),
+        ({"tone": "x" * 201}, "tone"),
         ({"character": {"age": -1}}, "character.age"),
         ({"tone": ""}, "tone"),
     ],
