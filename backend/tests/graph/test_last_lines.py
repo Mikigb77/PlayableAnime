@@ -47,6 +47,9 @@ BRIDGE_TOLD = (
         "The thugs close in, so now you have to decide.",
         "The bridge sways under you — what will you do?",
         "Whichever way the wind turns, you must act now.",
+        "You must act to save her.",
+        "Debes actuar de inmediato.",
+        "Has d'actuar de seguida.",
         "Con el sol ya alto, es hora de partir.",
         "El puente cruje y, pase lo que pase, tú decides.",
         "Amb la porta oberta, ara has de decidir.",
@@ -148,6 +151,8 @@ def test_a_sentence_that_tells_the_player_their_move_is_read_as_one(sentence):
         "Like every disciple before you, you must pick up the broom at dawn.",
         "Debes actuar como un criado hasta que acabe el banquete.",
         "Has d'actuar com un criat fins que s'acabi el banquet.",
+        "Debes actuar de criado hasta que acabe el banquete.",
+        "Has d'actuar d'esquer fins que arribin els altres.",
         "The envoy smiles, certain of what you will choose, and pours the wine.",
     ],
 )

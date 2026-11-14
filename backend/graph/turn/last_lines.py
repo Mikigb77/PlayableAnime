@@ -46,12 +46,11 @@ _NOW = r"(?:(?:now|for now|ahora|por ahora|ara|per ara)[,;:]? )?"
 _ASKED = r"\?$"
 # The start of a clause after a sentence's first: past a comma, a semicolon, a colon or a dash.
 _CLAUSE = re.compile(r"[,;:]\s+|\s*[—–]\s*|\s+-\s+")
-# To act, as a call to do something: not to act a part, or as someone would.
-_ACT = (
-    r"act(?=$|[.!?…,;:]| (?:now|quickly|fast|soon|swiftly|first|carefully|decisively|at once"
-    r"|before|while|or|if)\b)"
-)
-_ACTUAR = r"actuar(?! (?:como|de|com)\b)"
+# To act, as a call to do something: not to act a part, or as someone would. In Spanish and
+# Catalan a part is also acted "de" something, where "de inmediato" is still at once.
+_ACT = r"act\b(?! (?:the|a|an|as|like|out)\b)"
+_AT_ONCE = r"inmediato|prisa|una vez|immediat|pressa|seguida|un cop"
+_ACTUAR = r"actuar\b(?! (?:como|com)\b)(?! (?:de |d['’])(?!" + _AT_ONCE + r"))"
 # A wording that is one only as a sentence's own first words: read after a comma, "decide,"
 # is what the character does ("You weigh it, decide, and go").
 _FIRST = object()
