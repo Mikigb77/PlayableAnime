@@ -135,6 +135,9 @@ uv run python -m evals report --history evals-out/history.jsonl
 # The first model's reading alone (T18), on another model, to set beside today's:
 LLM_PROVIDER=vertex GCP_PROJECT=playable-anime INTERPRET_MODEL=gemini-3.5-flash \
   uv run python -m evals run --mode live --only t18.first-reading --out evals-out
+# A story played by hand, a few steps at a time (offline: the stock draft and scenes):
+uv run python -m evals play --root plays \
+  --plays '{"farmer": [{"create": {"premise": "A farm boy with a rusty sword."}}, {"start": {}}]}'
 ```
 
 A run's summary lists what each model step came to, a call, and what a turn played cost.

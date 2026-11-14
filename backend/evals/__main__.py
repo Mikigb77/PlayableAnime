@@ -6,8 +6,11 @@
     uv run python -m evals run --only t17.time-stop --only t18.
     uv run python -m evals report --history evals-out/history.jsonl
     uv run python -m evals styles --out evals-out     # one scene in each candidate house style
+    uv run python -m evals play --root plays --plays '{"farmer": [{"create": {"premise": "…"}}]}'
 
 `run` exits 1 when a scenario fails or errors, and 2 when live mode has no model access.
+`play` plays stories by hand, a few steps at a time, on the real models where there are any
+(`evals.play`), and exits 1 when a step failed and 2 when what it was given can't be read.
 `styles` draws each scene of `evals.styles` in each candidate house style for Miki to pick from
 (S7), and exits 1 when it drew nothing. Live mode and `styles` need `LLM_PROVIDER=vertex`,
 `GCP_PROJECT` and Application Default Credentials, never a key (B11).
@@ -17,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import logging
 import sys
 from collections.abc import Sequence
@@ -111,6 +115,23 @@ def draw_styles(
     return 0 if drawn else 1
 
 
+def play_by_hand(root: Path, given: str, models: Models) -> int:
+    """`play`: the steps given for each play, on the plays kept under `root` (`evals.play`)."""
+    from evals import play
+
+    try:
+        plays = json.loads(given)
+        if not isinstance(plays, dict) or not plays:
+            raise ValueError("--plays is a JSON object: each play's name and its list of steps.")
+        played = asyncio.run(play.play_all(root, plays, models))
+    except ValueError as error:  # JSON that can't be read, or a name that is no play's name
+        print(error, file=sys.stderr)
+        return 2
+    for name, whole in played.items():
+        print(f"{'played' if whole else 'stopped':>7}  {name}", flush=True)
+    return 0 if all(played.values()) else 1
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m evals", description=__doc__.split("\n")[0])
     commands = parser.add_subparsers(dest="command", required=True)
@@ -138,6 +159,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--candidates", default="", help="a JSON list of candidates to draw next to today's style"
     )
 
+    playing = commands.add_parser("play", help="play stories by hand, a few steps at a time")
+    playing.add_argument("--root", type=Path, required=True, help="where each play's folder is")
+    playing.add_argument("--plays", required=True, help="JSON: each play's name and its steps")
+
     args = parser.parse_args(argv)
     # Engine and graph warnings (a blocked step, a rejected update) are expected in a run; keep
     # them out of the scenario lines.
@@ -160,6 +185,9 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.command == "styles":
         return draw_styles(args.out, args.scene, args.style, Models(), args.candidates)
+
+    if args.command == "play":
+        return play_by_hand(args.root, args.plays, Models())
 
     mode = Mode(args.mode)
     scenarios = chosen(args.only, args.suite)
