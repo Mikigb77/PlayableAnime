@@ -1,0 +1,1976 @@
+{
+ "premise": "I'm a widowed farmer of forty-five on a lonely hill farm, a morning's walk above the village. I haven't spoken to a woman in years.",
+ "language": "en",
+ "rating": "teen",
+ "settings": {
+  "narration_length": "medium",
+  "tone": null,
+  "difficulty": "balanced",
+  "event_frequency": "normal",
+  "images": "key_moments",
+  "suggestions": true,
+  "language": "en",
+  "accent": null
+ },
+ "seed": "play/k-widower",
+ "state": {
+  "schema_version": 1,
+  "turn": 4,
+  "timeline_id": "main",
+  "world_s": 11560,
+  "bible": {
+   "title": "The Lonely Hill",
+   "genre": "grounded pastoral drama",
+   "tone": "melancholic, quiet, hopeful",
+   "era": "A medieval rural valley: simple hand tools, horse-drawn carts, and oil lamps",
+   "extraordinary": [
+    {
+     "id": "supernatural",
+     "kind": "magic or anything supernatural",
+     "prevalence": "none",
+     "reach": "No supernatural forces exist in this quiet, grounded corner of the world.",
+     "rule_ids": [
+      "no-magic"
+     ]
+    }
+   ],
+   "peoples": [
+    {
+     "id": "valley-folk",
+     "name": "Valley Folk",
+     "description": "",
+     "lifespan_years": 80,
+     "gifts": [],
+     "culture": "A hardy, practical people who value hard work, community ties, and tradition.",
+     "relations": [],
+     "path": ""
+    }
+   ],
+   "creatures": [
+    {
+     "id": "mountain-wolf",
+     "name": "Mountain Wolf",
+     "description": "Large, gray-furred wolves that hunt the high crags during lean winters.",
+     "tier": 1,
+     "habitat": "High fells and rocky crags",
+     "worth": "Thick warm pelts",
+     "can_be_tamed": false
+    }
+   ],
+   "nature": [
+    "The soil on the high hill farms is thin and stony, requiring relentless labor to yield crops."
+   ],
+   "physics": "fun_first",
+   "force": {
+    "tier1_joules": 10000.0,
+    "per_tier": 10.0
+   },
+   "ladders": [],
+   "calendar": {
+    "style": "day_count",
+    "time_of_day": "parts",
+    "epoch": null,
+    "start_second_of_day": 21600,
+    "months": [],
+    "start_year": 1,
+    "start_month": 1,
+    "start_day": 1,
+    "era": ""
+   },
+   "travel": {
+    "description": "Travel is slow and arduous, along winding dirt paths that turn to mud in the rain.",
+    "instant_messages": false
+   },
+   "medicine": {
+    "healing": "Simple bandaging, willow bark teas for pain, and rest.",
+    "resurrection": "none",
+    "resurrection_means": ""
+   },
+   "laws": [
+    {
+     "id": "tithing",
+     "text": "Every household must pay a seasonal portion of their harvest or livestock to the village elder.",
+     "enforcer": "The Elder's Guard",
+     "enforcer_faction_id": null,
+     "zeal": "medium",
+     "corruptible": true
+    }
+   ],
+   "norms": [
+    "reclusive-lives"
+   ],
+   "several_partners": false,
+   "unions": "for_life",
+   "rules": [
+    {
+     "id": "no-magic",
+     "text": "This is a grounded world governed entirely by natural laws; magic and the supernatural do not exist.",
+     "fixed": true,
+     "topic": "existence"
+    },
+    {
+     "id": "harsh-winters",
+     "text": "The winter cold on the high fells is bitter and unforgiving, demanding careful preparation to survive.",
+     "fixed": true,
+     "topic": "nature"
+    },
+    {
+     "id": "slow-travel",
+     "text": "News and people travel only as fast as a person can walk or a beast can pull a cart.",
+     "fixed": true,
+     "topic": "travel"
+    },
+    {
+     "id": "herbal-medicine",
+     "text": "Medicine relies on basic country herbs and physical rest; death is final and irreversible.",
+     "fixed": true,
+     "topic": "medicine"
+    }
+   ],
+   "mysteries": [
+    {
+     "id": "stolen-sheep",
+     "question": "What is taking the sheep from the high pastures?",
+     "answer": "A hungry mother mountain wolf and her three growing cubs have made a den in the high limestone crags nearby.",
+     "clues": [
+      "A patch of torn sheep's wool snagged on sharp briars with grey fur mixed in.",
+      "Large paw prints in the mud near the mountain spring.",
+      "A distant, eerie howling echoing through the fells at dusk."
+     ],
+     "thread_id": "winter-survival",
+     "solved": false
+    }
+   ]
+  },
+  "player_id": "player",
+  "characters": {
+   "player": {
+    "id": "player",
+    "name": "Eamon",
+    "aliases": [],
+    "prominence": "key",
+    "description": "A weathered, quiet man of few words, with hands hardened by decades of stony soil and eyes that carry a gentle, lingering sadness.",
+    "appearance": "Tall and slightly lean, with deep-set gray eyes, a short beard peppered with gray, and dark brown hair. He wears a patched wool tunic, heavy hide trousers, and mud-caked boots.",
+    "look_version": 1,
+    "age": 45,
+    "people_id": "valley-folk",
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "village-clearing",
+    "personal_offset_s": 0,
+    "memberships": [],
+    "sheet": {
+     "attributes": {
+      "strength": 4,
+      "speed": 2,
+      "toughness": 4,
+      "wits": 3,
+      "knowledge": 2,
+      "willpower": 4,
+      "charm": 2,
+      "nerve": 3,
+      "bearing": 3
+     },
+     "skills": [
+      {
+       "name": "Farming",
+       "level": "skilled",
+       "notes": "Coaxing life from stony, unyielding mountain earth."
+      },
+      {
+       "name": "Carpentry",
+       "level": "fair",
+       "notes": "Repairing fences, barns, and simple wooden household items."
+      },
+      {
+       "name": "Foraging",
+       "level": "fair",
+       "notes": "Finding wild roots, berries, and useful mountain herbs."
+      }
+     ],
+     "traits": [
+      {
+       "name": "Weather-hardened",
+       "kind": "gift",
+       "description": "Years of working the high fells have made you exceptionally resistant to biting cold and physical exhaustion."
+      },
+      {
+       "name": "Grief-shadowed",
+       "kind": "flaw",
+       "description": "The loss of your wife has left a quiet, stubborn sorrow that makes it difficult to open up to others."
+      }
+     ],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "solitary",
+        "industrious",
+        "stubborn"
+       ],
+       "values": [
+        "self-reliance",
+        "quietness",
+        "honesty"
+       ],
+       "loves": [
+        "The quiet of early mornings",
+        "The smell of freshly turned earth"
+       ],
+       "fears": [
+        "Dying alone on this hill",
+        "Being unable to survive the winter"
+       ],
+       "wants": [],
+       "voice": ""
+      },
+      "attitudes": {}
+     },
+     "resources": {
+      "items": [
+       {
+        "id": "polished-silver-wedding-band",
+        "name": "Polished Silver Wedding Band",
+        "kind": "treasure",
+        "description": "Your late wife Marta's wedding band, worn on a simple leather cord around your neck.",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       },
+       {
+        "id": "heavy-iron-spade",
+        "name": "Heavy Iron Spade",
+        "kind": "gear",
+        "description": "A sturdy, well-worn spade with a smooth ash handle.",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       },
+       {
+        "id": "faded-woolen-cloak",
+        "name": "Faded Woolen Cloak",
+        "kind": "gear",
+        "description": "A thick, dark green cloak that keeps out the worst of the mountain wind.",
+        "quantity": 1,
+        "carried": true,
+        "history": ""
+       }
+      ],
+      "money": 12,
+      "currency": "copper coins",
+      "title": "Hill Farmer",
+      "rank": "Commoner",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 2,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 2
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": [
+      {
+       "text": "You married Marta when you were twenty-four, and for fourteen years this lonely hill was a paradise.",
+       "turn": 0
+      },
+      {
+       "text": "Since she passed away seven years ago from a sudden autumn fever, you have worked the rocky fields alone.",
+       "turn": 0
+      },
+      {
+       "text": "The silence of the farm has grown heavier with each passing year, and you have not spoken to a woman since her funeral.",
+       "turn": 0
+      }
+     ]
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": 80,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   },
+   "thomas": {
+    "id": "thomas",
+    "name": "Thomas the Innkeeper",
+    "aliases": [],
+    "prominence": "key",
+    "description": "A stout, jovial man with a loud laugh who hears every piece of news that passes through the valley.",
+    "appearance": "Broad-shouldered, balding, wearing a grease-stained canvas apron.",
+    "look_version": 1,
+    "age": 52,
+    "people_id": "valley-folk",
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "village-clearing",
+    "personal_offset_s": 0,
+    "memberships": [],
+    "sheet": {
+     "attributes": {
+      "strength": 3,
+      "speed": 2,
+      "toughness": 3,
+      "wits": 4,
+      "knowledge": 3,
+      "willpower": 3,
+      "charm": 4,
+      "nerve": 3,
+      "bearing": 3
+     },
+     "skills": [
+      {
+       "name": "Brewing",
+       "level": "skilled",
+       "notes": ""
+      },
+      {
+       "name": "Gossip",
+       "level": "expert",
+       "notes": ""
+      }
+     ],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "garrulous",
+        "observant",
+        "practical"
+       ],
+       "values": [],
+       "loves": [],
+       "fears": [],
+       "wants": [
+        "Keep his tavern profitable through the winter",
+        "Find a good match for his sister"
+       ],
+       "voice": ""
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 10,
+        "fear": 0,
+        "trust": 20,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": 11560,
+    "near_s": null,
+    "met_s": null
+   },
+   "elena": {
+    "id": "elena",
+    "name": "Elena",
+    "aliases": [],
+    "prominence": "key",
+    "description": "A quiet, self-contained woman who recently returned to the village to live with her brother after her husband passed.",
+    "appearance": "slender, with dark eyes, silver-streaked dark hair tied in a neat bun, wearing a plain gray wool dress.",
+    "look_version": 1,
+    "age": 42,
+    "people_id": "valley-folk",
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "village-clearing",
+    "personal_offset_s": 0,
+    "memberships": [],
+    "sheet": {
+     "attributes": {
+      "strength": 2,
+      "speed": 3,
+      "toughness": 3,
+      "wits": 4,
+      "knowledge": 3,
+      "willpower": 4,
+      "charm": 3,
+      "nerve": 3,
+      "bearing": 4
+     },
+     "skills": [
+      {
+       "name": "Tailoring",
+       "level": "expert",
+       "notes": ""
+      },
+      {
+       "name": "Herbalism",
+       "level": "fair",
+       "notes": ""
+      }
+     ],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "reserved",
+        "gentle",
+        "industrious"
+       ],
+       "values": [],
+       "loves": [],
+       "fears": [],
+       "wants": [
+        "Find a peaceful life free from her brother's nagging"
+       ],
+       "voice": ""
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 0,
+        "fear": 0,
+        "trust": 0,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": 11560,
+    "near_s": null,
+    "met_s": 11400
+   },
+   "father-laurence": {
+    "id": "father-laurence",
+    "name": "Father Laurence",
+    "aliases": [],
+    "prominence": "key",
+    "description": "The aging village priest who has guided the spiritual lives of the valley folk for over thirty years.",
+    "appearance": "Bent-backed, wearing faded green robes and carrying a polished wooden staff.",
+    "look_version": 1,
+    "age": 67,
+    "people_id": "valley-folk",
+    "status": "alive",
+    "death_certainty": null,
+    "status_history": [],
+    "activity": "active",
+    "location_id": "village-chapel",
+    "personal_offset_s": 0,
+    "memberships": [],
+    "sheet": {
+     "attributes": {
+      "strength": 1,
+      "speed": 1,
+      "toughness": 2,
+      "wits": 3,
+      "knowledge": 4,
+      "willpower": 4,
+      "charm": 3,
+      "nerve": 3,
+      "bearing": 4
+     },
+     "skills": [
+      {
+       "name": "Theology",
+       "level": "expert",
+       "notes": ""
+      },
+      {
+       "name": "Consoling",
+       "level": "expert",
+       "notes": ""
+      }
+     ],
+     "traits": [],
+     "talents": [],
+     "powers": [],
+     "techniques": [],
+     "disposition": {
+      "temperament": {
+       "traits": [
+        "pious",
+        "compassionate",
+        "patient"
+       ],
+       "values": [],
+       "loves": [],
+       "fears": [],
+       "wants": [
+        "Bring comfort to the lonely",
+        "Ensure the village's spiritual well-being"
+       ],
+       "voice": ""
+      },
+      "attitudes": {
+       "player": {
+        "affinity": 15,
+        "fear": 0,
+        "trust": 30,
+        "apparent_affinity": null,
+        "grudges": [],
+        "attraction": 0,
+        "heart_moved_s": null
+       }
+      }
+     },
+     "resources": {
+      "items": [],
+      "money": 0,
+      "currency": "",
+      "title": "",
+      "rank": "",
+      "family_name": "",
+      "connections": []
+     },
+     "condition": {
+      "health": "unhurt",
+      "wounds": [],
+      "fatigue": 0,
+      "hunger": 0,
+      "stress": 0,
+      "states": [],
+      "reserves": [],
+      "weakened_tiers": 0
+     },
+     "axes": {
+      "might": 1,
+      "influence": 1,
+      "wealth": 1,
+      "knowledge": 1,
+      "stealth": 1
+     },
+     "ladders": [],
+     "rungs_heard": [],
+     "rulings": [],
+     "growth": [],
+     "practice": [],
+     "talent_rulings": [],
+     "bridges": [],
+     "backstory": []
+    },
+    "agenda": null,
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ],
+    "met_by": [
+     "player"
+    ],
+    "parent_ids": [],
+    "expecting": null,
+    "faith": null,
+    "solitary": false,
+    "born_s": null,
+    "lifespan_years": null,
+    "old_age_span": null,
+    "seen_s": null,
+    "near_s": null,
+    "met_s": null
+   }
+  },
+  "factions": {
+   "village-council": {
+    "id": "village-council",
+    "name": "Oakhaven Village Council",
+    "kind": "council",
+    "description": "A group of older, respected villagers who settle local disputes and manage communal resources.",
+    "parent_id": null,
+    "status": "intact",
+    "status_history": [],
+    "activity": "active",
+    "leader_ids": [],
+    "goal": "",
+    "methods": "",
+    "strength": "High local social influence and three armed village guards",
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "threat": 0,
+    "relations": {},
+    "survivors": [],
+    "secrets": [],
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "places": {
+   "high-fells": {
+    "id": "high-fells",
+    "name": "The High Fells",
+    "kind": "region",
+    "description": "A vast, windswept region of rolling hills and rocky crags overlooking the valley.",
+    "parent_id": null,
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "hill-farm": {
+    "id": "hill-farm",
+    "name": "The Lonely Hill Farm",
+    "kind": "building",
+    "description": "A solitary wooden cottage and stone barn perched high on a wind-carved hill.",
+    "parent_id": "high-fells",
+    "setting": "indoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "village-clearing",
+      "travel_s": 10800,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [
+     "player"
+    ],
+    "judged": [
+     {
+      "key": "mountain oakhaven path travel villag walk wind",
+      "what": "I walk down the winding mountain path to Oakhaven Village.",
+      "level": 1
+     }
+    ]
+   },
+   "village-clearing": {
+    "id": "village-clearing",
+    "name": "Oakhaven Village",
+    "kind": "village",
+    "description": "A quiet cluster of stone cottages nestled around a central muddy clearing in the valley.",
+    "parent_id": "high-fells",
+    "setting": "outdoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [
+     {
+      "to_id": "hill-farm",
+      "travel_s": 10800,
+      "mode": "on foot"
+     }
+    ],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [
+     "player"
+    ],
+    "judged": []
+   },
+   "village-inn": {
+    "id": "village-inn",
+    "name": "The Boar's Tusk Inn",
+    "kind": "building",
+    "description": "A warm, smoke-filled tavern serving simple ale and roasted roots.",
+    "parent_id": "village-clearing",
+    "setting": "indoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   },
+   "village-chapel": {
+    "id": "village-chapel",
+    "name": "St. Jude's Chapel",
+    "kind": "building",
+    "description": "An ancient stone chapel where villagers gather to pray for good harvests.",
+    "parent_id": "village-clearing",
+    "setting": "indoors",
+    "status": "thriving",
+    "status_history": [],
+    "controller_id": null,
+    "mood": "",
+    "stability": 70,
+    "routes": [],
+    "player_reputation": {
+     "esteem": 0,
+     "fear": 0
+    },
+    "known_by": [
+     "player"
+    ],
+    "visited_by": [],
+    "judged": []
+   }
+  },
+  "deeds": {
+   "deed-1": {
+    "id": "deed-1",
+    "actor_id": "player",
+    "kind": "persuade",
+    "text": "I tell her my name is Eamon and offer to carry her basket home. (it failed)",
+    "turn": 3,
+    "world_s": 11430,
+    "timeline_id": "main",
+    "place_id": "village-clearing",
+    "victim_ids": [],
+    "target_ids": [
+     "elena"
+    ],
+    "wronged_ids": [],
+    "severity": 1,
+    "visibility": "witnessed",
+    "witness_ids": [
+     "elena",
+     "thomas"
+    ],
+    "unnoticed_witness_ids": [],
+    "traces": [],
+    "in_stopped_time": false,
+    "discovered": false,
+    "known_by": [
+     "player",
+     "elena",
+     "thomas"
+    ],
+    "known_by_factions": [],
+    "heard_by": {},
+    "heard_by_factions": {},
+    "terms": null,
+    "broke_terms": false,
+    "went_to_tell": {},
+    "word_out_s": null
+   },
+   "deed-2": {
+    "id": "deed-2",
+    "actor_id": "player",
+    "kind": "persuade",
+    "text": "I take her hand and kiss it (it failed)",
+    "turn": 4,
+    "world_s": 11560,
+    "timeline_id": "main",
+    "place_id": "village-clearing",
+    "victim_ids": [],
+    "target_ids": [
+     "elena"
+    ],
+    "wronged_ids": [],
+    "severity": 1,
+    "visibility": "witnessed",
+    "witness_ids": [
+     "elena",
+     "thomas"
+    ],
+    "unnoticed_witness_ids": [],
+    "traces": [],
+    "in_stopped_time": false,
+    "discovered": false,
+    "known_by": [
+     "player",
+     "elena",
+     "thomas"
+    ],
+    "known_by_factions": [],
+    "heard_by": {},
+    "heard_by_factions": {},
+    "terms": null,
+    "broke_terms": false,
+    "went_to_tell": {},
+    "word_out_s": null
+   }
+  },
+  "rumors": {},
+  "bonds": {
+   "bond-1": {
+    "id": "bond-1",
+    "a_id": "player",
+    "b_id": "elena",
+    "stage": "interest",
+    "end": null,
+    "steps": [
+     {
+      "stage": "interest",
+      "turn": 3,
+      "world_s": 11430,
+      "by_id": "player",
+      "how": "Eamon made it plain to Elena."
+     }
+    ]
+   }
+  },
+  "lives": {},
+  "aged_s": null,
+  "changes": {},
+  "strife_s": {},
+  "facts": {
+   "fact-1": {
+    "id": "fact-1",
+    "text": "The walk down to Oakhaven Village takes roughly three hours on foot.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-2": {
+    "id": "fact-2",
+    "text": "The first deep winter storm will completely cut off the high farm from the rest of the world.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   },
+   "fact-3": {
+    "id": "fact-3",
+    "text": "No women have visited your farm or spoken to you since your wife Marta passed away seven years ago.",
+    "kind": "observation",
+    "importance": 4,
+    "is_true": true,
+    "subject_ids": [],
+    "known_by": [
+     "player"
+    ],
+    "turn": 0,
+    "world_s": 0,
+    "timeline_id": "main",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    }
+   }
+  },
+  "goals": {},
+  "leads": {},
+  "threads": {
+   "winter-survival": {
+    "id": "winter-survival",
+    "title": "Wintering the High Farm",
+    "kind": "threat",
+    "stakes": "If Eamon does not gather enough firewood and secure his crops, he will starve or freeze when the mountain roads close.",
+    "involved_ids": [
+     "player"
+    ],
+    "clock_id": "winter-freeze",
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "status": "open",
+    "opened_turn": 0,
+    "last_active_turn": 0,
+    "taken_up_turn": null,
+    "closed_turn": null,
+    "arc": null,
+    "known_by": [
+     "player"
+    ]
+   },
+   "breaking-the-silence": {
+    "id": "breaking-the-silence",
+    "title": "Breaking the Silence",
+    "kind": "romance",
+    "stakes": "The chance to step out of decades of isolation and find connection in the valley below.",
+    "involved_ids": [
+     "player",
+     "elena",
+     "thomas"
+    ],
+    "clock_id": null,
+    "origin": {
+     "kind": "premise",
+     "ref_id": null,
+     "text": ""
+    },
+    "status": "open",
+    "opened_turn": 0,
+    "last_active_turn": 4,
+    "taken_up_turn": 4,
+    "closed_turn": null,
+    "arc": null,
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "clocks": {
+   "winter-freeze": {
+    "id": "winter-freeze",
+    "name": "The First Deep Freeze",
+    "steps": [
+     "The autumn winds grow bitterly cold and frost kills the mountain weeds.",
+     "The first light flurries of snow dust the high fells.",
+     "A heavy frost locks the soil, making harvest impossible.",
+     "A massive blizzard blocks the path down to the village entirely."
+    ],
+    "filled": 0,
+    "advances_on": [],
+    "reverses_on": [],
+    "interval_s": 259200,
+    "next_step_s": 259200,
+    "owner_id": null,
+    "thread_id": "winter-survival",
+    "status": "running",
+    "known_by": [
+     "player"
+    ]
+   }
+  },
+  "pending_events": {
+   "event-1": {
+    "id": "event-1",
+    "kind": "world.clock_step",
+    "title": "The First Deep Freeze: The autumn winds grow bitterly cold and frost kills the mountain weeds.",
+    "due_s": 259200,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": {
+     "kind": "clock",
+     "ref_id": "winter-freeze",
+     "text": ""
+    },
+    "payload": {
+     "clock_id": "winter-freeze"
+    },
+    "seed": "story=play%2Fk-widower/timeline=main/turn=1/world/schedule/event-1",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-2": {
+    "id": "event-2",
+    "kind": "world.old_age",
+    "title": "Your years run short",
+    "due_s": 1124392717,
+    "timeline_id": "main",
+    "needs_player": true,
+    "status": "pending",
+    "subject_ids": [
+     "player"
+    ],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "phase": "near",
+     "who": "player",
+     "span": 80,
+     "day_s": 1182677846
+    },
+    "seed": "story=play%2Fk-widower/timeline=main/turn=1/world/schedule/event-2",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-3": {
+    "id": "event-3",
+    "kind": "world.tick",
+    "title": "The world moves on",
+    "due_s": 86400,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "last_s": 0,
+     "stride_s": 86400
+    },
+    "seed": "story=play%2Fk-widower/timeline=main/turn=1/world/schedule/event-3",
+    "created_turn": 1,
+    "created_s": 0,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-4": {
+    "id": "event-4",
+    "kind": "world.word",
+    "title": "Word of a deed may get out",
+    "due_s": 14828,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "deed_id": "deed-1",
+     "again": false
+    },
+    "seed": "story=play%2Fk-widower/timeline=main/turn=3/play_out/step/0/deed/0/schedule/event-4",
+    "created_turn": 3,
+    "created_s": 11430,
+    "applied_turn": null,
+    "applied_s": null
+   },
+   "event-5": {
+    "id": "event-5",
+    "kind": "world.word",
+    "title": "Word of a deed may get out",
+    "due_s": 14603,
+    "timeline_id": "main",
+    "needs_player": false,
+    "status": "pending",
+    "subject_ids": [],
+    "place_id": null,
+    "origin": null,
+    "payload": {
+     "deed_id": "deed-2",
+     "again": false
+    },
+    "seed": "story=play%2Fk-widower/timeline=main/turn=4/play_out/step/1/deed/0/schedule/event-5",
+    "created_turn": 4,
+    "created_s": 11560,
+    "applied_turn": null,
+    "applied_s": null
+   }
+  },
+  "transfers": [],
+  "time_effects": [],
+  "scene": {
+   "place_id": "village-clearing",
+   "present_ids": [
+    "elena",
+    "thomas"
+   ],
+   "positions": [
+    "Eamon standing near the cottage gate",
+    "Elena standing by the door with her basket",
+    "Thomas watching from the inn steps"
+   ],
+   "props": [
+    "basket of lavender",
+    "faded woolen cloak",
+    "village clearing"
+   ],
+   "ended_on": "Elena clutches her shawl tight, watching you with cautious eyes by her brother's gate.",
+   "encounter": null
+  },
+  "director": {
+   "turns_without_stakes": 0,
+   "low_stakes_streak": 0,
+   "last_action_key": null,
+   "last_event_turn": null,
+   "last_event_size": null,
+   "last_event_s": {},
+   "last_small_s": null,
+   "recent_moments": [],
+   "recent_clock": [
+    0,
+    11400,
+    11430,
+    11560
+   ],
+   "frequency_drift": 0.0,
+   "recent_sources": [],
+   "auto_pictures": 4,
+   "picture_credit": 1.4,
+   "pictured": [
+    "portrait:player",
+    "portrait:player:v1",
+    "cover",
+    "portrait:elena",
+    "portrait:elena:v1",
+    "portrait:thomas",
+    "portrait:thomas:v1"
+   ],
+   "fight": null,
+   "deck_draws": 0,
+   "road_stops": 0
+  },
+  "summary": "Eamon, a widowed hill farmer of forty-five, left his isolated homestead to seek connection in the valley before winter. After a three-hour trek down the mountain, he arrived at the Oakhaven Village market and awkwardly broke his seven-year silence to speak to Elena, a quiet newcomer to the valley.",
+  "chapters": [],
+  "id_counters": {
+   "fact": 3,
+   "goal": 0,
+   "bond": 1,
+   "event": 5,
+   "deed": 2
+  },
+  "fallen": [],
+  "opening_due": false,
+  "misses_in_a_row": 0,
+  "openings": [],
+  "journey": null,
+  "untold": []
+ },
+ "scenes": [
+  {
+   "turn": 1,
+   "narration": "You stand by the weathered wooden fence of your lonely hill farm. The pale dawn light of autumn barely pierces the heavy mist clinging to the high slopes, and the village of Oakhaven remains hidden three hours below, buried under a sea of gray cloud. A bitter wind sweeps across the fells, biting through your patched wool tunic and carrying the sharp, cold scent of early frost. At forty-five, the silence of this place has become a physical weight, broken only by the creak of the empty barn door and the sighing of the wind. Your hands, rough and calloused from a lifetime of coaxing crops from this thin, stony soil, rest heavily on the damp pine wood. Seven years have passed since your wife Marta died, and in all that time, the silence has remained your only constant companion. Yet, the first deep winter storm is only weeks away, and your firewood stack is low and your stores are half-empty. You must decide whether to secure your high home for the long freeze or walk down the winding mountain path to the village below.",
+   "player_action": null
+  },
+  {
+   "turn": 2,
+   "narration": "You turn from the weathered fence and the meager woodpile, pulling your faded woolen cloak tight against the biting mountain wind. With a heavy, steady step, you leave the quiet of your high farm behind and begin the long walk down the winding mountain path. As the hours pass, the thick gray mist of the high fells slowly thins, revealing the smoke-chimneys of Oakhaven Village in the valley below. Your legs, long accustomed to the steep slopes, carry you down the stony trail until the quiet of the fells is replaced by the unfamiliar, bustling sounds of the village market clearing.\n\nPeople move between wooden stalls under a pale morning sky, their voices a low, humming din that feels strangely overwhelming after seven years of absolute solitude. You stand at the edge of the market clearing, the heavy iron spade gone from your hands, your fingers instead clutching the leather cord of Marta's silver band beneath your tunic. Steeling yourself, you approach a quiet stall where a slender woman with silver-streaked dark hair is examining bundles of dried lavender and winter savory. Your throat is dry, and the silence of your farm clings to your tongue like dust. When you try to speak, your voice is a low, rough gravel. 'Are those... for the winter kitchen?' you ask awkwardly. She starts slightly, turning her dark eyes toward you. Your grief-shadowed features and the sheer effort of your greeting make her pause. She studies your weather-worn face with a quiet, observant gaze before offering a gentle, reserved nod. 'They are,' she says softly. 'For the stews and the quiet nights. I am Elena.'",
+   "player_action": "I walk down to the village on market day and strike up a conversation with a woman I have never met"
+  },
+  {
+   "turn": 3,
+   "narration": "Your hand rises toward the silver band hidden beneath your wool tunic, then drops back to your side. You take a slow, shallow breath, forcing your stiff jaw to move. \"I'm Eamon,\" you say, the name sounding foreign to your own ears after so many years of silence. You look down at the wicker basket resting at her feet, filled with pale lavender stems. \"Let me carry that basket home for you.\"\n\nElena's dark eyes flicker down to the basket, then back to your face. Her expression remains gentle, but a quiet, defensive distance settles over her features, like frost on a windowpane. She takes a half-step back, her fingers curling around the wicker handle before you can reach for it. \"Thank you, Eamon,\" she says softly, her voice carrying the polite, firm weight of the valley folk. \"But it is a light load, and my brother's house is only just around the corner. I have no need of a carter.\" She offers a small, apologetic nod, turning her attention back to the bundles of winter savory on the table. \n\nOn the wooden steps of the Boar's Tusk Inn across the muddy clearing, Thomas the Innkeeper watches the two of you with quiet interest, a clean rag draped over his shoulder.",
+   "player_action": "I ask her name, tell her mine, and offer to carry her basket home"
+  },
+  {
+   "turn": 4,
+   "narration": "You step closer to Elena, trying to find words to ease the awkwardness between you. As she turns to carry her basket of lavender toward her brother's cottage, you fall into step beside her, walking through the muddy clearing under the watchful eyes of the marketplace.\n\nElena walks in silence, her shoulder almost touching yours, though she keeps her eyes fixed on the stony path ahead. When she stops outside the timbered cottage, you reach out to take her fingers, bending to press a quiet kiss to the back of her hand as a gesture of old-world courtesy. Elena flinches, pulling her hand back sharply before your lips can touch her skin. Her face flushes, her silver-streaked hair catching the pale autumn light as she tucks her hand safely beneath her wool shawl. She looks at you with a mixture of surprise and quiet wariness. Across the lane, Thomas the Innkeeper leans against the post of the Boar's Tusk, wiping a mug with slow, deliberate strokes as he watches the scene unfold.",
+   "player_action": "At her door I take her hand and kiss her"
+  }
+ ],
+ "choices": [
+  "Apologize to Elena for your forwardness",
+  "Turn away and walk to the Boar's Tusk Inn",
+  "Seek out Father Laurence at the village chapel"
+ ],
+ "cost_usd": 0.2182819,
+ "draft": {
+  "premise": "I'm a widowed farmer of forty-five on a lonely hill farm, a morning's walk above the village. I haven't spoken to a woman in years.",
+  "proposal": {
+   "world": {
+    "title": "The Lonely Hill",
+    "genre": "grounded pastoral drama",
+    "tone": "melancholic, quiet, hopeful",
+    "era": "A medieval rural valley: simple hand tools, horse-drawn carts, and oil lamps",
+    "extraordinary": [
+     {
+      "id": "supernatural",
+      "kind": "magic or anything supernatural",
+      "prevalence": "none",
+      "reach": "No supernatural forces exist in this quiet, grounded corner of the world."
+     }
+    ],
+    "rules": [
+     {
+      "id": "no-magic",
+      "text": "This is a grounded world governed entirely by natural laws; magic and the supernatural do not exist.",
+      "fixed": true,
+      "topic": "existence",
+      "about": [
+       "supernatural"
+      ]
+     },
+     {
+      "id": "harsh-winters",
+      "text": "The winter cold on the high fells is bitter and unforgiving, demanding careful preparation to survive.",
+      "fixed": true,
+      "topic": "nature",
+      "about": []
+     },
+     {
+      "id": "slow-travel",
+      "text": "News and people travel only as fast as a person can walk or a beast can pull a cart.",
+      "fixed": true,
+      "topic": "travel",
+      "about": []
+     },
+     {
+      "id": "herbal-medicine",
+      "text": "Medicine relies on basic country herbs and physical rest; death is final and irreversible.",
+      "fixed": true,
+      "topic": "medicine",
+      "about": []
+     }
+    ],
+    "dropped_rule_ids": [],
+    "peoples": [
+     {
+      "id": "valley-folk",
+      "name": "Valley Folk",
+      "description": "",
+      "lifespan_years": 80,
+      "gifts": [],
+      "culture": "A hardy, practical people who value hard work, community ties, and tradition.",
+      "relations": [],
+      "path": ""
+     }
+    ],
+    "creatures": [
+     {
+      "id": "mountain-wolf",
+      "name": "Mountain Wolf",
+      "description": "Large, gray-furred wolves that hunt the high crags during lean winters.",
+      "rung": "",
+      "habitat": "High fells and rocky crags",
+      "worth": "Thick warm pelts",
+      "can_be_tamed": false
+     }
+    ],
+    "nature": [
+     "The soil on the high hill farms is thin and stony, requiring relentless labor to yield crops."
+    ],
+    "ladders": [],
+    "calendar": {
+     "style": "day_count",
+     "clock_time": false,
+     "epoch": "",
+     "start_hour": 6,
+     "months": [],
+     "start_year": 1,
+     "start_month": 1,
+     "start_day": 1,
+     "era": "Autumn's End"
+    },
+    "travel": {
+     "description": "Travel is slow and arduous, along winding dirt paths that turn to mud in the rain.",
+     "instant_messages": false
+    },
+    "medicine": {
+     "healing": "Simple bandaging, willow bark teas for pain, and rest.",
+     "resurrection": "none",
+     "resurrection_means": ""
+    },
+    "laws": [
+     {
+      "id": "tithing",
+      "text": "Every household must pay a seasonal portion of their harvest or livestock to the village elder.",
+      "enforcer": "The Elder's Guard",
+      "enforcer_faction_id": "",
+      "zeal": "medium",
+      "corruptible": true
+     }
+    ],
+    "norms": [
+     "reclusive-lives"
+    ],
+    "several_partners": false,
+    "unions": "for_life",
+    "places": [
+     {
+      "id": "high-fells",
+      "name": "The High Fells",
+      "kind": "region",
+      "description": "A vast, windswept region of rolling hills and rocky crags overlooking the valley.",
+      "parent_id": "",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "hill-farm",
+      "name": "The Lonely Hill Farm",
+      "kind": "building",
+      "description": "A solitary wooden cottage and stone barn perched high on a wind-carved hill.",
+      "parent_id": "high-fells",
+      "setting": "indoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": [
+       {
+        "to_id": "village-clearing",
+        "travel_hours": 3.0,
+        "mode": "on foot"
+       }
+      ]
+     },
+     {
+      "id": "village-clearing",
+      "name": "Oakhaven Village",
+      "kind": "village",
+      "description": "A quiet cluster of stone cottages nestled around a central muddy clearing in the valley.",
+      "parent_id": "high-fells",
+      "setting": "outdoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "village-inn",
+      "name": "The Boar's Tusk Inn",
+      "kind": "building",
+      "description": "A warm, smoke-filled tavern serving simple ale and roasted roots.",
+      "parent_id": "village-clearing",
+      "setting": "indoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     },
+     {
+      "id": "village-chapel",
+      "name": "St. Jude's Chapel",
+      "kind": "building",
+      "description": "An ancient stone chapel where villagers gather to pray for good harvests.",
+      "parent_id": "village-clearing",
+      "setting": "indoors",
+      "controller_id": "",
+      "mood": "",
+      "known_to_player": true,
+      "routes": []
+     }
+    ],
+    "factions": [
+     {
+      "id": "village-council",
+      "name": "Oakhaven Village Council",
+      "kind": "council",
+      "description": "A group of older, respected villagers who settle local disputes and manage communal resources.",
+      "parent_id": "",
+      "leader_ids": [],
+      "goal": "",
+      "methods": "",
+      "strength": "High local social influence and three armed village guards",
+      "relations": [],
+      "secrets": [],
+      "known_to_player": true
+     }
+    ],
+    "npcs": [
+     {
+      "id": "thomas",
+      "name": "Thomas the Innkeeper",
+      "aliases": [],
+      "description": "A stout, jovial man with a loud laugh who hears every piece of news that passes through the valley.",
+      "appearance": "Broad-shouldered, balding, wearing a grease-stained canvas apron.",
+      "age": 52,
+      "people_id": "valley-folk",
+      "location_id": "village-inn",
+      "memberships": [],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "garrulous",
+        "observant",
+        "practical"
+       ],
+       "values": [],
+       "loves": [],
+       "fears": [],
+       "wants": [
+        "Keep his tavern profitable through the winter",
+        "Find a good match for his sister"
+       ],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 3,
+       "speed": 2,
+       "toughness": 3,
+       "wits": 4,
+       "knowledge": 3,
+       "willpower": 3,
+       "charm": 4,
+       "nerve": 3,
+       "bearing": 3
+      },
+      "skills": [
+       {
+        "name": "Brewing",
+        "level": "skilled",
+        "notes": ""
+       },
+       {
+        "name": "Gossip",
+        "level": "expert",
+        "notes": ""
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 10,
+       "fear": 0,
+       "trust": 20,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "heard_of"
+     },
+     {
+      "id": "elena",
+      "name": "Elena",
+      "aliases": [],
+      "description": "A quiet, self-contained woman who recently returned to the village to live with her brother after her husband passed.",
+      "appearance": "slender, with dark eyes, silver-streaked dark hair tied in a neat bun, wearing a plain gray wool dress.",
+      "age": 42,
+      "people_id": "valley-folk",
+      "location_id": "village-inn",
+      "memberships": [],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "reserved",
+        "gentle",
+        "industrious"
+       ],
+       "values": [],
+       "loves": [],
+       "fears": [],
+       "wants": [
+        "Find a peaceful life free from her brother's nagging"
+       ],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 2,
+       "speed": 3,
+       "toughness": 3,
+       "wits": 4,
+       "knowledge": 3,
+       "willpower": 4,
+       "charm": 3,
+       "nerve": 3,
+       "bearing": 4
+      },
+      "skills": [
+       {
+        "name": "Tailoring",
+        "level": "expert",
+        "notes": ""
+       },
+       {
+        "name": "Herbalism",
+        "level": "fair",
+        "notes": ""
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 0,
+       "fear": 0,
+       "trust": 0,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "unknown"
+     },
+     {
+      "id": "father-laurence",
+      "name": "Father Laurence",
+      "aliases": [],
+      "description": "The aging village priest who has guided the spiritual lives of the valley folk for over thirty years.",
+      "appearance": "Bent-backed, wearing faded green robes and carrying a polished wooden staff.",
+      "age": 67,
+      "people_id": "valley-folk",
+      "location_id": "village-chapel",
+      "memberships": [],
+      "parent_ids": [],
+      "temperament": {
+       "traits": [
+        "pious",
+        "compassionate",
+        "patient"
+       ],
+       "values": [],
+       "loves": [],
+       "fears": [],
+       "wants": [
+        "Bring comfort to the lonely",
+        "Ensure the village's spiritual well-being"
+       ],
+       "voice": ""
+      },
+      "attributes": {
+       "strength": 1,
+       "speed": 1,
+       "toughness": 2,
+       "wits": 3,
+       "knowledge": 4,
+       "willpower": 4,
+       "charm": 3,
+       "nerve": 3,
+       "bearing": 4
+      },
+      "skills": [
+       {
+        "name": "Theology",
+        "level": "expert",
+        "notes": ""
+       },
+       {
+        "name": "Consoling",
+        "level": "expert",
+        "notes": ""
+       }
+      ],
+      "traits": [],
+      "powers": [],
+      "techniques": [],
+      "ladders": [],
+      "axes": {
+       "might": 1,
+       "influence": 1,
+       "wealth": 1,
+       "knowledge": 1,
+       "stealth": 1
+      },
+      "attitude_to_player": {
+       "affinity": 15,
+       "fear": 0,
+       "trust": 30,
+       "shown_affinity": null,
+       "attraction": 0
+      },
+      "bond_with_player": null,
+      "partner_id": "",
+      "partner_bond": "together",
+      "faith": null,
+      "solitary": false,
+      "agenda": null,
+      "secrets": [],
+      "player_knows": "met"
+     }
+    ],
+    "clocks": [
+     {
+      "id": "winter-freeze",
+      "name": "The First Deep Freeze",
+      "steps": [
+       "The autumn winds grow bitterly cold and frost kills the mountain weeds.",
+       "The first light flurries of snow dust the high fells.",
+       "A heavy frost locks the soil, making harvest impossible.",
+       "A massive blizzard blocks the path down to the village entirely."
+      ],
+      "step_every_hours": 72.0,
+      "owner_id": "",
+      "thread_id": "",
+      "known_to_player": true
+     }
+    ],
+    "threads": [
+     {
+      "id": "winter-survival",
+      "title": "Wintering the High Farm",
+      "kind": "threat",
+      "stakes": "If Eamon does not gather enough firewood and secure his crops, he will starve or freeze when the mountain roads close.",
+      "involved_ids": [
+       "player"
+      ],
+      "clock_id": "winter-freeze",
+      "known_to_player": true
+     },
+     {
+      "id": "breaking-the-silence",
+      "title": "Breaking the Silence",
+      "kind": "romance",
+      "stakes": "The chance to step out of decades of isolation and find connection in the valley below.",
+      "involved_ids": [
+       "player",
+       "elena",
+       "thomas"
+      ],
+      "clock_id": "",
+      "known_to_player": true
+     }
+    ],
+    "mysteries": [
+     {
+      "id": "stolen-sheep",
+      "question": "What is taking the sheep from the high pastures?",
+      "answer": "A hungry mother mountain wolf and her three growing cubs have made a den in the high limestone crags nearby.",
+      "clues": [
+       "A patch of torn sheep's wool snagged on sharp briars with grey fur mixed in.",
+       "Large paw prints in the mud near the mountain spring.",
+       "A distant, eerie howling echoing through the fells at dusk."
+      ],
+      "thread_id": "winter-survival",
+      "known_to_player": true
+     }
+    ],
+    "known_facts": [
+     "The walk down to Oakhaven Village takes roughly three hours on foot.",
+     "The first deep winter storm will completely cut off the high farm from the rest of the world.",
+     "No women have visited your farm or spoken to you since your wife Marta passed away seven years ago."
+    ],
+    "opening": {
+     "place_id": "hill-farm",
+     "present_ids": [
+      "player"
+     ],
+     "positions": [
+      "standing by the weathered wooden fence"
+     ],
+     "props": [
+      "an old iron spade",
+      "a stack of split firewood"
+     ],
+     "situation": "You stand in the pale morning light on your lonely hill farm, resting your calloused hands on the wooden fence as you gaze down at the village mist three hours below, the silence of your mountain home broken only by the cold autumn wind."
+    },
+    "summary": "On a isolated hill farm high above a quiet valley, a widowed farmer of forty-five lives a life of absolute solitude. With the bitter winter freeze looming, he must prepare his farm to survive the isolation, even as the distant village whispers of a chance to finally break his years of silence."
+   },
+   "character": {
+    "name": "Eamon",
+    "aliases": [],
+    "age": 45,
+    "lifespan_years": 80,
+    "people_id": "valley-folk",
+    "description": "A weathered, quiet man of few words, with hands hardened by decades of stony soil and eyes that carry a gentle, lingering sadness.",
+    "appearance": "Tall and slightly lean, with deep-set gray eyes, a short beard peppered with gray, and dark brown hair. He wears a patched wool tunic, heavy hide trousers, and mud-caked boots.",
+    "location_id": "hill-farm",
+    "attributes": {
+     "strength": 4,
+     "speed": 2,
+     "toughness": 4,
+     "wits": 3,
+     "knowledge": 2,
+     "willpower": 4,
+     "charm": 2,
+     "nerve": 3,
+     "bearing": 3
+    },
+    "skills": [
+     {
+      "name": "Farming",
+      "level": "skilled",
+      "notes": "Coaxing life from stony, unyielding mountain earth."
+     },
+     {
+      "name": "Carpentry",
+      "level": "fair",
+      "notes": "Repairing fences, barns, and simple wooden household items."
+     },
+     {
+      "name": "Foraging",
+      "level": "fair",
+      "notes": "Finding wild roots, berries, and useful mountain herbs."
+     }
+    ],
+    "traits": [
+     {
+      "name": "Weather-hardened",
+      "kind": "gift",
+      "description": "Years of working the high fells have made you exceptionally resistant to biting cold and physical exhaustion."
+     },
+     {
+      "name": "Grief-shadowed",
+      "kind": "flaw",
+      "description": "The loss of your wife has left a quiet, stubborn sorrow that makes it difficult to open up to others."
+     }
+    ],
+    "talents": [],
+    "powers": [],
+    "techniques": [],
+    "temperament": {
+     "traits": [
+      "solitary",
+      "industrious",
+      "stubborn"
+     ],
+     "values": [
+      "self-reliance",
+      "quietness",
+      "honesty"
+     ],
+     "loves": [
+      "The quiet of early mornings",
+      "The smell of freshly turned earth"
+     ],
+     "fears": [
+      "Dying alone on this hill",
+      "Being unable to survive the winter"
+     ],
+     "wants": [],
+     "voice": ""
+    },
+    "items": [
+     {
+      "name": "Polished Silver Wedding Band",
+      "kind": "treasure",
+      "description": "Your late wife Marta's wedding band, worn on a simple leather cord around your neck.",
+      "quantity": 1,
+      "carried": true
+     },
+     {
+      "name": "Heavy Iron Spade",
+      "kind": "gear",
+      "description": "A sturdy, well-worn spade with a smooth ash handle.",
+      "quantity": 1,
+      "carried": true
+     },
+     {
+      "name": "Faded Woolen Cloak",
+      "kind": "gear",
+      "description": "A thick, dark green cloak that keeps out the worst of the mountain wind.",
+      "quantity": 1,
+      "carried": true
+     }
+    ],
+    "money": 12,
+    "currency": "copper coins",
+    "title": "Hill Farmer",
+    "rank": "Commoner",
+    "family_name": "",
+    "connections": [],
+    "parent_ids": [],
+    "memberships": [],
+    "ladders": [],
+    "axes": {
+     "might": 2,
+     "influence": 1,
+     "wealth": 1,
+     "knowledge": 1,
+     "stealth": 2
+    },
+    "reserves": [],
+    "goals": [],
+    "backstory": [
+     "You married Marta when you were twenty-four, and for fourteen years this lonely hill was a paradise.",
+     "Since she passed away seven years ago from a sudden autumn fever, you have worked the rocky fields alone.",
+     "The silence of the farm has grown heavier with each passing year, and you have not spoken to a woman since her funeral."
+    ],
+    "hidden_past": []
+   }
+  },
+  "rating": "teen",
+  "premise_id": null,
+  "physics": "fun_first",
+  "gift": null,
+  "released_rules": [],
+  "language": "en",
+  "told": []
+ }
+}
