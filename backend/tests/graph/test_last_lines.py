@@ -1,12 +1,9 @@
 """S4: a scene's ending is shown, never told: what code reads as the narrator telling the player
 their move, what it leaves out of a told scene, and what it holds back while one streams."""
 
-import re
-
 import pytest
 
-from graph.turn import last_lines
-from graph.turn.last_lines import OPENING_CHARS, showable, shown, tells
+from graph.turn.last_lines import showable, shown, tells
 
 # The endings the real narrator wrote in the plays of 2026-11-14, each after what it had shown.
 SPY = (
@@ -26,6 +23,13 @@ MEMOIRS = "The finished memoirs lie open on your desk, the ink glinting in the f
 MEMOIRS_TOLD = "It is time to rest, or perhaps to share what you have done."
 COURTYARD = "Downstairs, his carriage remains unguarded in the dark courtyard of the pavilion."
 COURTYARD_TOLD = "The time has come to slip away and secure the schedules."
+# The first check on the real models after code held the line: the move is told in the
+# sentence's second clause.
+BRIDGE = "They are stepping closer, their knives catching the cold morning light."
+BRIDGE_TOLD = (
+    "If you are to survive this ambush and reach the ranking tournament, you must act before "
+    "they pin you between them."
+)
 
 
 @pytest.mark.parametrize(
@@ -35,6 +39,21 @@ COURTYARD_TOLD = "The time has come to slip away and secure the schedules."
         FARM_TOLD,
         MEMOIRS_TOLD,
         COURTYARD_TOLD,
+        BRIDGE_TOLD,
+        # In a clause after the sentence's first.
+        "The gate stands open, and the choice is yours.",
+        "With the guards asleep, it is time to slip away.",
+        "One thing is clear: you must choose.",
+        "The thugs close in, so now you have to decide.",
+        "The bridge sways under you — what will you do?",
+        "Whichever way the wind turns, you must act now.",
+        "You must act to save her.",
+        "Debes actuar de inmediato.",
+        "Has d'actuar de seguida.",
+        "Con el sol ya alto, es hora de partir.",
+        "El puente cruje y, pase lo que pase, tú decides.",
+        "Amb la porta oberta, ara has de decidir.",
+        "La boira s'aixeca i, ara sí, la decisió és teva.",
         "Now you must choose.",
         "But you will have to decide soon.",
         "You need to act quickly.",
@@ -75,6 +94,8 @@ COURTYARD_TOLD = "The time has come to slip away and secure the schedules."
         "Has de decidir si el despertes o avises el batlle.",
         "Ara et toca triar.",
         "Cal que decideixis aviat.",
+        "Hauràs d'escollir aviat.",
+        "Has d'actuar ara.",
         "Ha arribat l'hora de marxar.",
         "Ja és hora d'anar-se'n.",
         "És hora de tornar a casa.",
@@ -124,6 +145,15 @@ def test_a_sentence_that_tells_the_player_their_move_is_read_as_one(sentence):
         "Tú decides quedarte un rato más junto al fuego.",
         "Tu decideixes quedar-te una estona més vora el foc.",
         "És l'hora que tanquen les portes.",
+        # What the character does, a part to play, a thing to pick up: no call to choose.
+        "You weigh it for a breath, decide, and go.",
+        "You must act the part of a servant until the feast is over.",
+        "Like every disciple before you, you must pick up the broom at dawn.",
+        "Debes actuar como un criado hasta que acabe el banquete.",
+        "Has d'actuar com un criat fins que s'acabi el banquet.",
+        "Debes actuar de criado hasta que acabe el banquete.",
+        "Has d'actuar d'esquer fins que arribin els altres.",
+        "The envoy smiles, certain of what you will choose, and pours the wine.",
     ],
 )
 def test_a_sentence_that_shows_is_left_alone(sentence):
@@ -132,7 +162,13 @@ def test_a_sentence_that_shows_is_left_alone(sentence):
 
 @pytest.mark.parametrize(
     ("scene", "told"),
-    [(SPY, SPY_TOLD), (FARM, FARM_TOLD), (MEMOIRS, MEMOIRS_TOLD), (COURTYARD, COURTYARD_TOLD)],
+    [
+        (SPY, SPY_TOLD),
+        (FARM, FARM_TOLD),
+        (MEMOIRS, MEMOIRS_TOLD),
+        (COURTYARD, COURTYARD_TOLD),
+        (BRIDGE, BRIDGE_TOLD),
+    ],
 )
 def test_the_real_endings_are_left_out_and_the_scene_ends_on_what_it_showed(scene, told):
     assert shown(f"{scene} {told}") == scene
@@ -200,73 +236,85 @@ def test_a_pause_inside_a_sentence_does_not_end_it():
     assert shown(scene) is scene
 
 
-def streamed(scene: str, size: int) -> str:
-    """What a player has read of a scene that came in pieces of `size`, before it is saved."""
+def streaming(scene: str, size: int) -> str:
+    """What a player has read of a scene that came in pieces of `size`, while it is still being
+    written."""
     sent = 0
     for upto in range(size, len(scene) + size, size):
         sent = max(sent, showable(scene[:upto]))
     return scene[:sent]
 
 
+def streamed(scene: str, size: int) -> str:
+    """What a player has read of it once its text is whole: what waited and stays goes out
+    then (`TextEnded`, in `graph.turn.nodes`)."""
+    read = streaming(scene, size)
+    return scene[: max(len(read), len(shown(scene)))]
+
+
 @pytest.mark.parametrize("size", [1, 7, 40, 500])
 @pytest.mark.parametrize(
     ("scene", "told"),
-    [(SPY, SPY_TOLD), (FARM, FARM_TOLD), (MEMOIRS, MEMOIRS_TOLD), (COURTYARD, COURTYARD_TOLD)],
+    [
+        (SPY, SPY_TOLD),
+        (FARM, FARM_TOLD),
+        (MEMOIRS, MEMOIRS_TOLD),
+        (COURTYARD, COURTYARD_TOLD),
+        (BRIDGE, BRIDGE_TOLD),
+    ],
 )
 def test_a_scene_that_ends_on_the_players_move_never_shows_it_while_it_streams(scene, told, size):
-    read = streamed(f"{scene} {told}", size)
+    whole = f"The fire has burned low. {scene} {told}"
 
-    assert read.rstrip() == scene
+    assert streamed(whole, size) == f"The fire has burned low. {scene}"
+    # Not a word of it at any point, wherever in the sentence the move is told.
+    for upto in range(1, len(whole) + 1):
+        assert showable(whole[:upto]) <= len(whole) - len(told) - 1
 
 
 @pytest.mark.parametrize("size", [1, 7, 40])
 def test_closing_sentences_that_all_tell_wait_together(size):
-    assert streamed(f"{FARM} The choice is yours. What will you do?", size).rstrip() == FARM
+    assert streamed(f"{FARM} The choice is yours. What will you do?", size) == FARM
 
 
 @pytest.mark.parametrize("size", [1, 7, 40])
 def test_a_sentence_that_tells_goes_out_once_the_scene_goes_on(size):
     scene = (
         f"{FARM} {FARM_TOLD} Then the dog barks in the yard, and someone knocks three times at "
-        "the door below, hard."
+        "the door below, hard. You set the hoe down."
     )
 
+    # While the last sentence is still being written, all before it has gone out.
+    assert streaming(scene, size).rstrip() == scene.removesuffix(" You set the hoe down.")
     assert streamed(scene, size) == scene
 
 
-def test_a_short_last_sentence_waits_for_the_scene_to_end():
-    """Nothing yet says a sentence this short won't tell, so it goes out when the text ends
-    (`TextEnded`, in `graph.turn.nodes`), with whatever waited before it."""
+def test_the_last_sentence_waits_for_the_scene_to_end():
+    """Nothing says a sentence won't tell in a later clause until it is whole and the scene
+    goes on, so the last one goes out when the text ends (`TextEnded`, in `graph.turn.nodes`),
+    with whatever waited before it."""
     scene = f"{FARM} {FARM_TOLD} Then the dog barks."
 
-    assert streamed(scene, 7).rstrip() == FARM
-    assert shown(scene) is scene
+    assert streaming(scene, 7) == FARM
+    assert streamed(scene, 7) == scene and shown(scene) is scene
 
 
 def test_the_scenes_first_sentence_never_waits():
     """S3: the first words reach the player as soon as they are written. A scene keeps its
     first sentence whatever it says, so there is nothing to wait for."""
     for upto in range(1, len(FARM_TOLD) + 1):
-        assert showable(FARM_TOLD[:upto]) == upto
-    assert showable(f"{FARM_TOLD} ") == len(f"{FARM_TOLD} ")
+        assert showable(FARM_TOLD[:upto]) == len(FARM_TOLD[:upto].rstrip())
+    # A space goes out with what follows it, so the text read never ends on one the scene
+    # may not keep.
+    assert showable(f"{FARM_TOLD} ") == len(FARM_TOLD)
 
 
-def test_a_sentence_goes_out_as_soon_as_it_can_no_longer_be_one_that_tells():
-    opening = "The first winter storm is only weeks away, and your firewood stack is low, as low as"
+def test_a_sentence_goes_out_once_it_is_whole_and_the_scene_goes_on():
+    growing = "The first winter storm is only weeks away, and your firewood stack is low, as low as"
 
-    assert len(opening) > OPENING_CHARS
-    assert showable(f"{MEMOIRS} {opening}") == len(f"{MEMOIRS} {opening}")
+    # A sentence still being written waits, however long: its next clause may tell.
+    assert showable(f"{MEMOIRS} {growing}") == len(MEMOIRS)
+    assert showable(f"{MEMOIRS} {FARM} Then") == len(f"{MEMOIRS} {FARM}")
     # Speech goes out at once: it is never held back.
     assert showable('She turns. "You') == len('She turns. "You')
-    # Its first words wait, since nothing yet says what the sentence will be.
-    assert showable(f"{FARM} You mus") == len(FARM)
-
-
-def test_no_wording_opens_further_into_a_sentence_than_the_stream_waits():
-    """`showable` lets a sentence go once it is `OPENING_CHARS` long and opens as none of the
-    wordings, so each must have shown itself by then."""
-    parser = pytest.importorskip("re._parser")
-
-    for opening, _ in last_lines._READ:
-        _, longest = parser.parse(opening.pattern, re.IGNORECASE).getwidth()
-        assert longest <= OPENING_CHARS, opening.pattern
+    assert showable("She turns. Then she says, 'You") == len("She turns. Then she says, 'You")
