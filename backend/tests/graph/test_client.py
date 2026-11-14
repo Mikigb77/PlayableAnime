@@ -24,6 +24,7 @@ from graph.llm import (
     Reply,
     StreamRestart,
     TextDelta,
+    TextEnded,
 )
 from graph.llm.config import DEFAULT_NODES
 from graph.llm.safety import safety_settings
@@ -334,6 +335,27 @@ def test_streaming_shows_the_field_as_it_is_written_then_completes(fake, make_cl
     [record] = telemetry.calls
     assert record.outcome == "ok"
     assert record.first_token_ms is not None
+
+
+def test_streaming_says_when_the_text_is_whole_before_the_answer_is(fake, make_client):
+    """S4: the fields that stream are written first, and the rest of the answer takes seconds
+    more, so the stream says once when they are whole (`graph.turn.last_lines`)."""
+    whole = '{"title": "Cave", "narration": "You drop to a crouch.", "choices": ["Ru'
+    fake.script(Node.NARRATOR, Fail(after_text=whole), Reply(json=SCENE))
+
+    events = run(
+        collect(
+            make_client().stream_structured(Node.NARRATOR, PROMPT, Narration, field="narration")
+        )
+    )
+
+    restart = events.index(StreamRestart())
+    assert events[:restart].count(TextEnded()) == 1
+    assert events[restart - 1] == TextEnded()
+    # Again for the retry, after its last text and before its result.
+    assert events[restart:].count(TextEnded()) == 1
+    last_text = max(i for i, e in enumerate(events) if isinstance(e, TextDelta))
+    assert last_text < events.index(TextEnded(), restart) < len(events) - 1
 
 
 def test_a_stream_that_fails_after_text_restarts_and_retries(fake, make_client, telemetry):

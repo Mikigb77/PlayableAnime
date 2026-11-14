@@ -185,6 +185,12 @@ def let_come(event: PendingEvent) -> bool:
     return event.kind == str(Kind.OLD_AGE) and bool(event.payload.get("let_go"))
 
 
+def foreseen(event: PendingEvent) -> bool:
+    """Whether this is the stop before the player character's old age: its scene tells them
+    the end is close, and what they can do with the time they have (`_TELLING`)."""
+    return event.kind == str(Kind.OLD_AGE) and event.payload.get("phase") == NEAR
+
+
 def ensure_old_age(w: World) -> None:
     """The player character's old age is pending as the record now has it: the stop before its
     day, or the day itself once a scene has told them the end is close. Whatever was pending

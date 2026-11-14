@@ -68,6 +68,12 @@ class TextDelta:
 
 
 @dataclass(frozen=True)
+class TextEnded:
+    """The streamed fields are all written: no more text comes before `Completed`, which can
+    still be a while off, since the rest of the answer is written after them."""
+
+
+@dataclass(frozen=True)
 class StreamRestart:
     """The attempt failed after text was streamed and is being retried: clear the partial text."""
 
@@ -81,7 +87,7 @@ class Completed[T]:
     value: T
 
 
-type StreamEvent[T] = TextDelta | StreamRestart | Completed[T]
+type StreamEvent[T] = TextDelta | TextEnded | StreamRestart | Completed[T]
 
 
 @dataclass(frozen=True, repr=False)
@@ -254,10 +260,10 @@ class ModelClient:
         or of several, one after the other with a paragraph break between (`JsonFieldStreamer`).
         `form` is the JSON schema to ask with, where the turn's differs from the class's own.
 
-        Yields `TextDelta`s, a `StreamRestart` if a retry follows streamed text, and finally
-        `Completed` with the validated result. Wrap the iteration in `contextlib.aclosing`.
-        Raises the typed errors like the other calls; `LLMBlocked.streamed` says whether text
-        had already been shown.
+        Yields `TextDelta`s, `TextEnded` once the fields are all written, a `StreamRestart` if
+        a retry follows streamed text, and finally `Completed` with the validated result. Wrap
+        the iteration in `contextlib.aclosing`. Raises the typed errors like the other calls;
+        `LLMBlocked.streamed` says whether text had already been shown.
         """
         fields = (field,) if isinstance(field, str) else field
         for name in fields:
@@ -309,7 +315,7 @@ class ModelClient:
             for attempt in range(1, RATE_LIMIT_ATTEMPTS + 1):
                 trace.attempts = attempt
                 streamer = JsonFieldStreamer(*stream_fields) if stream_fields else None
-                streamed = False
+                streamed = ended = False
                 parts: list[str] = []
                 images: list[ImagePart] = []
                 sound: list[AudioPart] = []
@@ -324,10 +330,15 @@ class ModelClient:
                             if not chunk.text:
                                 continue
                             parts.append(chunk.text)
-                            if streamer is not None and (delta := streamer.feed(chunk.text)):
+                            if streamer is None:
+                                continue
+                            if delta := streamer.feed(chunk.text):
                                 trace.saw_first_token()
                                 streamed = True
                                 yield TextDelta(delta)
+                            if streamed and streamer.done and not ended:
+                                ended = True
+                                yield TextEnded()
                     value = self._result(
                         request, schema, "".join(parts), images, sound, finish, streamed
                     )
