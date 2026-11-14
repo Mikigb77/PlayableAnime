@@ -37,7 +37,7 @@ from engine.state import (
 from engine.state.world import EventSize
 from engine.visibility import status_view
 from engine.world import last_years, lives, old_age
-from engine.world.last_years import NEAR, NEAR_TITLE, TAKES, TAKES_TITLE
+from engine.world.last_years import ASKED_TITLE, NEAR, NEAR_TITLE, TAKES, TAKES_TITLE
 from engine.world.scheduling import Kind
 from engine.world.tuning import AGELESS_YEARS, LAST_YEARS, LIFE_QUIET_S, OLD_AGE_FROM
 
@@ -160,18 +160,37 @@ def test_the_scene_it_opens_is_told_the_end_is_close_and_no_number():
     assert re.findall(r"\d+", told.brief) == [str(age), "80"]
 
 
-def test_where_the_span_is_only_assumed_the_scene_may_answer_that_they_live_longer():
+def test_where_the_span_is_only_assumed_the_stop_asks_before_it_tells():
     # The valley's record gives no people a lifespan: eighty years is the world's assumption.
-    _, event = until_old_age(aged(34), 100)
-    unsaid = world_event(event).brief
-    assert "The record doesn't say how long they live, and takes it for a human life." in unsaid
-    assert unsaid.endswith("in the update (lifespan_years, 1000000 for never).")
+    state, event = until_old_age(aged(34), 100)
+    age = state.characters[YOU].age
 
-    # Where the record says it, of them or of their people or their rung, it stands.
-    for state in (aged(34, lifespan_years=80), humans(aged(34), 80), realms(aged(34), 0, 80)):
-        _, event = until_old_age(state, 100)
-        said = world_event(event).brief
-        assert said.endswith("meet the end in peace.") and "The record doesn't say" not in said
+    asked = world_event(event)
+
+    # Neither its title nor its kind claims a loss: the scene decides what they are.
+    assert asked.title == ASKED_TITLE == "The weight of your years"
+    assert asked.size is EventSize.PERSONAL and asked.kind.value == "discovery"
+    assert asked.brief.startswith(
+        "The record doesn't say how long Tomas Weller lives, and takes it for a human life of "
+        f"about 80 years, of which they are {age}. Decide first, from WORLD and the story so "
+        "far, whether that is what they are. If the story has made them someone who lives far "
+        "longer, or whom old age never takes, nothing happens to them here: show no old age,"
+    )
+    assert "in the update (lifespan_years, 1000000 for never). Only otherwise is the end" in (
+        asked.brief
+    )
+    # What a human is told follows, word for word, with no number of years left.
+    assert asked.brief.endswith(last_years._TELLING)
+    assert re.findall(r"\d+", asked.brief) == ["80", str(age), "1000000"]
+    # They are told for the span the world assumed, until the record says another.
+    assert state.characters[YOU].old_age_span == 80 and waiting(state) == [(TAKES, 80)]
+
+    # Where the record says it, of them or of their people or their rung, nothing is asked.
+    for said in (aged(34, lifespan_years=80), humans(aged(34), 80), realms(aged(34), 0, 80)):
+        _, event = until_old_age(said, 100)
+        told = world_event(event)
+        assert (told.title, told.kind.value) == (NEAR_TITLE, "loss")
+        assert told.brief.endswith(last_years._TELLING) and "record doesn't say" not in told.brief
 
 
 def test_its_titles_are_said_in_spanish_and_catalan():
@@ -179,7 +198,9 @@ def test_its_titles_are_said_in_spanish_and_catalan():
     assert titles.said(NEAR_TITLE, Language.CA) == "Et queden pocs anys"
     assert titles.said(TAKES_TITLE, Language.ES) == "Se te acaban los años"
     assert titles.said(TAKES_TITLE, Language.CA) == "Se t'acaben els anys"
-    assert titles.written(NEAR_TITLE) and titles.written(TAKES_TITLE)
+    assert titles.said(ASKED_TITLE, Language.ES) == "El peso de tus años"
+    assert titles.said(ASKED_TITLE, Language.CA) == "El pes dels teus anys"
+    assert all(titles.written(title) for title in (NEAR_TITLE, TAKES_TITLE, ASKED_TITLE))
 
 
 def test_a_month_or_ten_years_bring_the_young_nothing():

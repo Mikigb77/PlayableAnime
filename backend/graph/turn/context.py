@@ -171,6 +171,17 @@ _OLD, _NEAR_THE_END = (
     "they are old, and it shows in their body",
     "the end of their life is close, they know it, and it shows in their body",
 )
+# Told for a span the record doesn't give: the world took their life for a human one, and the
+# scene that told them may have been wrong about what they are. Every scene reads the question
+# until the record says.
+_OLD_AGE_ASKED = (
+    "{age}. The record doesn't say how long they live, and takes it for a human life of about "
+    "{span} years. If that is what they are, the end of their life is close, they know it, "
+    "and it shows in their body: nobody knows how long they have, so no scene gives a number. "
+    "If the story has made them someone who lives far longer, or whom old age never takes, "
+    "they are not old, and the update says how long they live (lifespan_years, 1000000 for "
+    "never)."
+)
 
 
 def _player_view(state: WorldState, *, looks: bool = True) -> dict[str, Any]:
@@ -199,7 +210,9 @@ def _player_view(state: WorldState, *, looks: bool = True) -> dict[str, Any]:
     # old, and what they were told once the years stopped for it. Nothing before, and never
     # how long is left: how old someone is says enough.
     years = last_years.shown(state, state.world_s)
-    if years is not None and (years.old or years.told):
+    if years is not None and not years.said:
+        view["old_age"] = _OLD_AGE_ASKED.format(age=int(years.age), span=years.span)
+    elif years is not None and (years.old or years.told):
         how = _NEAR_THE_END if years.told else _OLD
         view["old_age"] = _OLD_AGE.format(age=int(years.age), span=years.span, how=how)
     # The player character's own family, marking anyone of it they don't know of (C6).

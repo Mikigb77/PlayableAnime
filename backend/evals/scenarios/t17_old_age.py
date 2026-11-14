@@ -21,7 +21,7 @@ from engine.labels import ago_label
 from engine.state import LifeEvent, SceneFrame, WorldState
 from engine.visibility import memory_view, status_view
 from engine.world import last_years, lives, old_age
-from engine.world.last_years import NEAR_TITLE
+from engine.world.last_years import ASKED_TITLE, NEAR_TITLE
 from engine.world.scheduling import Kind, pending
 from engine.world.tuning import LAST_YEARS, LIFE_QUIET_S, OLD_AGE_FROM
 from evals import worlds
@@ -489,6 +489,8 @@ STILL_YOUNG = Rubric(
 AN_ELF = "Tomas is an elf of some seventy or eighty years. Elves live for many centuries."
 # What the engine keeps of the day, which no brief may hold.
 THE_DAY = "day_s"
+# The stop's title, where the record says how long he lives and where the world assumes it.
+STOP_TITLES = (NEAR_TITLE, ASKED_TITLE)
 
 
 def on_his_farm(state: WorldState) -> None:
@@ -503,7 +505,7 @@ def of_his_years(state: WorldState) -> str:
 
 def stops(turn) -> bool:
     """Whether the turn's scene opened on the end of his life being close."""
-    return turn.completed and turn.event is not None and turn.event.title == NEAR_TITLE
+    return turn.completed and turn.event is not None and turn.event.title in STOP_TITLES
 
 
 async def to_the_end(story, length: int, *, turns: int, stop: bool = False) -> list[tuple]:
@@ -574,10 +576,11 @@ def elf_scene() -> dict:
         "eats a peach that gives three hundred years after the stop, in a scene whose update "
         "says so, lives through forty more years, and his sheet says of about three hundred. "
         "An elf of sixty in a world drafted before peoples said how long they live, whose "
-        "life the record takes for a human one, has no span on his sheet; the stop says the "
-        "record doesn't say and asks, and once the scene answers that he lives centuries no "
-        "old age comes to him. Live, the real drafter is given someone old age never takes "
-        "to play, and the world it writes has no old age for them"
+        "life the record takes for a human one, has no span on his sheet; the stop claims no "
+        "loss, says the record doesn't say and asks first, and once the scene answers that he "
+        "lives centuries no old age comes to him. A human in that world is asked too, told "
+        "for a human life, and dies of old age going on. Live, the real drafter is given "
+        "someone old age never takes to play, and the world it writes has no old age for them"
     ),
 )
 async def own_old_age(ev: Eval) -> None:
@@ -623,7 +626,7 @@ async def own_old_age(ev: Eval) -> None:
             '"title":"Your years run short"' in told
             and "the end of their life is close" in told
             and "give no number of years or days left" in told
-            and "The record doesn't say how long they live" not in told
+            and "record doesn't say" not in told
             and f'"old_age":"{you.age} of the about 80 years someone like them lives: the end'
             in told,
             f"{seed}",
@@ -770,9 +773,13 @@ async def own_old_age(ev: Eval) -> None:
             live=False,
         )
         ev.check(
-            "the stop says the record takes his life for a human one, and asks",
-            "The record doesn't say how long they live" in told
-            and "(lifespan_years, 1000000 for never)" in told,
+            "the stop claims no loss: it says the record takes his life for a human one, and "
+            "asks first",
+            f'"title":"{ASKED_TITLE}"' in told
+            and '"kind":"discovery"' in told
+            and '"brief":"The record doesn\'t say how long Tomas Weller lives' in told
+            and "(lifespan_years, 1000000 for never)" in told
+            and f'"old_age":"{you.age}. The record doesn\'t say how long they live' in told,
             f"{seed}/elf",
             live=False,
         )
@@ -798,6 +805,54 @@ async def own_old_age(ev: Eval) -> None:
             f"{seed}/elf: {you.status.value} at {you.age}, {of_his_years(end)}",
         )
         ev.check("the record holds together (C1)", check_state(end) == [], f"{seed}/elf")
+
+    # The same world, where he is the human the record takes him for: asked too, and told.
+    for seed in ev.seeds(3, live=1):
+        story = ev.story(
+            worlds.millbrook_unsaid_at_sixty(),
+            seed=f"{seed}/unsaid",
+            settings=CALM,
+            under_way=True,
+        )
+        story.change(on_his_farm)
+        played = await to_the_end(story, FORTY, turns=budget, stop=True)
+        found = stopped(played)
+        if found is None:
+            if not ev.live or len(played) < budget:
+                ev.check(
+                    "the years stop once when the end of his life is close",
+                    False,
+                    f"{seed}/unsaid",
+                )
+            continue
+        turn, told = found
+        you = turn.state.characters[YOU]
+        ev.check(
+            "a human whose span the record doesn't say is asked, and told for a human life",
+            turn.event.title == ASKED_TITLE
+            and you.alive
+            and you.old_age_span == 80
+            and old_age.span(turn.state, you) == 80,
+            f"{seed}/unsaid: lifespan {you.lifespan_years}, told for {you.old_age_span}",
+        )
+        ev.check(
+            "from then on his sheet says his age of about eighty years",
+            of_his_years(turn.state) == f"{you.age} of about 80 years",
+            f"{seed}/unsaid: {of_his_years(turn.state)}",
+            live=False,
+        )
+        await ev.judge(f"a human the record doesn't speak for, {seed}", THE_END_IS_CLOSE, turn)
+        if ev.live:
+            continue
+        await to_the_end(story, FORTY, turns=TURNS)
+        end = story.state
+        you = end.characters[YOU]
+        ev.check(
+            "going on, old age takes him as it takes anyone",
+            not you.alive and lives.of_old_age(you) and you.age <= 100,
+            f"{seed}/unsaid: {you.status.value} at {you.age}",
+        )
+        ev.check("the record holds together (C1)", check_state(end) == [], f"{seed}/unsaid")
     if not ev.live:
         return
     world = await ev.drafted(RISEN_COURIER)
