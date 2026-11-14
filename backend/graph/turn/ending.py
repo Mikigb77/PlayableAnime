@@ -16,6 +16,7 @@ from engine.context import TurnContext
 from engine.contracts import Harm, Intent, OutcomeClass, Resolution
 from engine.rng import SeededRng
 from engine.state.world import WorldState
+from engine.world import lives
 from graph.turn.errors import RefusedStep
 from graph.turn.types import Ending, TurnKind
 
@@ -37,7 +38,9 @@ def ending_of(
     ended the story and they lived."""
     player_id = before.player_id
     if before.player.alive and not after.player.alive:
-        own = _died_by_own_hand(intent, resolution, player_id)
+        # Old age took them (`engine.world.last_years`), whatever the step it cut short aimed at.
+        aged = lives.of_old_age(after.player)
+        own = not aged and _died_by_own_hand(intent, resolution, player_id)
         return Ending(kind="death", character_id=player_id, self_inflicted=own)
     if kind is TurnKind.END:
         return Ending(kind="chosen", character_id=player_id)

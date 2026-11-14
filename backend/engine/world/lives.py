@@ -463,6 +463,17 @@ def _pass_away(w: World, homes: _Homes, person: Character) -> None:
                 # Their own partner, who died far from them: nobody has told them yet.
                 event.known_by = [i for i in event.known_by if i != you.id]
             known = you.id in event.known_by
+    taken(w, person, known=known)
+    # Years have passed since the scene they were in: they died at home, not in it.
+    state.scene.present_ids = [i for i in state.scene.present_ids if i != person.id]
+
+
+def taken(w: World, person: Character, *, known: bool) -> None:
+    """The record of a death of old age, at this moment: dead for certain, with its note in
+    their history, `known` to the player character or not, and their romances ended by it
+    (C1, W17)."""
+    state = w.state
+    before = person.status
     person.status = CharacterStatus.DEAD
     person.death_certainty = DeathCertainty.CONFIRMED
     person.status_history.append(
@@ -473,12 +484,10 @@ def _pass_away(w: World, homes: _Homes, person: Character) -> None:
             world_s=w.at_s,
             timeline_id=state.timeline_id,
             note=_OLD_AGE,
-            known_by=[you.id] if known else [],
+            known_by=[state.player_id] if known else [],
         )
     )
     bonds.end_by_death(state, person, turn=w.ctx.turn, world_s=w.at_s)
-    # Years have passed since the scene they were in: they died at home, not in it.
-    state.scene.present_ids = [i for i in state.scene.present_ids if i != person.id]
 
 
 def _climb(w: World, homes: _Homes, since_s: int) -> None:

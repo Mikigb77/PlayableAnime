@@ -164,6 +164,14 @@ class CharacterChange(EngineModel):
         default=None,
         description="The bible's id of their people (G23), or of their kind for a beast (G24).",
     )
+    lifespan_years: int | None = Field(
+        default=None,
+        description="W6: only when this scene itself lengthened their life or ended their "
+        "ageing, by something that happened in it and that their people and their rung don't "
+        "already count, such as an elixir or a pact, or when EVENT asks how long they live: "
+        "how many years they now live in all, 1000000 for someone old age can no longer "
+        "take. Never to shorten a life.",
+    )
     location_id: str | None = None
     status: CharacterStatus | None = None
     death_certainty: DeathCertainty | None = None

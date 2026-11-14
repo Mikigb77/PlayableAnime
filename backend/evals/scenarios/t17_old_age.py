@@ -13,19 +13,22 @@ import json
 from collections import Counter
 
 from engine import bonds
-from engine.base import MINUTE, YEAR
-from engine.contracts import ActionKind, Intent, StateDelta
+from engine.base import DAY, MINUTE, YEAR
+from engine.context import Language
+from engine.contracts import ActionKind, CharacterChange, Intent, SceneEnd, StateDelta
 from engine.invariants import check_state
 from engine.labels import ago_label
-from engine.state import LifeEvent, WorldState
-from engine.visibility import memory_view
-from engine.world import lives, old_age
-from engine.world.tuning import OLD_AGE_FROM
+from engine.state import LifeEvent, SceneFrame, WorldState
+from engine.visibility import memory_view, status_view
+from engine.world import last_years, lives, old_age
+from engine.world.last_years import NEAR_TITLE
+from engine.world.scheduling import Kind, pending
+from engine.world.tuning import LAST_YEARS, LIFE_QUIET_S, OLD_AGE_FROM
 from evals import worlds
 from evals.judge import Rubric
 from evals.runner import Eval
 from evals.scenario import REGISTRY
-from evals.scenarios.common import plan, step
+from evals.scenarios.common import act, item, plan, step
 from evals.scenarios.t17_lives import (
     CALM,
     LIVE_TURNS,
@@ -40,6 +43,7 @@ from evals.scenarios.t17_lives import (
     on_the_lane,
     passing_scene,
     ruled_out,
+    span,
 )
 from evals.scenarios.t17_world import wider_world
 from graph.llm import Node
@@ -352,6 +356,12 @@ THREE_PEOPLES = (
 FAR_LONGER, AS_GOOD_AS_NEVER = 150, 10_000
 
 
+def long_lived(state: WorldState) -> None:
+    """Tomas lives as long as the elves do, by a span of his own: the hundred years come to
+    everyone else alone (his own old age is `t17.own-old-age`)."""
+    state.characters[YOU].lifespan_years = 600
+
+
 @scenario(
     "t17.long-lived-peoples",
     suite="T17",
@@ -359,12 +369,14 @@ FAR_LONGER, AS_GOOD_AS_NEVER = 150, 10_000
     requirements=("G23", "W6", "A2", "T17"),
     passes_when=(
         "An elf beekeeper and one of the unsleeping dead live in Millbrook among its people. "
-        "Tomas stays away a hundred years: old age takes every villager he knew, and neither "
-        "the elf, whose people live six hundred years, nor the dead man, whose people old age "
-        "never takes. Live, the real drafter is given a premise with humans, elves who live "
-        "for centuries and risen dead who never age, and every people it writes says how long "
-        "it lives: one far longer than a human life, and one that old age never takes or "
-        "that lives ten thousand years and more"
+        "Tomas, his own old age set aside, stays away a hundred years: old age takes every "
+        "villager he knew, and neither the elf, whose people live six hundred years, nor the "
+        "dead man, whose people old age never takes. Live, the real drafter is given a premise "
+        "with humans, elves who live for centuries and risen dead who never age, and every "
+        "people it writes says how long it lives: one far longer than a human life, and one "
+        "that old age never takes or that lives ten thousand years and more. The human courier "
+        "it writes for the player has an age on record and a human life to live, so old age "
+        "can come to them"
     ),
     notes="Live mode drafts one world and plays no scene.",
 )
@@ -374,6 +386,7 @@ async def long_lived_peoples(ev: Eval) -> None:
             worlds.millbrook_of_three_peoples(), seed=seed, settings=CALM, under_way=True
         )
         story.change(in_harrowgate)
+        story.change(long_lived)
         humans = [
             i
             for i, c in story.state.characters.items()
@@ -415,4 +428,391 @@ async def long_lived_peoples(ev: Eval) -> None:
         "and one old age never takes, or as good as never",
         any(years == 0 or (years or 0) >= AS_GOOD_AS_NEVER for years in spans.values()),
         str(spans),
+    )
+    you = world.player
+    found = last_years.years_of(world, world.world_s)
+    ev.metric(
+        "the human courier's years, as the real drafter wrote them",
+        {
+            "age": you.age,
+            "lifespan_years": you.lifespan_years,
+            "lives": None if found is None else found.span,
+        },
+    )
+    ev.check(
+        "old age can come to the human courier: an age on record, of a human life",
+        found is not None and found.age < found.span < FAR_LONGER,
+        f"age {you.age}, lifespan {you.lifespan_years}, span {old_age.span(world, you)}",
+    )
+
+
+# --- His own old age (N6, W6) ------------------------------------------------------------------
+
+FORTY = 40 * YEAR
+ON_THE_FARM = "Tomas is on his farm above Millbrook, alone, the day's work done."
+PEACH_ACTION = "I eat the peach from the Orchard of the Undying, the one I have kept all my life."
+# A made-up premise for the real drafter: someone old age never takes, played by the player.
+RISEN_COURIER = (
+    "I am one of the risen dead of the Bone Quarter in Ashmere, a harbour city where the dead "
+    "who walk never age. I died two hundred years ago, and I have carried the city's letters "
+    "ever since."
+)
+THE_END_IS_CLOSE = Rubric(
+    must=(
+        "The scene shows that Tomas is old, in his own body or in how he moves or tires",
+        "Tomas senses, or is made to understand, that the end of his life is close",
+    ),
+    must_not=(
+        "Tomas dies in this scene",
+        "The scene says how many years, months or days Tomas has left to live",
+    ),
+)
+TAKES_HIM = Rubric(
+    must=(
+        "The scene tells the death of Tomas, of old age",
+        "The scene ends on his death or on what it leaves behind, with nothing left for him "
+        "to do or to decide",
+    ),
+    must_not=("Something other than his age kills Tomas: a blow, an accident, an illness named",),
+)
+LIVES_ON = Rubric(
+    must=("Tomas eats the peach, and the scene shows that it changed him: he will live long",),
+    must_not=("Tomas dies in this scene",),
+)
+STILL_YOUNG = Rubric(
+    must_not=(
+        "The scene shows Tomas as an old man near the end of his life: frail, failing, or "
+        "with little time left",
+        "Tomas dies in this scene",
+    ),
+)
+AN_ELF = "Tomas is an elf of some seventy or eighty years. Elves live for many centuries."
+# What the engine keeps of the day, which no brief may hold.
+THE_DAY = "day_s"
+
+
+def on_his_farm(state: WorldState) -> None:
+    state.characters[YOU].location_id = "farm"
+    state.scene = SceneFrame(place_id="farm", present_ids=[YOU], ended_on=ON_THE_FARM)
+
+
+def of_his_years(state: WorldState) -> str:
+    """What the sheet says of his age (S10)."""
+    return status_view(state, Language.EN).sheet.about[-1]
+
+
+def stops(turn) -> bool:
+    """Whether the turn's scene opened on the end of his life being close."""
+    return turn.completed and turn.event is not None and turn.event.title == NEAR_TITLE
+
+
+async def to_the_end(story, length: int, *, turns: int, stop: bool = False) -> list[tuple]:
+    """He lets `length` go by on the farm, a stretch at a time, going back to it whenever the
+    world stops it for something, until the years are up or his story ends, or with `stop`
+    until the years stop for the end of his life being close. Each turn comes back with the
+    brief its narrator read (deterministic mode)."""
+    until = story.state.world_s + length
+    played: list[tuple] = []
+    while (left := until - story.state.world_s) >= DAY and len(played) < turns:
+        words, seconds = span(left)
+        skip = act(f"Work on the farm for {words}", "work", ActionKind.TIME_SKIP, seconds)
+        turn = await story.act(f"I keep to my work on the farm for {words}", skip)
+        played.append((turn, story.prompt(Node.NARRATOR)))
+        if turn.result is not None and turn.result.ending is not None:
+            break
+        if stop and stops(turn):
+            break
+    return played
+
+
+def stopped(played: list[tuple]) -> tuple | None:
+    """The turn whose scene opened on the end of his life being close, with its brief."""
+    return next(((turn, told) for turn, told in played if stops(turn)), None)
+
+
+def says_how_long(narration: str, ended_on: str, years: int) -> dict:
+    """A scripted scene whose update says how long he now lives."""
+    end = SceneEnd(ended_on=ended_on, place_id="farm", present_ids=[YOU])
+    longer = CharacterChange(id=YOU, lifespan_years=years)
+    return {
+        "narration": f"(scripted) {narration}",
+        "suggestions": [],
+        "update": StateDelta(characters=[longer], scene_end=end).model_dump(mode="json"),
+    }
+
+
+def peach_scene() -> dict:
+    return says_how_long(
+        "The peach is cold and sweet, and the years fall from Tomas.",
+        "Tomas turns the stone in his fingers.",
+        300,
+    )
+
+
+def elf_scene() -> dict:
+    return says_how_long(
+        "The winters sit on Tomas like one: he is an elf, and young.",
+        "Tomas goes back to the field.",
+        800,
+    )
+
+
+@scenario(
+    "t17.own-old-age",
+    suite="T17",
+    title="His own old age",
+    requirements=("N6", "W6", "W10", "G23", "A2", "S10", "T17"),
+    passes_when=(
+        "A farmer of sixty, whose record gives him eighty years, sets out to work his farm "
+        "for forty more. Nothing announces that old age has begun. The years stop once, some "
+        "way before the day old age takes him, a distance that varies from story to story: "
+        "the scene opens on the end of his life being close and is told so with no number, "
+        "his sheet says his age of about eighty years, no brief holds the day, and he is "
+        "alive. Going on, his story ends in a death of old age, never within a season of the "
+        "stop and never by his own hand, in a scene handed his death as its task, at an age "
+        "that varies from story to story between sixty-eight and a hundred. A farmer who "
+        "eats a peach that gives three hundred years after the stop, in a scene whose update "
+        "says so, lives through forty more years, and his sheet says of about three hundred. "
+        "An elf of sixty in a world drafted before peoples said how long they live, whose "
+        "life the record takes for a human one, has no span on his sheet; the stop says the "
+        "record doesn't say and asks, and once the scene answers that he lives centuries no "
+        "old age comes to him. Live, the real drafter is given someone old age never takes "
+        "to play, and the world it writes has no old age for them"
+    ),
+)
+async def own_old_age(ev: Eval) -> None:
+    ages: Counter[int] = Counter()
+    gaps: Counter[float] = Counter()
+    budget = 2 * LIVE_TURNS if ev.live else TURNS
+    for seed in ev.seeds(12, live=1):
+        story = ev.story(worlds.millbrook_at_sixty(), seed=seed, settings=CALM, under_way=True)
+        story.change(on_his_farm)
+        played = await to_the_end(story, FORTY, turns=budget)
+        ev.metric(f"scenes his years took, {seed}", len(played))
+        if ev.live:
+            ev.metric(f"stretches ruled out, {seed}", ruled_out(played))
+        found = stopped(played)
+        last, last_told = played[-1]
+        ending = last.result.ending if last.result is not None else None
+        end = story.state
+        if ev.live and found is None and ending is None and len(played) >= budget:
+            # The real models let the years go by in shorter stretches than the turns allow.
+            age = end.characters[YOU].age
+            ev.metric(f"the turns ran out before his years did, at the age of, {seed}", age)
+            continue
+        ev.check("the years stop once when the end of his life is close", found is not None, seed)
+        if found is None:
+            continue
+        turn, told = found
+        then = turn.state
+        you = then.characters[YOU]
+        ev.metric(f"the age the years stopped at, {seed}", you.age)
+        ev.check(
+            "there he is alive, an old man of sixty-five or more",
+            you.alive and 65 <= you.age <= 100,
+            f"{seed}: {you.status.value} at {you.age}",
+        )
+        ev.check(
+            "his sheet says his age of about eighty years",
+            of_his_years(then) == f"{you.age} of about 80 years",
+            f"{seed}: {of_his_years(then)}",
+            live=False,
+        )
+        ev.check(
+            "the scene is told the end is close, with no number, and reads him so from then on",
+            '"title":"Your years run short"' in told
+            and "the end of their life is close" in told
+            and "give no number of years or days left" in told
+            and "The record doesn't say how long they live" not in told
+            and f'"old_age":"{you.age} of the about 80 years someone like them lives: the end'
+            in told,
+            f"{seed}",
+            live=False,
+        )
+        ev.check(
+            "no brief holds the day",
+            not any(THE_DAY in each for _, each in played),
+            f"{seed}",
+            live=False,
+        )
+        await ev.judge(f"the end is close, {seed}", THE_END_IS_CLOSE, turn)
+        you = end.characters[YOU]
+        if ev.live and ending is None and len(played) >= budget:
+            ev.metric(f"the turns ran out before his years did, at the age of, {seed}", you.age)
+            continue
+        ev.check(
+            "going on, his story ends in a death of old age, never by his own hand",
+            ending is not None
+            and (ending.kind, ending.self_inflicted) == ("death", False)
+            and not you.alive
+            and lives.of_old_age(you),
+            f"{seed}: {ending}, {you.status.value} at {you.age}",
+        )
+        if ending is None:
+            continue
+        ages[you.age] += 1
+        gap = (end.world_s - then.world_s) / YEAR
+        gaps[round(gap, 1)] += 1
+        ev.metric(f"the age old age took him at, {seed}", you.age)
+        ev.check(
+            "never within a season of the stop, within the last of his span, before a hundred",
+            LIFE_QUIET_S <= end.world_s - then.world_s <= LAST_YEARS[1] * 80 * YEAR + DAY
+            and 68 <= you.age <= 100,
+            f"{seed}: {gap:.2f} years after it, at {you.age}",
+            live=False,
+        )
+        ev.check(
+            "the last scene is handed his death of old age as its task",
+            "ENDING: the player character dies of old age in this scene" in last_told
+            and '"title":"Your years run out"' in last_told,
+            f"{seed}",
+            live=False,
+        )
+        ev.check("the record holds together (C1)", check_state(end) == [], f"{seed}")
+        await ev.judge(f"old age takes him, {seed}", TAKES_HIM, last)
+    ev.metric("the ages old age took him at", dict(sorted(ages.items())))
+    ev.metric("years between the stop and the day", dict(sorted(gaps.items())))
+    ev.check(
+        "the day varies from story to story, and so does how far before it the years stop",
+        len(ages) >= 5 and len(gaps) >= 5,
+        f"{dict(sorted(ages.items()))}, {dict(sorted(gaps.items()))}",
+        live=False,
+    )
+
+    # The story lengthens his life: a peach that gives three hundred years.
+    for seed in ev.seeds(6, live=1):
+        story = ev.story(
+            worlds.millbrook_at_sixty(peach=True),
+            seed=f"{seed}/peach",
+            settings=CALM,
+            under_way=True,
+        )
+        story.change(on_his_farm)
+        played = await to_the_end(story, FORTY, turns=budget, stop=True)
+        if stopped(played) is None or not story.state.characters[YOU].alive:
+            if not ev.live or len(played) < budget:
+                ev.check("the years stop once when the end of his life is close", False, seed)
+            continue
+        eats = plan(
+            step(
+                "eat the peach from the Orchard of the Undying",
+                ActionKind.INSTANT,
+                MINUTE,
+                verb="eat",
+                uses=[item(worlds.PEACH)],
+            )
+        )
+        ate = await story.act(PEACH_ACTION, eats, narration=None if ev.live else peach_scene())
+        you = ate.state.characters[YOU]
+        ev.metric(f"how long he lives after the peach, {seed}", you.lifespan_years)
+        ev.check(
+            "a scene that lengthens his life puts it on record",
+            (you.lifespan_years or 0) >= FAR_LONGER,
+            f"{seed}: lifespan {you.lifespan_years}, issues "
+            f"{[i.code for i in ate.result.issues] if ate.result else ate.refused}",
+        )
+        await ev.judge(f"the peach, {seed}", LIVES_ON, ate)
+        if ev.live or not you.lifespan_years:
+            continue
+        later = await to_the_end(story, FORTY, turns=TURNS)
+        end = story.state
+        you = end.characters[YOU]
+        ev.check(
+            "and he lives through forty more years, of about three hundred",
+            you.alive
+            and you.age >= 105
+            and stopped(later) is None
+            and of_his_years(end) == f"{you.age} of about 300 years",
+            f"{seed}: {you.status.value} at {you.age}, {of_his_years(end)}",
+        )
+        ev.check("the record holds together (C1)", check_state(end) == [], f"{seed}/peach")
+
+    # A world drafted before peoples said how long they live: an elf whose life the record
+    # takes for a human one. The stop says so, and the scene answers.
+    for seed in ev.seeds(6, live=1):
+        story = ev.story(
+            worlds.millbrook_elf_at_sixty(), seed=f"{seed}/elf", settings=CALM, under_way=True
+        )
+        story.change(on_his_farm)
+        ev.check(
+            "before a scene told it, his sheet claims no span the record doesn't say",
+            of_his_years(story.state) == "60 years old",
+            f"{seed}/elf: {of_his_years(story.state)}",
+            live=False,
+        )
+        if ev.live:
+            played = await to_the_end(story, FORTY, turns=budget, stop=True)
+        else:
+            # A day, so the world has looked; then up to the day before the stop it keeps
+            # pending; then the stretch the stop cuts short, with a scene that answers.
+            played = await to_the_end(story, DAY, turns=1)
+            (waits,) = pending(story.state, Kind.OLD_AGE)
+            played += await to_the_end(story, waits.due_s - story.state.world_s - DAY, turns=TURNS)
+            words, seconds = span(20 * YEAR)
+            skip = act(f"Work on the farm for {words}", "work", ActionKind.TIME_SKIP, seconds)
+            turn = await story.act(
+                f"I keep to my work on the farm for {words}", skip, narration=elf_scene()
+            )
+            played.append((turn, story.prompt(Node.NARRATOR)))
+        found = stopped(played)
+        if found is None:
+            if not ev.live or len(played) < budget:
+                ev.check(
+                    "the years stop once when the end of his life is close", False, f"{seed}/elf"
+                )
+            continue
+        turn, told = found
+        you = turn.state.characters[YOU]
+        ev.check(
+            "nothing reads him as old before the stop, where the span is only assumed",
+            not any('"old_age":' in each for _, each in played[:-1]),
+            f"{seed}/elf",
+            live=False,
+        )
+        ev.check(
+            "the stop says the record takes his life for a human one, and asks",
+            "The record doesn't say how long they live" in told
+            and "(lifespan_years, 1000000 for never)" in told,
+            f"{seed}/elf",
+            live=False,
+        )
+        ev.metric(f"how long the elf lives, as the scene answered, {seed}", you.lifespan_years)
+        ev.check(
+            "the scene answers that he lives far longer, and the record has it",
+            (you.lifespan_years or 0) >= FAR_LONGER,
+            f"{seed}/elf: lifespan {you.lifespan_years}, issues "
+            f"{[i.code for i in turn.result.issues] if turn.result else turn.refused}",
+        )
+        await ev.judge(f"an elf near eighty, {seed}", STILL_YOUNG, turn, context=AN_ELF)
+        if ev.live or not you.lifespan_years:
+            continue
+        later = await to_the_end(story, FORTY, turns=TURNS)
+        end = story.state
+        you = end.characters[YOU]
+        ev.check(
+            "and no old age comes to him in the forty years after",
+            you.alive
+            and stopped(later) is None
+            and of_his_years(end) == f"{you.age} of about 800 years"
+            and '"old_age":' not in later[-1][1],
+            f"{seed}/elf: {you.status.value} at {you.age}, {of_his_years(end)}",
+        )
+        ev.check("the record holds together (C1)", check_state(end) == [], f"{seed}/elf")
+    if not ev.live:
+        return
+    world = await ev.drafted(RISEN_COURIER)
+    you = world.player
+    people = next((p for p in world.bible.peoples if p.id == you.people_id), None)
+    ev.metric(
+        "someone old age never takes, as the real drafter wrote them",
+        {
+            "age": you.age,
+            "lifespan_years": you.lifespan_years,
+            "people": None if people is None else (people.name, people.lifespan_years),
+        },
+    )
+    ev.check(
+        "the world the drafter writes has no old age for them",
+        last_years.years_of(world, world.world_s) is None,
+        f"age {you.age}, lifespan {you.lifespan_years}, span {old_age.span(world, you)}",
     )

@@ -17,7 +17,7 @@ from engine.contracts import (
 )
 from engine.samples import grounded_world
 from engine.state.cast import CharacterStatus
-from engine.state.records import StepResult
+from engine.state.records import StatusChange, StepResult
 from graph.llm import Node, Reply
 from graph.turn import (
     Ending,
@@ -256,6 +256,19 @@ def test_struck_down_while_turning_harm_on_yourself_is_no_self_inflicted_death()
     resolution.steps[0].perils = [blow]
 
     ending = ending_of(before, after, Intent(steps=[cut]), resolution, TurnKind.ACTION)
+    assert ending == Ending(kind="death", character_id="luca", self_inflicted=False)
+
+
+def test_dying_of_old_age_is_no_self_inflicted_death():
+    """N6, W6: their years ran out in a step that aimed at their own body, and it is old age
+    that took them (`engine.world.last_years`): the step it cut short did nothing."""
+    before, after = died()
+    old_age = StatusChange(
+        status="dead", from_status="alive", turn=2, world_s=0, note="Died of old age."
+    )
+    after.characters["luca"].status_history.append(old_age)
+
+    ending = ending_of(before, after, Intent(steps=[POISON]), played(POISON), TurnKind.ACTION)
     assert ending == Ending(kind="death", character_id="luca", self_inflicted=False)
 
 

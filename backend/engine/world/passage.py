@@ -2,11 +2,12 @@
 
 `catch_up` is the one loop that moves the world clock through pending events, at the start of a
 turn and during every step of a plan (`engine.pipeline.play_out` calls it per step). It makes
-sure the world's own processes are pending (the tick, the clocks' next steps, births), spaces the
-tick so a stretch of any length takes a bounded number of steps, then runs WS2's `advance_clock`
-with this package's handler: every event due on the way applies in time order, each at its due
-time, events scheduled inside the stretch apply in their turn, and the first that needs the player
-stops the clock there. Nothing fires while a time stop holds the world (W10a).
+sure the world's own processes are pending (the tick, the clocks' next steps, births, the player
+character's old age), spaces the tick so a stretch of any length takes a bounded number of
+steps, then runs WS2's `advance_clock` with this package's handler: every event due on the way
+applies in time order, each at its due time, events scheduled inside the stretch apply in their
+turn, and the first that needs the player stops the clock there. Nothing fires while a time stop
+holds the world (W10a).
 """
 
 from engine.context import TurnContext
@@ -16,6 +17,7 @@ from engine.timekeeping import TimePassage, advance_clock, world_stopped
 from engine.world.births import ensure_births
 from engine.world.clocks import ensure_clock_events
 from engine.world.events import apply_in_place, needs_player
+from engine.world.last_years import ensure_old_age
 from engine.world.scheduling import World
 from engine.world.tick import plan_ticks
 
@@ -39,6 +41,7 @@ def catch_up(
     w = World(state=prepared, ctx=ctx, at_s=prepared.world_s, rng=rng.child("world"))
     ensure_clock_events(w)
     ensure_births(w)
+    ensure_old_age(w)
     plan_ticks(w, until_s)
     passage = advance_clock(
         prepared,

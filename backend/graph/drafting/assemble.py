@@ -108,6 +108,7 @@ from engine.state import (
     WorldState,
     stage_named,
 )
+from engine.world.tuning import AGELESS_YEARS
 from graph.drafting.catalog import PremiseTemplate
 from graph.drafting.schema import (
     PLAYER_ID,
@@ -960,6 +961,7 @@ class _Assembler:
             description=_text(c.description),
             appearance=_text(c.appearance),
             age=_age(c.age),
+            lifespan_years=_lifespan(c.lifespan_years, _age(c.age)),
             people_id=self.peoples.get(c.people_id),
             location_id=self.places.get(c.location_id),
             memberships=self._memberships(c.memberships),
@@ -1303,6 +1305,21 @@ def _existence_text(kind: Extraordinary, language: Language = Language.EN) -> st
 
 def _age(age: int | None) -> int | None:
     return None if age is None else _clamp(age, 0, 1_000_000, 0)
+
+
+def _lifespan(years: int | None, age: int | None) -> int | None:
+    """N6, W6. How long the player character lives, as the draft says it: as good as for ever
+    where old age never takes them (0), and a span of their own where it says more years than
+    they have lived. Their people's span and their rung's count beside it, the longest of the
+    three (`engine.world.old_age.span`). Nothing where the draft doesn't say, or says no more
+    than their age: the world settles that the first time it counts their years, and leaves
+    alone someone it finds older than their kind lives (`engine.world.last_years`)."""
+    if years is None:
+        return None
+    if years <= 0:
+        return AGELESS_YEARS
+    years = min(years, AGELESS_YEARS)
+    return years if age is None or years > age else None
 
 
 def _skills(proposals) -> list[Skill]:

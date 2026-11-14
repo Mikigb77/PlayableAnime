@@ -317,6 +317,12 @@ async def resolve(state: TurnState, runtime: Runtime[TurnDeps]) -> dict[str, Any
             )
         intent = kept
         left_out = tuple(r.text for r in refused)
+    if intent is not None and turn.state.player.alive and not world.player.alive:
+        # N6, W6. Their years ran out before they could act: an old age the last stretch's cap
+        # left overdue took them as the turn began. Nothing they set out to do happens, and
+        # the scene is their death.
+        issues.append(Issue("died_first", "the player character died before the action"))
+        intent = None
     if intent is None:
         played = PlayOut(state=world, resolution=Resolution())
     else:
