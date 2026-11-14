@@ -19,11 +19,14 @@ The steps of a play, played in the order given:
     {"choose": 2}                                                         a suggestion, from 1
     {"wait": true}, {"observe": true}                                     the standing actions
     {"show": ["sheet", "memory", "record"]}                               the screens, the record
+    {"copy": "farmer"}                                                    a new play from another
 
 `create` also takes `premise_id` (a starter), `gift` (the strength picked on the create screen)
-and `settings` (S6). A play's folder, `<root>/<name>`, holds `play.json`, the draft and the
-story's state between calls, and `transcript.md`. The Evals workflow keeps the root on the
-`plays` branch, since its runs keep nothing else between them (`.github/workflows/evals.yml`).
+and `settings` (S6). `copy` starts a new play as another stands, its draft or its story on the
+same seed, to try a different move from the same point. A play's folder, `<root>/<name>`, holds
+`play.json`, the draft and the story's state between calls, and `transcript.md`. The Evals
+workflow keeps the root on the `plays` branch, since its runs keep nothing else between them
+(`.github/workflows/evals.yml`).
 
 A play is made up, like an eval's stories: no player's data (T16). With the offline model
 (`LLM_PROVIDER=fake`) it plays the stock draft and stock scenes, which is how its tests run.
@@ -32,6 +35,7 @@ A play is made up, like an eval's stories: no player's data (T16). With the offl
 from __future__ import annotations
 
 import asyncio
+import copy
 import dataclasses
 import json
 import re
@@ -197,6 +201,13 @@ async def play_all(root: Path, plays: Mapping[str, Any], models: Models) -> dict
             raise PlayError(
                 f"A play's name is small letters, digits and dashes, 40 at most: {name!r}"
             )
+    for steps in plays.values():
+        for step in steps if isinstance(steps, Sequence) and not isinstance(steps, str) else ():
+            if isinstance(step, Mapping) and step.get("copy") in plays:
+                # Plays run side by side, so the copy would be of wherever the other had got to.
+                raise PlayError(
+                    f"{step['copy']!r} is played in this call too: copy it in a call of its own."
+                )
     at_once = asyncio.Semaphore(PLAYS_AT_ONCE)
 
     async def one(name: str, steps: Any) -> bool:
@@ -246,6 +257,21 @@ def _drafter(models: Models, rating: str, telemetry: TurnTelemetry) -> ModelClie
 
         return ModelClient(offline_backend(grounded=False), ModelConfig(), rating=rating)
     return models.client(rating, telemetry)
+
+
+async def _copy(play_: Play, given: Any, _models: Models) -> None:
+    """This play becomes another as it stands, to try a different move from the same point."""
+    if not isinstance(given, str) or not NAME.fullmatch(given):
+        raise PlayError("copy takes the name of another play.")
+    if play_.data:
+        raise PlayError("This play already holds a story: a copy starts a new play.")
+    source = Play.load(play_.folder.parent / given)
+    if not source.data:
+        raise PlayError(f"There is no play named {given!r} to copy.")
+    play_.data = copy.deepcopy(source.data)
+    scenes = len(play_.data.get("scenes", []))
+    where = f"after {scenes} scenes" if play_.data.get("state") is not None else "as a draft"
+    play_.tell(f"## Copied from `{given}`, {where}")
 
 
 async def _create(play_: Play, given: Any, models: Models) -> None:
@@ -377,6 +403,7 @@ async def _show(play_: Play, given: Any, _models: Models) -> None:
 
 
 _STEPS = {
+    "copy": _copy,
     "create": _create,
     "revise": _revise,
     "start": _start,

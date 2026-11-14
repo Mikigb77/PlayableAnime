@@ -22,7 +22,9 @@
 # given on each play it names (backend/evals/play.py), to read each scene before deciding the
 # next move as a player does. A run's files don't outlive it, so the plays are kept on the `plays`
 # branch: the run starts from the branch and a second job commits what it played on top, where a
-# thread that can't download the artifact reads the transcripts with git. One run at a time.
+# thread that can't download the artifact reads the transcripts with git. One run at a time. A run
+# only ever adds to the branch or changes a play it played, and `plays_from` starts it from an
+# earlier commit of the branch, to play a story again from before a move.
 
 name: Evals
 run-name: "Evals${{ inputs.play && ', played by hand' || '' }}${{ inputs.styles && ', house style candidates' || '' }}${{ inputs.picture_model && format(', pictures by {0}', inputs.picture_model) || '' }}${{ inputs.interpret_model && format(', read by {0}', inputs.interpret_model) || '' }}${{ inputs.interpret_thinking && format(', thinking {0}', inputs.interpret_thinking) || '' }}"
@@ -58,6 +60,10 @@ on:
         default: ""
       play:
         description: Play stories by hand instead of the scenarios, a JSON object of each play's name and its list of steps (backend/evals/play.py)
+        type: string
+        default: ""
+      plays_from:
+        description: With play, the commit of the plays branch to start from (blank is the branch as it stands)
         type: string
         default: ""
 
@@ -132,18 +138,39 @@ jobs:
 
       - name: Restore the plays
         if: ${{ inputs.play }}
+        env:
+          FROM: ${{ inputs.plays_from }}
         run: |
-          # The plays so far, from their branch. Only a branch that isn't there yet is an empty
-          # start: a branch that couldn't be read must not be replaced by what this run plays.
+          # The plays so far, from their branch, or as they stood at the commit asked for. Only a
+          # branch that isn't there yet is an empty start: one that couldn't be read stops the run.
+          set -o pipefail
           mkdir -p plays
           found=0
           git ls-remote --exit-code --heads origin plays >/dev/null || found=$?
           case "$found" in
             0)
-              git fetch -q --depth=1 origin plays
-              git archive FETCH_HEAD | tar -x -C plays
+              git fetch -q origin plays
+              from=FETCH_HEAD
+              if [ -n "$FROM" ]; then
+                if ! [[ "$FROM" =~ ^[0-9a-f]{7,40}$ ]] ||
+                  ! git merge-base --is-ancestor "$FROM" FETCH_HEAD 2>/dev/null; then
+                  echo "plays_from is a commit of the plays branch." >&2
+                  exit 1
+                fi
+                from=$FROM
+              fi
+              # From the top of the repository: in a folder, git archives only that folder's
+              # part of the tree, which the plays branch doesn't have.
+              git -C "$GITHUB_WORKSPACE" archive "$from" | tar -x -C plays
+              echo "Restored $(find plays -name play.json | wc -l) plays."
               ;;
-            2) echo "No plays branch yet: the first plays start it." ;;
+            2)
+              if [ -n "$FROM" ]; then
+                echo "No plays branch yet: plays_from has nothing to start from." >&2
+                exit 1
+              fi
+              echo "No plays branch yet: the first plays start it."
+              ;;
             *)
               echo "The plays branch couldn't be read." >&2
               exit 1
@@ -259,14 +286,15 @@ jobs:
         run: |
           remote="https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git init -q -b plays
-          # On top of the branch as it is, so its history says what each run played. The folder
-          # is the whole branch: the run started from it (Restore the plays).
+          # On top of the branch as it is, so its history says what each run played. A run adds
+          # plays and changes the ones it played, and never takes one off the branch: a run that
+          # started from nothing, or from an earlier commit, leaves the other plays as they are.
           found=0
           git ls-remote --exit-code --heads "$remote" plays >/dev/null || found=$?
           case "$found" in
             0)
               git fetch -q "$remote" plays
-              git reset -q --soft FETCH_HEAD
+              git reset -q FETCH_HEAD
               ;;
             2) ;;
             *)
@@ -274,7 +302,7 @@ jobs:
               exit 1
               ;;
           esac
-          git add -A .
+          git add --ignore-removal .
           if git diff --cached --quiet HEAD 2>/dev/null; then
             echo "Nothing new was played."
             exit 0
