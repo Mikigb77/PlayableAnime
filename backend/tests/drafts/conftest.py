@@ -3,7 +3,7 @@ from django.test import Client
 
 from drafts import service
 from graph.drafting import samples
-from graph.drafting.schema import WorldChange
+from graph.drafting.schema import CharacterChange, WorldChange
 from graph.llm import FakeBackend, Reply
 from graph.llm.types import Request
 from tests.conftest import auth_headers
@@ -22,13 +22,12 @@ def funded_players(settings):
 
 
 def _sample_reply(request: Request) -> Reply:
-    """The Naples draft, or the part of it a revision asks for: the character, or no change to
-    the world."""
+    """The Naples draft, or for a revision a change that changes nothing."""
     title = (request.json_schema or {}).get("title")
     if title == "WorldChange":
-        return Reply(json=WorldChange())  # a change that changes nothing
-    if title == "CharacterProposal":
-        return Reply(json=samples.naples_character())
+        return Reply(json=WorldChange())
+    if title == "CharacterChange":
+        return Reply(json=CharacterChange())
     return Reply(json=samples.naples())
 
 

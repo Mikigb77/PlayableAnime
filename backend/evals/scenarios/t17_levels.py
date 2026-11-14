@@ -11,11 +11,18 @@ charms people got a power over minds; and two ladders made everyone on them immu
 
 Live mode drafts each premise below with the real drafter and reads the record. Deterministic
 mode reads the offline draft the same way, and the rules code keeps whatever a draft says.
+
+A second eval asks for small changes to a drafted character in plain words, as a player does at
+a row of the draft, and reads what else moved. On the live build of 2026-11-14 "Call her Nora"
+came back in three seconds with a name, an age and two traits, and that was the whole character
+from then on; "She is also a decent cook" took 87 seconds and cost her a point of willpower and
+one of nerve.
 """
 
 from __future__ import annotations
 
 import asyncio
+import time
 from dataclasses import dataclass
 
 from engine.context import Language, Rating
@@ -333,3 +340,156 @@ async def level_from_a_short_description(ev: Eval) -> None:
     drafts = await asyncio.gather(*(drafted(case) for case in DESCRIBED))
     levels = {case.name: read(case, draft) for case, draft in zip(DESCRIBED, drafts, strict=True)}
     ev.metric("levels", levels)
+
+
+# A barista as a player would describe her, with things to her name that a change must keep.
+BARISTA = (
+    "A barista in her twenties in a rainy port city. She writes songs nobody has heard, keeps "
+    "a notebook of them and an old guitar, and knows every regular by their order."
+)
+# What the real model answered to "Call her Nora" on 2026-11-14, when its answer was kept as
+# the whole character.
+THIN_ANSWER = {"name": "Nora", "age": 24, "traits": [{"name": "a weak body"}]}
+# A change the player waits on at a row of the draft: longer than this and the phone gives up.
+PATIENCE_S = 60
+
+
+def _moved(before, after) -> list[str]:
+    """The parts of the character that differ between two drafts of them, by name."""
+    was, now = before.model_dump(mode="json"), after.model_dump(mode="json")
+    return sorted(name for name in was if was[name] != now[name])
+
+
+@scenario(
+    "t17.change-touches-only-what-it-names",
+    suite="T17",
+    title="A change to the character",
+    requirements=("G2", "G1", "T17"),
+    passes_when=(
+        "A change to a drafted character asked for in plain words changes what it names and "
+        "nothing else: a new name renames them and takes the old one's place wherever the "
+        "draft says it, a skill asked for is added, a belonging given up is gone, a skill "
+        "raised is raised, and every time their attributes, their other skills and "
+        "belongings, their looks, their past and their powers are word for word what they "
+        "were; and each change comes back while the player waits (G2, G1)"
+    ),
+    notes=(
+        "Deterministic mode merges the thin answer the real model once gave into the offline "
+        "drafter's outer disciple, and asks the offline drafter for a change, which changes "
+        "nothing; live mode drafts a barista with the real drafter and asks it for four "
+        "changes, one after another. Its metrics say what each change moved and how long it "
+        "took."
+    ),
+)
+async def change_touches_only_what_it_names(ev: Eval) -> None:
+    from graph.drafting import direct, lenient, samples
+    from graph.drafting.chain import apply_character_change
+    from graph.drafting.schema import CharacterChange
+
+    def only(what: str, before, after, *allowed: str) -> list[str]:
+        """Checks that a change moved nothing but `allowed`, and gives what it moved."""
+        moved = _moved(before.proposal.character, after.proposal.character)
+        beyond = [name for name in moved if name not in allowed]
+        ev.check(
+            "a change changes nothing it doesn't name",
+            not beyond,
+            f"{what}: it also changed {beyond}",
+        )
+        ev.check(
+            "a change to the character leaves the world as it was",
+            after.proposal.world == before.proposal.world,
+            f"{what}: the world changed",
+        )
+        return moved
+
+    if not ev.live:
+        draft = await ev.draft(samples.CULTIVATION_PREMISE)
+        character = draft.proposal.character
+        thin = CharacterChange.model_validate(THIN_ANSWER, context=lenient.model_output())
+        named = apply_character_change(character, thin)
+        ev.check(
+            "an answer of a name and little else renames them and loses nothing",
+            named.name == "Nora" and _moved(character, named) == ["age", "name"],
+            f"it changed {_moved(character, named)}",
+        )
+        ev.check(
+            "a record named again keeps what the answer left out",
+            named.traits == character.traits and named.powers == character.powers,
+            f"traits {[t.kind for t in named.traits]}, powers {len(named.powers)}",
+        )
+        same = await ev.revised(draft, "character", "Call her Nora.")
+        ev.metric("changes", {"offline": only("an empty change", draft, same)})
+        return
+
+    draft = await ev.draft(BARISTA)
+    changes: dict[str, dict[str, object]] = {}
+
+    async def ask(what: str, words: str, before):
+        started = time.perf_counter()
+        after = await ev.revised(before, "character", words)
+        seconds = round(time.perf_counter() - started, 1)
+        ev.check(
+            "a change comes back while the player waits",
+            seconds <= PATIENCE_S,
+            f"{what}: {seconds} s",
+        )
+        changes[what] = {"seconds": seconds}
+        return after
+
+    # A new name: everything else is the draft with the new name where it said the old one.
+    named = await ask("name", "Call her Nora.", draft)
+    name = named.proposal.character.name
+    ev.check("a new name is the one asked for", "nora" in name.casefold(), f"she is {name}")
+    carried = direct.renamed(draft.proposal, name)
+    moved = _moved(carried.character, named.proposal.character)
+    ev.check(
+        "a change changes nothing it doesn't name", not moved, f"name: it also changed {moved}"
+    )
+    ev.check(
+        "a new name takes the old one's place wherever the draft says it",
+        named.proposal.world == carried.world,
+        "the world differs from the draft under the new name",
+    )
+    changes["name"]["moved"] = _moved(draft.proposal.character, named.proposal.character)
+
+    # A skill asked for: one more skill, and the ones she had as they were.
+    cook = await ask("skill", "She is also a decent cook.", named)
+    had = named.proposal.character.skills
+    has = cook.proposal.character.skills
+    ev.check(
+        "a skill asked for is added, and the ones they had stay",
+        has[: len(had)] == had and len(has) == len(had) + 1 and "cook" in has[-1].name.casefold(),
+        f"skills {[(skill.name, skill.level.value) for skill in has]}",
+    )
+    changes["skill"]["moved"] = only("skill", named, cook, "skills")
+
+    # A belonging given up: it goes, and the rest of what she carries stays.
+    things = cook.proposal.character.items
+    if things:
+        gone = things[0].name
+        fewer = await ask("belonging", f"She no longer has {gone}.", cook)
+        ev.check(
+            "a belonging given up is gone, and the rest stay",
+            fewer.proposal.character.items == things[1:],
+            f"she has {[item.name for item in fewer.proposal.character.items]}, without {gone}",
+        )
+        changes["belonging"]["moved"] = only("belonging", cook, fewer, "items")
+    else:
+        fewer = cook
+
+    # A skill raised, asked the way a player asks it at the skills row.
+    skills = fewer.proposal.character.skills
+    if skills:
+        best = skills[0].name
+        raised = await ask("level", f"Make her a master of {best}.", fewer)
+        now = raised.proposal.character.skills
+        ev.check(
+            "a skill raised is raised, and the others stay",
+            len(now) == len(skills)
+            and now[0].name == best
+            and now[0].level is SkillLevel.MASTER
+            and now[1:] == skills[1:],
+            f"skills {[(skill.name, skill.level.value) for skill in now]}",
+        )
+        changes["level"]["moved"] = only("level", fewer, raised, "skills")
+    ev.metric("changes", changes)

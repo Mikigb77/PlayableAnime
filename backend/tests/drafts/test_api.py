@@ -309,7 +309,7 @@ def test_lowering_the_rating_redrafts_within_teen(player_client, model):
     assert response.status_code == 200, response.content
     assert response.json()["rating"] == "teen"
     redrafts = model.requests[calls:]
-    assert [r.json_schema["title"] for r in redrafts] == ["WorldChange", "CharacterProposal"]
+    assert [r.json_schema["title"] for r in redrafts] == ["WorldChange", "CharacterChange"]
     assert all("Rating: Teen" in r.prompt.system for r in redrafts)
 
     raised = _patch(player_client, draft_id, {"rating": "mature"})
@@ -558,16 +558,18 @@ def test_races_asked_for_in_plain_words_join_the_world_and_nothing_else_changes(
     assert LedgerEntry.objects.filter(user=player, kind=EntryKind.DRAFT).count() == 2
 
 
-def test_a_character_revision_redrafts_the_character(player_client, model):
+def test_a_character_revision_changes_only_what_it_names(player_client, model):
     draft = _draft(player_client)
-    character = samples.naples_character()
-    character.age = 31
-    model.script(Node.DRAFTER, Reply(json=character))
+    drafted = Draft.objects.get(pk=draft["id"]).proposal["character"]
+    model.script(Node.DRAFTER, Reply(json={"age": 31}))
 
     response = _revise(player_client, draft["id"], {"target": "character", "instruction": "Older"})
 
     assert response.json()["character_lines"][0] == "Luca Esposito, 31."
     assert response.json()["world_lines"] == draft["world_lines"]
+    # G2: the change is all the model writes, and all that changes.
+    assert model.requests[-1].json_schema["title"] == "CharacterChange"
+    assert Draft.objects.get(pk=draft["id"]).proposal["character"] == {**drafted, "age": 31}
 
 
 @pytest.mark.parametrize(

@@ -3,9 +3,10 @@ directly (G1, G2, S1). Plain Python on the model layer, with no Django (B4).
 
 A `Draft` holds only inputs: the model's latest proposal and what the player set up. Its world
 state is a pure function of them (`Draft.state()`), so a revision changes one part of the
-proposal and code re-decides everything else, the same way every time. A change to the world
-comes back as only what it touches (`WorldChange`), which code merges in (`apply_change`); a
-change to the character comes back as the whole character, which is small. Every proposal is
+proposal and code re-decides everything else, the same way every time. A change comes back
+as only what it touches, and code merges it in: a `WorldChange` into the world (`apply_change`)
+and a `CharacterChange` into the character (`apply_character_change`), so nothing the change
+leaves out is ever lost or shifted by a model that copies it back badly. Every proposal is
 cleaned of real people and organisations before it is kept (G12, `real_names`).
 """
 
@@ -13,7 +14,9 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass, replace
-from typing import Literal
+from typing import Literal, get_args
+
+from pydantic import ValidationError
 
 from engine import pipeline
 from engine.base import HOUR
@@ -35,7 +38,11 @@ from graph.drafting.prompts import (
 )
 from graph.drafting.real_names import without_real_names
 from graph.drafting.schema import (
+    CHARACTER_KEYS,
+    CHARACTER_SECTIONS,
+    CHARACTER_TEXTS,
     WORLD_SECTIONS,
+    CharacterChange,
     CharacterProposal,
     ClockP,
     DraftProposal,
@@ -205,6 +212,11 @@ async def create(
 # thinking for about 1,400 of answer, which was 18 to 46 s of every one and 111 s of the
 # slowest, long enough for the phone to drop the request.
 CHANGE = CallOptions(thinking="low")
+# A change to the character is a few records at most, and a whole character is about 1,400
+# tokens. On 2026-11-14 an answer to "she is also a decent cook" ran to the drafter's whole
+# limit of 16,384 before it failed, which the player waited through for 87 s with the second
+# try. So an answer that runs away is cut here, with room for the thinking it shares.
+CHARACTER_CHANGE = replace(CHANGE, max_output_tokens=6000)
 
 
 def asked_at(draft: Draft, target: Target, kind: PartKind | None) -> str:
@@ -390,13 +402,20 @@ async def _revise_character(
     llm: ModelClient, draft: Draft, instruction: str, about: str = ""
 ) -> Draft:
     state = draft.state()
-    character = await llm.structured(
+    change = await llm.structured(
         Node.DRAFTER,
         _revise_prompt(draft, state, "character", instruction, about),
-        CharacterProposal,
-        options=CHANGE,
+        CharacterChange,
+        options=CHARACTER_CHANGE,
     )
-    character = without_real_names(character)
+    if change.name.strip():
+        # A new name takes the old one's place wherever the draft says it, as one the player
+        # types does (`direct.renamed`): their past, a key character's notes and a goal that
+        # said the old name are theirs under the new one (G1), with nothing for the model to
+        # write again.
+        named = replace(draft, proposal=direct.renamed(draft.proposal, change.name))
+        draft = _telling(named, moved(state, named.state(), draft.told, draft.language))
+    character = without_real_names(apply_character_change(draft.proposal.character, change))
     return replace(draft, proposal=DraftProposal(world=draft.proposal.world, character=character))
 
 
@@ -549,6 +568,155 @@ def _sections(world: WorldProposal, rules: list[RuleP], named: str, key: str) ->
         section
         for section in WORLD_SECTIONS
         if _find(_records(world, rules, section), key) is not None
+    )
+    return holding if len(holding) == 1 else ()
+
+
+# The kind of record each of the character's lists holds.
+_RECORD = {
+    section: get_args(CharacterProposal.model_fields[section].annotation)[0]
+    for section in CHARACTER_SECTIONS
+}
+
+
+def apply_character_change(
+    character: CharacterProposal, change: CharacterChange
+) -> CharacterProposal:
+    """Merges a change into the character (G2), as `apply_change` does for the world: whatever
+    the change leaves out stays exactly as it was, so a model that answers "call her Nora" with
+    a name and nothing else renames her and loses nothing.
+
+    A text the change leaves empty is unchanged, unless it lists it in `cleared`; a number or
+    a whole list it leaves null is unchanged; and of the attributes, the tiers and the
+    temperament only the parts it gives change. In the lists of records, one the change gives
+    under a name the character already has (`CHARACTER_KEYS`) changes that record, and only in
+    the fields it gives; one under a new name is added, when it has what a new record needs;
+    and one it lists in `removed` goes, unless it gives it again."""
+    merged: dict[str, object] = {}
+    cleared = {slug(name).replace("-", "_") for name in change.cleared}
+    for name in ("name", *CHARACTER_TEXTS):
+        if text := getattr(change, name).strip():
+            merged[name] = text
+        elif name in cleared and name in CHARACTER_TEXTS:
+            merged[name] = ""
+    for name in (
+        "age",
+        "lifespan_years",
+        "money",
+        "aliases",
+        "parent_ids",
+        "goals",
+        "backstory",
+        "hidden_past",
+    ):
+        if (value := getattr(change, name)) is not None:
+            merged[name] = value
+    for name in ("attributes", "axes", "temperament"):
+        if (part := getattr(change, name)) is not None:
+            given = {
+                field: value
+                for field in type(part).model_fields
+                if (value := getattr(part, field)) is not None and value != ""
+            }
+            merged[name] = getattr(character, name).model_copy(update=given)
+
+    removed: dict[str, set[str]] = {}
+    for removal in change.removed:
+        if key := slug(removal.name):
+            for section in _character_sections(character, removal.section, key):
+                removed.setdefault(section, set()).add(key)
+    for section in CHARACTER_SECTIONS:
+        merged[section] = _merged_records(
+            getattr(character, section),
+            getattr(change, section),
+            CHARACTER_KEYS[section],
+            removed.get(section, set()),
+            _RECORD[section],
+        )
+    return character.model_copy(update=merged)
+
+
+def _merged_records(
+    current: list, given: list, keys: tuple[str, ...], gone: set[str], kind: type
+) -> list:
+    """One of the character's lists with the change's records merged in, keeping the order."""
+    again = {slug(getattr(record, key)) for record in given for key in keys}
+    records = [
+        record
+        for record in current
+        if not any(
+            slug(getattr(record, key)) in gone and slug(getattr(record, key)) not in again
+            for key in keys
+        )
+    ]
+    for record in given:
+        at = _held(records, record, keys)
+        if at is not None:
+            records[at] = _overlaid(records[at], record, kind, keys)
+        elif (new := _new_record(record, kind, keys)) is not None:
+            records.append(new)
+    return records
+
+
+def _held(records: list, record, keys: tuple[str, ...]) -> int | None:
+    """Where the character holds the record a change gives: by the first of its keys that
+    finds one, so a power is found by its id and, failing that, by its name."""
+    for key in keys:
+        at = _find(records, slug(getattr(record, key)), lambda held, key=key: getattr(held, key))
+        if at is not None:
+            return at
+    return None
+
+
+def _overlaid(held, given, kind: type, keys: tuple[str, ...]):
+    """The record the character holds with the fields the change gives. A field the change
+    leaves out keeps its value, and so does one a record can't be without when the change
+    gives it empty. A power found by its name keeps its id."""
+    fields = {
+        field: value
+        for field in given.model_fields_set
+        if field in kind.model_fields
+        and not (
+            (value := getattr(given, field)) == ""
+            and (kind.model_fields[field].is_required() or field in keys)
+        )
+    }
+    if len(keys) > 1 and slug(getattr(given, keys[0])) != slug(getattr(held, keys[0])):
+        fields.pop(keys[0], None)
+    return held.model_copy(update=fields)
+
+
+def _new_record(given, kind: type, keys: tuple[str, ...]):
+    """A record the change adds, or None when it lacks what a new record needs: a power with
+    no name or no kind, a ladder position with no rung."""
+    fields = {field: getattr(given, field) for field in given.model_fields_set}
+    if len(keys) > 1 and not fields.get(keys[0]):
+        fields[keys[0]] = slug(getattr(given, keys[-1]))
+    if any(
+        fields.get(name) == "" for name, field in kind.model_fields.items() if field.is_required()
+    ):
+        return None
+    try:
+        return kind(**fields)
+    except ValidationError:
+        return None
+
+
+def _character_sections(character: CharacterProposal, named: str, key: str) -> tuple[str, ...]:
+    """The list a removal names, also in the singular ("skill"). Failing that, the one list
+    that holds a record by this name; when none or several do, the removal names nothing."""
+    named = slug(named)
+    for section in (named, f"{named}s"):
+        if section in CHARACTER_SECTIONS:
+            return (section,)
+    holding = tuple(
+        section
+        for section in CHARACTER_SECTIONS
+        if any(
+            slug(getattr(record, field)) == key
+            for record in getattr(character, section)
+            for field in CHARACTER_KEYS[section]
+        )
     )
     return holding if len(holding) == 1 else ()
 

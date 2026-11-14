@@ -202,6 +202,21 @@ several_partners or unions only if the change alters them, each in full. The cha
 it is, so keep what they belong to and where they are unless the change removes it.\
 """
 
+CHARACTER_CHANGE = """\
+Reply with only what the change touches, and leave everything else out: it stays exactly as it is, \
+so never copy the character back. In skills, traits, talents, powers, techniques, items, \
+connections, memberships, ladders and reserves write only the records the change adds or alters. \
+One under a name the character already has (a power's id, a membership's faction_id, a ladder \
+position's ladder_id) changes that record: give what the change alters in it, and whatever you \
+leave out of it stays. One under a new name is added, so write it in full. Put each record the \
+change takes away in removed, with its list as section and its name, and with it the old record \
+of one the change renames or replaces with another. Give the name, the age, the looks, an \
+attribute, the money or any other single thing only where the change alters it, and the aliases, \
+goals, backstory, hidden past or parents as the whole new list. A change that asks for one thing \
+changes that one thing: their attributes, skills and belongings stay as they are unless the \
+request speaks of them. The world stays as it is, so a power must still come from a kind it has.\
+"""
+
 
 def system_prompt(rating: str, language: Language = Language.EN) -> str:
     """The drafter's system text, for the story's rating (F2) and language (S10)."""
@@ -292,9 +307,7 @@ def revise_prompt(
         parts.append(f"The player asks for this change to the world:\n{asked}{WORLD_CHANGE}")
     else:
         parts.append(
-            f"The player asks for this change to their character:\n{asked}"
-            "Return the whole character with the change made and everything else as it was. The "
-            "world stays as it is, so a power must still come from a kind it has."
+            f"The player asks for this change to their character:\n{asked}{CHARACTER_CHANGE}"
         )
     return "\n\n".join(parts)
 
@@ -349,5 +362,6 @@ def rating_instruction(rating: str) -> str:
 def gift_instruction(gift: GiftStrength) -> str:
     return (
         f"The player picked '{gift.value}' for the character's special gift. {GIFTS[gift]} "
-        "Change the gift to fit and keep everything else."
+        "Change the gift to fit, removing the old one where another power takes its place, and "
+        "keep everything else."
     )

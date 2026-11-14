@@ -22,6 +22,7 @@ from pydantic import (
     ValidationInfo,
     ValidatorFunctionWrapHandler,
     field_validator,
+    model_validator,
 )
 
 from engine.state import (
@@ -854,6 +855,226 @@ class CharacterProposal(Proposal):
         description="What others remember about this body's past that the character doesn't "
         "know (G21). Hidden from the player.",
     )
+
+
+CharacterSection = Literal[
+    "skills",
+    "traits",
+    "talents",
+    "powers",
+    "techniques",
+    "items",
+    "connections",
+    "memberships",
+    "ladders",
+    "reserves",
+]
+CHARACTER_SECTIONS: tuple[CharacterSection, ...] = get_args(CharacterSection)
+# What a record of each list goes by: a change that gives one under a name the character
+# already has replaces it. A power has an id as well, and either finds it.
+CHARACTER_KEYS: dict[str, tuple[str, ...]] = {
+    "skills": ("name",),
+    "traits": ("name",),
+    "talents": ("name",),
+    "powers": ("id", "name"),
+    "techniques": ("name",),
+    "items": ("name",),
+    "connections": ("name",),
+    "memberships": ("faction_id",),
+    "ladders": ("ladder_id",),
+    "reserves": ("name",),
+}
+# The plain texts a change can empty by name: left empty in a change, a text is unchanged.
+CHARACTER_TEXTS = (
+    "description",
+    "appearance",
+    "title",
+    "rank",
+    "family_name",
+    "currency",
+    "people_id",
+    "location_id",
+)
+
+
+class CharacterRemovalP(Proposal):
+    # As for a world's removal (`RemovalP`): the schema lists the lists, and validation takes
+    # any text, since a list named a little off shouldn't fail the whole change.
+    section: str = Field(
+        description="The list the record is in.",
+        json_schema_extra={"enum": list(CHARACTER_SECTIONS)},
+    )
+    name: str = Field(
+        description="What the record goes by on the character: its name, a power's id or "
+        "name, a membership's faction_id, a ladder position's ladder_id."
+    )
+
+
+def _says_which_power(schema: dict[str, Any]) -> None:
+    """As a drafted power says what it does (`_says_what_it_does`), one a change gives is always
+    asked its name as well, which is what finds it on the character."""
+    _says_what_it_does(schema)
+    schema["required"] = list(dict.fromkeys(["name", *schema["required"]]))
+
+
+class PowerChange(PowerP):
+    """A power as a change gives it. One the character has is found by its id or its name and
+    needs nothing else; a new one needs its name and its kind."""
+
+    model_config = ConfigDict(extra="ignore", json_schema_extra=_says_which_power)
+
+    id: str = Field(default="", description="The power's id, when the character has it.")
+    name: str = ""
+    kind_id: str = Field(
+        default="",
+        description="A new power only: the id of the extraordinary kind it comes from (G8).",
+    )
+
+
+class LadderPositionChange(LadderPositionP):
+    """A ladder position as a change gives it: the rung, the stage, or both."""
+
+    rung: str = Field(default="", description="The rung's name, exactly as in the ladder.")
+
+
+class TemperamentChange(Proposal):
+    """Only the parts of the temperament the change alters, each list whole."""
+
+    traits: list[str] | None = None
+    values: list[str] | None = None
+    loves: list[str] | None = None
+    fears: list[str] | None = None
+    wants: list[str] | None = None
+    voice: str = Field(default="", description="How they talk, only if the change alters it.")
+
+
+class AttributesChange(Proposal):
+    """Only the attributes the change alters, on the same scale: 3 an average person, 5 the
+    peak of what a person can be."""
+
+    strength: int | None = None
+    speed: int | None = None
+    toughness: int | None = None
+    wits: int | None = None
+    knowledge: int | None = None
+    willpower: int | None = None
+    charm: int | None = None
+    nerve: int | None = None
+    bearing: int | None = None
+
+
+class AxesChange(Proposal):
+    """Only the tiers the change alters."""
+
+    might: int | None = None
+    influence: int | None = None
+    wealth: int | None = None
+    knowledge: int | None = None
+    stealth: int | None = None
+
+
+# Code merges a change into the character (`graph.drafting.chain.apply_character_change`), as
+# it does for the world, so the model never copies the character back. Asked for the whole
+# character with one thing changed, the real model answered "Call her Nora" with a name, an
+# age and two traits, in three seconds (build 120, 2026-11-14): her skills, her things, her
+# looks, her past and her goal were gone, and every attribute was back at 3. Asked to add a
+# skill, it wrote her out again with two attributes a point lower, after a first answer that
+# ran to sixteen thousand tokens.
+class CharacterChange(Proposal):
+    """A change to the character: only what it touches. Everything left out stays exactly as
+    it is."""
+
+    name: str = Field(default="", description="Only if the change renames them.")
+    aliases: list[str] | None = Field(
+        default=None, description="Only if the change alters them: the whole new list."
+    )
+    age: int | None = Field(default=None, description="Only if the change alters their age.")
+    lifespan_years: int | None = Field(
+        default=None,
+        description="Only if the change alters how long someone like them lives: 0 where old "
+        "age never takes them.",
+    )
+    people_id: str = Field(default="", description="Only if the change alters their people.")
+    description: str = Field(
+        default="",
+        description="Only if the change alters how they come across, in one line: their "
+        "bearing and manner.",
+    )
+    appearance: str = Field(
+        default="", description="Only if the change alters their looks, written in full."
+    )
+    location_id: str = Field(default="", description="Only if the change moves them.")
+    attributes: AttributesChange | None = Field(
+        default=None, description="Only the attributes the change alters. null otherwise."
+    )
+    skills: list[SkillP] = Field(
+        default_factory=list,
+        description="Each record in these lists is one the change adds or alters. One under a "
+        "name the character already has changes that record: whatever is left out of it "
+        "stays. One under a new name is added, written in full.",
+    )
+    traits: list[TraitP] = Field(default_factory=list)
+    talents: list[TalentP] = Field(default_factory=list)
+    powers: list[PowerChange] = Field(default_factory=list)
+    techniques: list[TechniqueP] = Field(default_factory=list)
+    items: list[ItemP] = Field(default_factory=list)
+    connections: list[ConnectionP] = Field(default_factory=list)
+    memberships: list[MembershipP] = Field(default_factory=list)
+    ladders: list[LadderPositionChange] = Field(default_factory=list)
+    reserves: list[ReserveP] = Field(default_factory=list)
+    removed: list[CharacterRemovalP] = Field(
+        default_factory=list,
+        description="Each record the change takes away, and the old record of one it "
+        "renames or replaces with another.",
+    )
+    cleared: list[str] = Field(
+        default_factory=list,
+        description="The plain texts the change empties, by field name.",
+        json_schema_extra={"items": {"type": "string", "enum": list(CHARACTER_TEXTS)}},
+    )
+    temperament: TemperamentChange | None = Field(
+        default=None, description="Only the parts of it the change alters. null otherwise."
+    )
+    money: int | None = Field(default=None, description="Only if the change alters it.")
+    currency: str = Field(default="", description="Only if the change alters it.")
+    title: str = Field(default="", description="Only if the change alters it.")
+    rank: str = Field(default="", description="Only if the change alters it.")
+    family_name: str = Field(default="", description="Only if the change alters it.")
+    parent_ids: list[str] | None = Field(
+        default=None, description="Only if the change alters them: the whole new list."
+    )
+    axes: AxesChange | None = Field(
+        default=None, description="Only the tiers the change alters. null otherwise."
+    )
+    goals: list[str] | None = Field(
+        default=None,
+        description="Only if the change alters the aims the player gave the character: the "
+        "whole new list, empty when they now have none.",
+    )
+    backstory: list[str] | None = Field(
+        default=None, description="Only if the change alters it: the whole new list."
+    )
+    hidden_past: list[str] | None = Field(
+        default=None, description="Only if the change alters it: the whole new list."
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _a_null_says_nothing(cls, value: Any) -> Any:
+        """In a record of a change, a null says what a field left out says: it stays as it is.
+        Read otherwise, a null would take the field's default and reset it (`lenient.repair`)."""
+        if not isinstance(value, dict):
+            return value
+        cleaned = dict(value)
+        for section in CHARACTER_SECTIONS:
+            if isinstance(records := value.get(section), list):
+                cleaned[section] = [
+                    {key: given for key, given in record.items() if given is not None}
+                    if isinstance(record, dict)
+                    else record
+                    for record in records
+                ]
+        return cleaned
 
 
 class DraftProposal(Proposal):
