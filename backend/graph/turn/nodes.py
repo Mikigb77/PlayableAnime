@@ -28,7 +28,7 @@ from collections.abc import Awaitable, Callable
 from contextlib import aclosing
 from dataclasses import dataclass, replace
 from functools import wraps
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from engine import injuries, limits, pipeline
 from engine.apply import DeltaSource, apply_delta
@@ -50,10 +50,17 @@ from graph.llm import (
     Node,
     StreamRestart,
     TextDelta,
+    TextEnded,
 )
-from graph.turn import check, saying
+from graph.turn import check, last_lines, saying
 from graph.turn import ending as ending_mod
-from graph.turn.context import asks, chapter_prompt, interpret_prompt, narration_brief
+from graph.turn.context import (
+    NarrationBrief,
+    asks,
+    chapter_prompt,
+    interpret_prompt,
+    narration_brief,
+)
 from graph.turn.errors import EndingRefused, LimitReached, UnreadableAction
 from graph.turn.form import intent_form
 from graph.turn.outputs import ChapterOutput, NarratorOutput
@@ -470,15 +477,22 @@ async def narrate(state: TurnState, runtime: Runtime[TurnDeps]) -> dict[str, Any
     runtime.context.tasks.append(said)
     update = await _narrate(state, runtime.context.llm, gate.emit)
     lines, found = await said
-    return {**update, "lines": lines, "decided": None, "issues": _issues(state, found)}
+    # With what the telling itself found (`last_lines.ENDING_TOLD`), where it found anything.
+    issues = _issues(cast(TurnState, {**state, **update}), found)
+    return {**update, "lines": lines, "decided": None, "issues": issues}
 
 
 async def _narrate(
     state: TurnState, llm: ModelClient, emit: Callable[[TurnEvent], None]
 ) -> dict[str, Any]:
-    """The scene told, streamed through `emit`, with F4's cut-away and template fallbacks."""
-    brief = state["brief"]
+    """The scene told, streamed through `emit`, with F4's cut-away and template fallbacks.
+
+    S4: closing sentences that tell the player what to do are left out of the scene
+    (`last_lines.shown`), and wait while it streams until what follows lets them go
+    (`last_lines.showable`), so the player never reads a line the saved scene won't have."""
+    brief: NarrationBrief = state["brief"]
     shown = False
+    told_ending = False
 
     def recipe(text: str) -> LLMBlocked | None:
         if limits.harm_instructions(text) is None:
@@ -490,7 +504,7 @@ async def _narrate(
         )
 
     async def tell(cutaway: bool) -> NarratorOutput:
-        nonlocal shown
+        nonlocal shown, told_ending
         # R1: the action, then what comes of it, streamed as one text (`NarratorOutput.text`).
         stream = llm.stream_structured(
             Node.NARRATOR,
@@ -500,6 +514,15 @@ async def _narrate(
             form=brief.form,
         )
         told = ""
+        sent = 0  # how much of `told` has gone out
+
+        def send(upto: int) -> None:
+            nonlocal shown, sent
+            if upto > sent:
+                shown = True
+                emit(NarrationDelta(told[sent:upto]))
+                sent = upto
+
         async with aclosing(stream) as events:
             async for event in events:
                 if isinstance(event, TextDelta):
@@ -509,17 +532,33 @@ async def _narrate(
                         told += event.text
                         if block := recipe(told):
                             raise block
-                        shown = True
-                        emit(NarrationDelta(event.text))
+                        send(last_lines.showable(told) if brief.ends_shown else len(told))
+                elif isinstance(event, TextEnded):
+                    # The scene's words are all here while the rest of the answer is still
+                    # being written: what waited goes out now, but for an ending that tells.
+                    if brief.ends_shown:
+                        send(len(last_lines.shown(told)))
                 elif isinstance(event, StreamRestart):
                     told = ""
+                    sent = 0
                     if shown:
                         emit(NarrationReset("retry"))
                         shown = False
                 elif isinstance(event, Completed):
-                    if block := recipe(event.value.text):
+                    scene = event.value
+                    if block := recipe(scene.text):
                         raise block
-                    return event.value
+                    left_out = 0
+                    if brief.ends_shown:
+                        kept = last_lines.shown(scene.narration, after=scene.action)
+                        if kept != scene.narration:
+                            left_out = len(scene.text)
+                            scene = scene.model_copy(update={"narration": kept})
+                            left_out -= len(scene.text)
+                            told_ending = True
+                    # What waited and stays goes out now: all but the ending left out.
+                    send(len(told) - left_out)
+                    return scene
         raise LLMUnavailable(node=Node.NARRATOR.value)
 
     def blocked(block: LLMBlocked, attempt: str) -> None:
@@ -532,15 +571,23 @@ async def _narrate(
             attempt=attempt,
         )
 
+    def done(scene: NarratorOutput, mode: str) -> dict[str, Any]:
+        update: dict[str, Any] = {"narration": scene, "narration_mode": mode}
+        if told_ending:
+            # Only that it happened: the sentence itself is story text (T6).
+            found = Issue(last_lines.ENDING_TOLD, "the scene closed on the player's move: left out")
+            update["issues"] = _issues(state, [found])
+        return update
+
     try:
-        return {"narration": await tell(cutaway=False), "narration_mode": "full"}
+        return done(await tell(cutaway=False), "full")
     except LLMBlocked as block:
         blocked(block, "full")
     if shown:
         emit(NarrationReset("cutaway"))
         shown = False
     try:
-        return {"narration": await tell(cutaway=True), "narration_mode": "cutaway"}
+        return done(await tell(cutaway=True), "cutaway")
     except LLMBlocked as block:
         blocked(block, "cutaway")
     except LLMUnavailable:

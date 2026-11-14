@@ -1190,6 +1190,10 @@ class NarrationBrief:
     news: tuple[str, ...] = ()
     # G18: the ladder the story can pass the top of this turn, which the form asks about.
     above: Above | None = None
+    # S4: whether code holds the scene's closing words to showing (`graph.turn.last_lines`). Not
+    # where the scene closes the character's story, whose last lines are its own, nor at the
+    # stop before old age, whose scene is asked to say what they can do with their time (N6).
+    ends_shown: bool = True
 
     @property
     def form(self) -> dict[str, Any] | None:
@@ -1506,6 +1510,7 @@ def narration_brief(
         worn=tuple(tired),
         news=news,
         above=above,
+        ends_shown=ending is None and not any(last_years.foreseen(event) for event in fired),
     )
 
 
