@@ -21,7 +21,14 @@ from graph.drafting import assemble, samples
 from graph.drafting.catalog import STARTER_PREMISES, starter
 from graph.drafting.catalog_ca import CATALAN
 from graph.drafting.catalog_es import SPANISH
-from graph.drafting.schema import ExtraordinaryP, PeopleP, RemovalP, RuleP, WorldChange
+from graph.drafting.schema import (
+    ExtraordinaryP,
+    PeopleP,
+    RemovalP,
+    RuleP,
+    TalentP,
+    WorldChange,
+)
 from graph.drafting.view import hidden_texts
 from graph.llm import Block, Fail, Node, Reply, TurnTelemetry
 from stories.models import Engine, Story
@@ -1037,6 +1044,18 @@ def test_the_draft_gives_its_summary_part_by_part(player_client, model):
         "manner": "",
     }
     assert draft["character"]["manner"]
+    # G2, G13: the sheet in sections, as the story's Character page gives it.
+    sheet = draft["sheet"]
+    assert [skill["name"] for skill in sheet["skills"]] == ["Pistol", "Knife work", "Driving"]
+    assert sheet["skills"][0] | {"notes": ""} == {
+        "name": "Pistol",
+        "level": "skilled",
+        "level_label": "Skilled",
+        "dice": 3,
+        "notes": "",
+    }
+    assert sheet["money_label"] == "200,000 lire"
+    assert (sheet["talents"], sheet["paths"], sheet["about"]) == ([], [], [])
     assert draft["ladder"] is None
     # G1: of how the story starts, a count and nothing more.
     state = _state(draft["id"])
@@ -1055,6 +1074,33 @@ def test_a_cultivation_draft_gives_its_ladder_rung_by_rung(player_client, model)
     assert ladder["rungs"][0] == "Qi Condensation"
     assert ladder["at"] == 0
     assert set(ladder) == {"name", "rungs", "more", "at", "stage"}
+
+
+def test_a_talent_comes_with_the_players_words_only_when_the_premise_holds_them(
+    player_client, model
+):
+    # A4, G2: the draft's screen says why it read the character so. A quote the premise
+    # doesn't hold is not shown as the player's.
+    sample = samples.cultivation()
+    sample.character.talents = [
+        TalentP(said="A  Prodigy with the sword", name="The sword", strength="genius"),
+        TalentP(said="hopeless at cooking", name="Cooking", strength="slow"),
+    ]
+    model.script(Node.DRAFTER, Reply(json=sample))
+    premise = "An outer disciple, a prodigy with the sword, wakes in a sect of cultivators."
+
+    draft = _draft(player_client, {"premise": premise, "rating": "teen"})
+
+    talents = {talent["name"]: talent for talent in draft["sheet"]["talents"]}
+    assert talents["The sword"] | {"covers": ""} == {
+        "name": "The sword",
+        "strength": "genius",
+        "strength_label": "Genius",
+        "pace_label": "Four times as fast",
+        "covers": "",
+        "said": "A Prodigy with the sword",
+    }
+    assert (talents["Cooking"]["strength"], talents["Cooking"]["said"]) == ("slow", "")
 
 
 def test_a_name_an_age_and_a_look_change_at_once_and_cost_nothing(player_client, model, player):

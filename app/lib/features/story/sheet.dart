@@ -398,27 +398,47 @@ class SheetTrait {
   final String description;
 }
 
+/// How strong a talent is (A4): a knack learns what it covers twice as fast, a genius four
+/// times and one of a kind eight times, and a weakness at half the pace. One the app doesn't
+/// know is a knack.
+enum TalentStrength {
+  slow,
+  knack,
+  genius,
+  oneOfAKind;
+
+  static TalentStrength fromWire(Object? value) => switch (value) {
+    'slow' => slow,
+    'genius' => genius,
+    'one_of_a_kind' => oneOfAKind,
+    _ => knack,
+  };
+}
+
 class SheetTalent {
   const SheetTalent({
     required this.name,
-    this.weakness = false,
+    this.strength = TalentStrength.knack,
     this.strengthLabel = '',
     this.paceLabel = '',
     this.covers = '',
+    this.said = '',
   });
 
   factory SheetTalent.fromJson(JsonMap json) => SheetTalent(
     name: _text(json['name']),
-    weakness: json['strength'] == 'slow',
+    strength: TalentStrength.fromWire(json['strength']),
     strengthLabel: _text(json['strength_label']),
     paceLabel: _text(json['pace_label']),
     covers: _text(json['covers']),
+    said: _text(json['said']),
   );
 
   final String name;
+  final TalentStrength strength;
 
   /// A talent that slows them down: what it covers is learned at half the pace.
-  final bool weakness;
+  bool get weakness => strength == TalentStrength.slow;
 
   /// "Genius", "A knack", "Weakness".
   final String strengthLabel;
@@ -428,6 +448,9 @@ class SheetTalent {
 
   /// What it reaches, in plain words.
   final String covers;
+
+  /// On a draft, the player's own words it was read from, or "" (G2).
+  final String said;
 }
 
 /// One thing they gained (A4, G17), as the sheet tells how they grew: what, on which day in the

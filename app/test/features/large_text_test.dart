@@ -52,55 +52,72 @@ void main() {
     });
   }
 
-  // The review and each kind of sheet it opens, in English and in Spanish, whose words run
-  // longer.
+  // The two review screens and each kind of sheet they open, in English and in Spanish, whose
+  // words run longer.
   for (final language in ['en', 'es']) {
     testWidgets('the review and its sheets at 2× text ($language)', (tester) async {
       tester.platformDispatcher.localesTestValue = [Locale(language)];
       addTearDown(tester.platformDispatcher.clearLocalesTestValue);
       final words = await AppLocalizations.delegate.load(Locale(language));
       await AppHarness().launch(tester, location: '/create?premise=outer-disciple', textScale: 2);
-      final list = find.byType(Scrollable).first;
       final draft = find.text(words.createDraftAction);
-      await tester.scrollUntilVisible(draft, 400, scrollable: list);
+      await tester.scrollUntilVisible(draft, 400, scrollable: find.byType(Scrollable).first);
       await tester.pump(const Duration(seconds: 1));
       await tester.tap(draft);
       await settle(tester, frames: 12);
       expect(find.text(words.reviewTitle), findsOneWidget);
-      await scrollThrough(tester);
-      expect(tester.takeException(), isNull);
 
-      // Back to the top, then each sheet: opened, scrolled through, and closed.
-      for (var i = 0; i < 12; i++) {
-        await tester.drag(list, const Offset(0, 600), warnIfMissed: false);
-        await tester.pump(const Duration(milliseconds: 400));
-      }
-      final rows = {
-        'the name and the age': find.text('Lin Feng'),
-        'a rule, with its switch and Remove': find.text('The dead stay dead.'),
-        'a row the storyteller changes': find.textContaining('Fair: the sword'),
-        'a choice that costs': find.widgetWithText(ChoiceChip, words.giftRare),
-      };
-      for (final MapEntry(key: what, value: row) in rows.entries) {
-        await tester.scrollUntilVisible(row, 300, scrollable: list);
-        await tester.pump(const Duration(seconds: 1));
-        await tester.tap(row);
-        await settle(tester, frames: 8);
-        expect(find.byType(BottomSheet), findsOneWidget, reason: what);
-        final sheet = find.descendant(
-          of: find.byType(BottomSheet),
-          matching: find.byType(Scrollable),
-        );
-        for (var i = 0; i < 6; i++) {
-          await tester.drag(sheet.first, const Offset(0, -500), warnIfMissed: false);
+      /// Scrolls the screen through, then back to its top, and opens each row's sheet: opened,
+      /// scrolled through, and closed.
+      Future<void> look(Map<String, Finder> rows) async {
+        final list = find.byType(Scrollable).first;
+        await scrollThrough(tester);
+        expect(tester.takeException(), isNull);
+        for (var i = 0; i < 12; i++) {
+          await tester.drag(list, const Offset(0, 600), warnIfMissed: false);
           await tester.pump(const Duration(milliseconds: 400));
         }
-        expect(tester.takeException(), isNull, reason: what);
-        // At this size a sheet can fill the screen, with no scrim left to tap.
-        Navigator.of(tester.element(find.byType(BottomSheet))).pop();
-        await settle(tester, frames: 10);
-        expect(find.byType(BottomSheet), findsNothing, reason: what);
+        for (final MapEntry(key: what, value: row) in rows.entries) {
+          await tester.scrollUntilVisible(row, 300, scrollable: list);
+          await tester.pump(const Duration(seconds: 1));
+          await tester.tap(row);
+          await settle(tester, frames: 8);
+          expect(find.byType(BottomSheet), findsOneWidget, reason: what);
+          final sheet = find.descendant(
+            of: find.byType(BottomSheet),
+            matching: find.byType(Scrollable),
+          );
+          for (var i = 0; i < 6; i++) {
+            await tester.drag(sheet.first, const Offset(0, -500), warnIfMissed: false);
+            await tester.pump(const Duration(milliseconds: 400));
+          }
+          expect(tester.takeException(), isNull, reason: what);
+          // At this size a sheet can fill the screen, with no scrim left to tap.
+          Navigator.of(tester.element(find.byType(BottomSheet))).pop();
+          await settle(tester, frames: 10);
+          expect(find.byType(BottomSheet), findsNothing, reason: what);
+        }
       }
+
+      // The world's screen.
+      await look({
+        'a rule, with its switch and Remove': find.text('The dead stay dead.'),
+        'a change to the world, in the player\'s words': find.textContaining(
+          words.reviewAskWorld,
+          findRichText: true,
+        ),
+      });
+
+      // The character's screen, a step on.
+      await tester.tap(find.byKey(const ValueKey('review.next')));
+      await settle(tester, frames: 10);
+      expect(find.text('Lin Feng'), findsOneWidget);
+      await look({
+        'the name and the age': find.text('Lin Feng'),
+        'how they learn, started for the player': find.byKey(const ValueKey('review.seed.genius')),
+        'a part the storyteller changes': find.byKey(const ValueKey('review.ask.skills')),
+        'a choice that costs': find.widgetWithText(ChoiceChip, words.giftRare),
+      });
     });
   }
 

@@ -28,6 +28,7 @@ from engine.context import (
     Rating,
 )
 from engine.state import GiftStrength, PhysicsMode, WorldState
+from engine.visibility import SheetView
 from graph.drafting import chain
 from graph.drafting.assemble import MAX, NAME_LIMIT, RULE_LIMIT, TEXT_LIMIT, TITLE_LIMIT, TONE_LIMIT
 from graph.drafting.catalog import STARTER_PREMISES, starter
@@ -40,6 +41,7 @@ from graph.drafting.view import (
     Part,
     PartKind,
     character_parts,
+    character_sheet,
     gift_strength,
     identity,
     kept,
@@ -252,6 +254,7 @@ class DraftOut(Schema):
     world_parts: list[PartOut]
     character_parts: list[PartOut]
     character: CharacterOut
+    sheet: SheetView
     ladder: LadderOut | None
     kept: KeptOut
     advanced: AdvancedOut
@@ -264,6 +267,20 @@ class DraftOut(Schema):
 class StartOut(Schema):
     story_id: str
     version: int
+
+
+def _said_of_talents(draft: chain.Draft) -> dict[str, str]:
+    """A4, G2: by each talent's name, the player's own words it came from, where the premise
+    holds them word for word. The drafter quotes them (`TalentP.said`); a quote the premise
+    doesn't hold, such as one from a change asked for later, whose words aren't kept, is
+    left out rather than shown as theirs."""
+    premise = " ".join(draft.premise.casefold().split())
+    said: dict[str, str] = {}
+    for talent in draft.proposal.character.talents:
+        words = " ".join(talent.said.split()).strip("\"'“”‘’ ")
+        if words and " ".join(words.casefold().split()) in premise:
+            said.setdefault(" ".join(talent.name.split()).casefold(), words)
+    return said
 
 
 def draft_out(row: Draft, state: WorldState | None = None) -> dict:
@@ -289,6 +306,7 @@ def draft_out(row: Draft, state: WorldState | None = None) -> dict:
         "world_parts": [{"kind": part.kind.value, "text": part.text} for part in world],
         "character_parts": [{"kind": part.kind.value, "text": part.text} for part in character],
         "character": identity(state),
+        "sheet": character_sheet(state, draft.language, _said_of_talents(draft)),
         "ladder": ladder_view(state, draft.language),
         "kept": kept(state, draft.language, draft.said),
         "advanced": {

@@ -11,6 +11,7 @@ import 'package:playable_anime/features/create/draft.dart';
 import 'package:playable_anime/features/create/draft_repository.dart';
 import 'package:playable_anime/features/library/library.dart';
 import 'package:playable_anime/features/story/memory.dart';
+import 'package:playable_anime/features/story/sheet.dart';
 
 import '../../helpers.dart';
 
@@ -53,7 +54,7 @@ void main() {
     final stages = <CreateStage>[];
     flow.addListener(() => stages.add(flow.stage));
     final draft = await drafted();
-    expect(stages, [CreateStage.drafting, CreateStage.review]);
+    expect(stages, [CreateStage.drafting, CreateStage.world]);
     expect(draft.premiseId, 'outer-disciple');
     expect(draft.title, 'The Last Outer Disciple');
     expect(draft.worldParts, isNotEmpty);
@@ -65,6 +66,41 @@ void main() {
     expect(await balance(), before - 3);
     final sent = backend.requests.lastWhere((r) => r.uri.path == '/v1/drafts').json;
     expect(sent, {'premise_id': 'outer-disciple', 'rating': 'mature', 'language': 'en'});
+  });
+
+  test(
+    'the review is two screens, the world first, and moving between them changes nothing',
+    () async {
+      // Miki, 2026-11-14: one screen for the world, the next for the character.
+      final draft = await drafted();
+      expect(flow.stage, CreateStage.world);
+      final sent = backend.requests.length;
+      flow.show(CreateStage.character);
+      expect(flow.stage, CreateStage.character);
+      expect(flow.stage.isReview, isTrue);
+      expect(flow.hasUnsavedDraft, isTrue);
+      flow.show(CreateStage.world);
+      expect(flow.stage, CreateStage.world);
+      expect(flow.draft, same(draft));
+      expect(backend.requests, hasLength(sent));
+    },
+  );
+
+  test('a draft tells how the character learns, in the words of the premise (A4, G2)', () async {
+    await flow.create(
+      premise: 'I am a squire with no family name, a genius with the sword.',
+      rating: Rating.teen,
+    );
+    final talent = flow.draft!.sheet.talents.single;
+    expect(talent.name, 'The sword');
+    expect(talent.strength, TalentStrength.genius);
+    expect(talent.strengthLabel, 'Genius');
+    expect(talent.paceLabel, 'Four times as fast');
+    expect(talent.said, 'a genius with the sword');
+    // One nobody called gifted has no talent, and the sheet still lays them out.
+    await flow.create(premise: 'A lighthouse keeper finds a door in the sea.', rating: Rating.teen);
+    expect(flow.draft!.sheet.talents, isEmpty);
+    expect(flow.draft!.sheet.skills, isNotEmpty);
   });
 
   test('the player\'s own premise and early choices go with the first draft', () async {
@@ -308,7 +344,7 @@ void main() {
       isA<ApiException>().having((e) => e.code, 'code', ApiErrorCode.forbidden),
     );
     await teenFlow.create(premiseId: 'outer-disciple', rating: Rating.teen);
-    expect(teenFlow.stage, CreateStage.review);
+    expect(teenFlow.stage, CreateStage.world);
   });
 
   test('starting makes a story at turn 0 that remembers the drafted character', () async {
@@ -353,9 +389,13 @@ void main() {
 
   test('nothing can change while the story starts', () async {
     await drafted();
+    flow.show(CreateStage.character);
     final starting = flow.start();
     expect(flow.busy, isTrue);
     expect(await flow.edit(const DraftEdit(physics: Physics.strict)), isA<StateError>());
+    // The screen it started from stays on show.
+    flow.show(CreateStage.world);
+    expect(flow.stage, CreateStage.character);
     expect(await starting, isNotNull);
     expect(backend.requests.where((r) => r.method == 'PATCH'), isEmpty);
   });

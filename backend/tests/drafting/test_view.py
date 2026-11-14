@@ -8,13 +8,14 @@ from graph.drafting import samples
 from graph.drafting.assemble import DraftOptions, assemble
 from graph.drafting.catalog import starter
 from graph.drafting.openers import Said
-from graph.drafting.schema import FactionP, NpcP, RuleP, RungP, TalentP
+from graph.drafting.schema import FactionP, ItemP, NpcP, RuleP, RungP, SkillP, TalentP
 from graph.drafting.view import (
     CHARACTER_LINES,
     WORLD_LINES,
     PartKind,
     character_lines,
     character_parts,
+    character_sheet,
     duration,
     gift_strength,
     hidden_texts,
@@ -529,6 +530,86 @@ def test_the_ladder_is_given_rung_by_rung_with_the_characters_place():
     assert ladder["at"] == position.rung
     # A world with no ladder has none to show.
     assert ladder_view(_naples()) is None
+
+
+def test_the_characters_sheet_is_given_in_sections_as_the_story_will_lay_it_out():
+    # G2, G13: the draft's own character screen is built from the same sections as the
+    # story's Character page, so what the player checks is what they will play.
+    sheet = character_sheet(_naples())
+
+    assert [(s.name, s.level_label, s.dice) for s in sheet.skills] == [
+        ("Pistol", "Skilled", 3),
+        ("Knife work", "Skilled", 3),
+        ("Driving", "Fair", 2),
+    ]
+    assert sheet.money_label == "200,000 lire"
+    assert [(i.name, i.kind_label, i.carried) for i in sheet.items] == [
+        ("Beretta pistol", "Weapon", True),
+        ("Flick knife", "Weapon", True),
+        ("Alfa Romeo Giulia", "Vehicle", False),
+    ]
+    assert [(t.name, t.kind_label) for t in sheet.traits] == [
+        ("Steady nerves under fire", "Gift"),
+        ("A hot temper", "Flaw"),
+    ]
+    assert sheet.temperament == ["hot-headed", "loyal"]
+    assert sheet.powers == [] and sheet.talents == []
+    time_stop = character_sheet(_cultivation()).powers[0]
+    assert (time_stop.name, time_stop.secret) == ("Time stop", True)
+    assert time_stop.limits == ["Three heartbeats per use", "A breath to recharge"]
+    assert character_sheet(_cultivation()).condition.reserves[0].name == "Qi"
+
+
+def test_the_sheet_of_a_draft_leaves_out_what_the_draft_says_elsewhere_or_keeps():
+    # Who they are is the plain fields, the path is the ladder with nobody named on it, and
+    # how they grew is the story's.
+    sheet = character_sheet(_cultivation())
+
+    assert (sheet.about, sheet.description, sheet.paths, sheet.grew) == ([], "", [], [])
+
+
+def test_each_talent_comes_with_its_pace_and_the_players_words_it_came_from():
+    # A4, G2 (Miki, 2026-11-14): the screen says how the character learns and why the draft
+    # read it so, in the player's own words.
+    state = _with_talents()
+    said = {"architecture": "a genius at building"}
+
+    talents = character_sheet(state, said=said).talents
+
+    assert [(t.name, t.strength_label, t.pace_label) for t in talents] == [
+        ("Extreme perception", "One of a kind", "Eight times as fast"),
+        ("The sword", "One of a kind", "Eight times as fast"),
+        ("Architecture", "Genius", "Four times as fast"),
+        ("Quick hands", "A knack", "Twice as fast"),
+        ("Hopeless at haggling", "Weakness", "At half the pace"),
+    ]
+    assert {t.name: t.said for t in talents if t.said} == {"Architecture": "a genius at building"}
+    assert talents[2].covers == "Structure and geometry."
+    spanish = character_sheet(state, Language.ES).talents
+    assert spanish[2].strength_label == "Genio"
+
+
+def test_an_entry_of_the_sheet_that_quotes_hidden_text_loses_it():
+    # C6, N7: as a line of the summary is dropped, an entry that names someone the character
+    # doesn't know goes, and a description that does is emptied.
+    world = samples.naples_world()
+    world.npcs.append(NpcP(id="ghost", name="Salvatore Ferro", player_knows="unknown"))
+    character = samples.naples_character()
+    character.items.append(ItemP(name="A letter from Salvatore Ferro"))
+    character.items[0] = ItemP(
+        name="Beretta pistol", kind="weapon", description="Taken from Salvatore Ferro's car."
+    )
+    character.skills.append(SkillP(name="lockpicking", notes="Salvatore Ferro taught him."))
+
+    sheet = character_sheet(_naples(world=world, character=character))
+
+    assert [(i.name, i.description) for i in sheet.items] == [
+        ("Beretta pistol", ""),
+        ("Flick knife", ""),
+        ("Alfa Romeo Giulia", ""),
+    ]
+    assert [(s.name, s.notes) for s in sheet.skills][-1] == ("Lockpicking", "")
+    assert "salvatore" not in sheet.model_dump_json().casefold()
 
 
 def test_a_place_above_the_rungs_everyone_knows_is_not_marked_on_them():

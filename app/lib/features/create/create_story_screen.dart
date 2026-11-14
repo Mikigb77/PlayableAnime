@@ -9,17 +9,19 @@ import '../../design/design.dart';
 import '../account/account_repository.dart';
 import '../discover/premises.dart';
 import '../library/library.dart';
+import 'character_review.dart';
 import 'create_flow.dart';
 import 'draft.dart';
 import 'draft_repository.dart';
-import 'draft_review.dart';
 import 'draft_widgets.dart';
 import 'drafting_view.dart';
 import 'premise_step.dart';
+import 'review_widgets.dart';
+import 'world_review.dart';
 
-/// A new story (G1, G2, S1): a premise from Discover or the player's own idea, then the drafted
-/// world and character to review, change and start. Starting opens the play screen, which plays
-/// the opening scene.
+/// A new story (G1, G2, S1): a premise from Discover or the player's own idea, then the draft
+/// to review and change a screen at a time, the world first and the character after it, and
+/// start. Starting opens the play screen, which plays the opening scene.
 /// Starting again from an ended story's premise (N6): the create flow opens with it filled in.
 class StartAgain {
   const StartAgain(this.premise);
@@ -61,8 +63,12 @@ class _CreateStoryScreenState extends ConsumerState<CreateStoryScreen> {
     super.dispose();
   }
 
-  /// Back from a link with nothing under it goes to Discover, asking first like a pop would.
+  /// Back from the character's screen is the world's. From a link with nothing under it, back
+  /// goes to Discover, asking first like a pop would.
   Widget? _back(BuildContext context) {
+    if (_flow.stage == CreateStage.character) {
+      return BackButton(onPressed: () => _flow.show(CreateStage.world));
+    }
     if (GoRouter.of(context).canPop()) return null;
     return BackButton(
       onPressed: () async {
@@ -153,6 +159,7 @@ class _CreateStoryScreenState extends ConsumerState<CreateStoryScreen> {
           canPop: !_flow.hasUnsavedDraft,
           onPopInvokedWithResult: (didPop, _) async {
             if (didPop) return;
+            if (_flow.stage == CreateStage.character) return _flow.show(CreateStage.world);
             final navigator = Navigator.of(context);
             if (await _confirmLeave()) navigator.pop();
           },
@@ -163,13 +170,13 @@ class _CreateStoryScreenState extends ConsumerState<CreateStoryScreen> {
                 appBar: AppBar(
                   leading: _back(context),
                   title: Text(switch (stage) {
-                    CreateStage.review => l10n.reviewTitle,
+                    _ when stage.isReview => l10n.reviewTitle,
                     _ when starter != null => l10n.createStartTitle,
                     _ => l10n.createNewTitle,
                   }),
                 ),
                 body: SafeArea(
-                  bottom: stage != CreateStage.review,
+                  bottom: !stage.isReview,
                   child: AnimatedSwitcher(
                     duration: Motion.of(context, Motion.slow),
                     switchInCurve: Motion.standard,
@@ -186,16 +193,20 @@ class _CreateStoryScreenState extends ConsumerState<CreateStoryScreen> {
                         key: const ValueKey(CreateStage.drafting),
                         premise: _flow.draftingPremise ?? '',
                       ),
-                      CreateStage.review => DraftReview(
-                        key: const ValueKey(CreateStage.review),
+                      CreateStage.world => WorldReview(
+                        key: const ValueKey(CreateStage.world),
                         flow: _flow,
                         starter: starter,
+                      ),
+                      CreateStage.character => CharacterReview(
+                        key: const ValueKey(CreateStage.character),
+                        flow: _flow,
                       ),
                     },
                   ),
                 ),
-                bottomNavigationBar: stage == CreateStage.review
-                    ? StartBar(flow: _flow, onStart: _start)
+                bottomNavigationBar: stage.isReview
+                    ? ReviewBar(flow: _flow, onStart: _start)
                     : null,
               ),
             ),

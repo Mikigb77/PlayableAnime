@@ -19,7 +19,9 @@ of it the screen gets a count and nothing more (`kept`).
 Each line is a part with its kind (`world_parts`, `character_parts`), so the app can label it,
 group it and point a change in plain words at it. The plain fields the player changes themselves
 are given as values (`identity`, `graph.drafting.direct`), and the ladder as its rungs with the
-character's place on it (`ladder_view`).
+character's place on it (`ladder_view`). The character's own screen lays them out as the
+story's Character page will, from their sheet in sections (`character_sheet`), with each
+talent beside the player's words it came from.
 """
 
 from __future__ import annotations
@@ -45,7 +47,13 @@ from engine.state import (
     WorldState,
     stage_named,
 )
-from engine.visibility import TALENT_STRENGTH_WORDS, rank_stage_label, skill_level_label
+from engine.visibility import (
+    TALENT_STRENGTH_WORDS,
+    SheetView,
+    rank_stage_label,
+    sheet_view,
+    skill_level_label,
+)
 from graph.drafting.openers import (
     Opener,
     Said,
@@ -378,6 +386,64 @@ def ladder_view(state: WorldState, language: Language = EN) -> dict[str, object]
             "stage": _stage_words(at.stage, language) if here else "",
         }
     return None
+
+
+def character_sheet(
+    state: WorldState, language: Language = EN, said: dict[str, str] | None = None
+) -> SheetView:
+    """G2, G13, A4: the character's sheet in sections, as the story's Character page will lay
+    it out (`engine.visibility.sheet_view`), for the draft's own character screen: what they
+    carry, their skills with the dice each throws, their powers and techniques, what they are
+    like, and how they learn, each talent with its pace, the strongest first. `said` gives, by
+    a talent's name, the player's own words it came from, already checked against their premise.
+
+    It leaves out what the draft says elsewhere or keeps for the story: who they are
+    (`identity`), their path, which names whoever they saw stand on a rung (`ladder_view`
+    tells it with no name), and how they grew. An entry whose name quotes hidden text, or
+    names someone the character doesn't know, goes; another of its texts that does is emptied
+    (C6, N7)."""
+    full = sheet_view(state, language)
+    said = said or {}
+    talents = [
+        talent.model_copy(update={"said": said.get(talent.name.casefold(), "")})
+        for talent in sorted(full.talents, key=lambda talent: -talent.strength.steps)
+    ]
+    return SheetView(
+        condition=full.condition,
+        money_label=full.money_label,
+        items=_public(state, full.items, "description", "history"),
+        skills=_public(state, full.skills, "notes"),
+        powers=_public(state, full.powers, "description", "limits", "cost"),
+        techniques=_public(state, full.techniques, "style", "effect", "cost"),
+        traits=_public(state, full.traits, "description"),
+        temperament=_guard(state, full.temperament),
+        talents=_public(state, talents, "covers"),
+    )
+
+
+def _public(state: WorldState, records: list, *texts: str) -> list:
+    """`records` of a sheet without what quotes hidden text: one whose name does goes, and
+    one of its `texts` that does is emptied, or loses the lines that do."""
+    told = [record.name for record in records]
+    for record in records:
+        for field in texts:
+            value = getattr(record, field)
+            told += value if isinstance(value, list) else [value]
+    passed = set(_guard(state, (text for text in told if text)))
+    kept = []
+    for record in records:
+        if record.name not in passed:
+            continue
+        changes: dict[str, object] = {}
+        for field in texts:
+            value = getattr(record, field)
+            if isinstance(value, list):
+                if any(line not in passed for line in value):
+                    changes[field] = [line for line in value if line in passed]
+            elif value and value not in passed:
+                changes[field] = ""
+        kept.append(record.model_copy(update=changes) if changes else record)
+    return kept
 
 
 def kept(state: WorldState, language: Language = EN, said: Said | None = None) -> dict[str, int]:

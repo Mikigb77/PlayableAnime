@@ -192,8 +192,14 @@ or want it named, never the words. **What is a plain value, the player changes t
 2026-11-10): the story's title and its tone are theirs to type, saved at once by code, with no
 model call and at no cost, and so are the character's plain fields (G2). Everything else they
 change in plain words, asked at the part of the summary it is about, so "make this stricter"
-says what "this" is. **The screen says how each thing changes**: the character comes first,
-then the world with its rules, and every row carries a mark, a pencil for what the player types
+says what "this" is. **The draft is reviewed a screen at a time, the world and then the
+character** (Miki, 2026-11-14: "one is just for the world where the user can tweak stuff, and
+on the next screen is just for the character"): the world's screen holds the title and tone,
+the setting, its rules, what the player's words named of how the story starts, the count of
+what is kept back and how it plays; the character's screen holds the character alone (G2) and
+the button that starts the story. Either screen is one tap from the other, and moving between
+them changes nothing. **Each screen says how each thing changes**: every row carries a mark,
+a pencil for what the player types
 (saved at once, free) and a wand for what they tell the storyteller (the cost is said before
 they ask). **A change is never refused for the draft's own words, and never lost to a slow
 answer** (Miki, 2026-11-14: "when you try to edit one field on itself, it always gives an
@@ -205,9 +211,10 @@ which is free; its words redraft the world. Where the player writes the premise,
 says what a premise can decide (who they are, what makes them special, what is coming, who is in their
 life, what they are after), with an example of each, and that everything they leave out stays a
 surprise. How the
-story plays is on the same screen as the draft: the rating, difficulty, world events, the gift
+story plays is on the world's screen: the rating, difficulty, world events
 and how strict physics is, fun first by default, or strict for players who want things rougher
-and more physically coherent (A9). A choice that redrafts nothing is saved as it is picked, and
+and more physically coherent (A9); the gift is the character's, and is chosen on their screen,
+with their powers. A choice that redrafts nothing is saved as it is picked, and
 one that does says what it costs first.
 
 **G2 Making the character (P0).** The AI drafts the opening character from the premise and the
@@ -242,7 +249,16 @@ words say: talented, gifted or a quick learner is a knack, a genius or a prodigy
 "no talent for it" is a weakness, and one of a kind only where the words put the talent beyond
 anyone else's ("a once-in-an-age talent with the sword"), at the one thing they name; the lower
 of two when unsure, since the player can raise it in plain words. The draft keeps the player's
-words each talent came from. Good at everything is one general talent, a genius at most (A4).
+words each talent came from. **The character's screen says what the draft read, and from which
+words** (decided 2026-11-14, Miki: "make sure that we ... really catch the essence of the
+character and whether he's a genius, not a genius"): it is laid out as the story's Character
+page will be (G16), and of what the storyteller drafted, how they learn comes first. Each
+talent shows how strong it is, the pace that gives, what it covers, and the player's own words
+it was read from, where their premise holds them word for word; a character with no talent is
+told so, that they learn everything at the ordinary pace, since most players never say and
+would otherwise never know. One line says what each strength is worth (a knack twice as fast,
+a genius four times, one of a kind eight times), and the screen offers the words that change
+it, for the player to finish ("I'm a genius at…"). Good at everything is one general talent, a genius at most (A4).
 A power or an eye of their own is no talent, however rare. Someone the premise makes ordinary
 gets no power, however good they are at what they do: charm, skill and a reputation are
 attributes, skills and traits, in a world with magic as in one without, and a premise that

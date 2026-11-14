@@ -167,6 +167,7 @@ void registerDraftRoutes(FakeBackend b) {
     } else {
       parts.add({'kind': character ? 'nature' : 'faction', 'text': line});
     }
+    if (character) _reviseSheet(draft['sheet'] as JsonMap, about, line);
     _charge(b, r, calls: 1);
     return FakeResponse.json(draftView(_saved(b, draft)));
   });
@@ -350,7 +351,39 @@ void _applyAdvanced(JsonMap draft, JsonMap advanced) {
     final parts = (draft['_character'] as List).cast<JsonMap>()
       ..removeWhere((part) => part['kind'] == 'power');
     if (_giftLine(gift) case final line?) parts.add({'kind': 'power', 'text': line});
+    (draft['sheet'] as JsonMap)['powers'] = [?_giftPower(gift)];
   }
+}
+
+/// What a change to the character does to their sheet: asked about how they learn, it is a
+/// talent of the strength its words name, or none at all; asked about anything else, or about
+/// nothing, it is a trait of theirs.
+void _reviseSheet(JsonMap sheet, String? about, String line) {
+  final name = line.replaceFirst(RegExp(r'[.!?]$'), '');
+  if (about == 'talents') {
+    final words = line.toLowerCase();
+    final talents = (sheet['talents'] as List).cast<JsonMap>();
+    if (words.contains('no special talent')) return talents.clear();
+    final strength = words.contains('one of a kind')
+        ? 'one_of_a_kind'
+        : words.contains('genius')
+        ? 'genius'
+        : 'knack';
+    talents.add(_talent(name, strength, '', ''));
+    return;
+  }
+  final list = switch (about) {
+    'skills' => 'skills',
+    'belongings' => 'items',
+    'power' => 'powers',
+    _ => 'traits',
+  };
+  (sheet[list] as List).cast<JsonMap>().add(switch (list) {
+    'skills' => _skill(name),
+    'items' => _item(name, 'other'),
+    'powers' => _power(name, ''),
+    _ => _trait(name, 'quirk'),
+  });
 }
 
 String _ruleId(JsonMap rule, List<Object?> current, Set<String> taken) {
@@ -558,7 +591,20 @@ JsonMap _part(String kind, String text, {List<String> named = const []}) => {
 /// and a general draft that follows the premise for the rest. `named` are the words that name a
 /// line of how the story starts, in lower case: it shows once the player's own words say one.
 JsonMap _drafted(JsonMap? starter, String premise) {
-  final genius = RegExp(r'\b(genius|prodigy)\b', caseSensitive: false).hasMatch(premise);
+  // How strong a talent the premise gives (A4), and the player's own words it is read from
+  // (G2): the clause that says it.
+  final gifted = RegExp(
+    r'[^.!?,;\n]*\b(one of a kind|unmatched|genius|prodigy|knack|gifted)\b[^.!?,;\n]*',
+    caseSensitive: false,
+  ).firstMatch(premise);
+  final talent = gifted?.group(0)?.trim();
+  final strength = switch (gifted?.group(1)?.toLowerCase()) {
+    'one of a kind' || 'unmatched' => 'one_of_a_kind',
+    'genius' || 'prodigy' => 'genius',
+    _ => 'knack',
+  };
+  final genius = talent != null;
+  final sword = '${_strengths[strength]!.$1}: The sword ($_blade).';
   final drafted = switch (starter?['id']) {
     'outer-disciple' => <String, dynamic>{
       'tone': 'Hungry, proud and a little desperate',
@@ -599,11 +645,21 @@ JsonMap _drafted(JsonMap? starter, String premise) {
       'parts': [
         _part('rank', 'Qi Condensation, early stage.'),
         _part('skills', 'Fair: the sword, herb lore. Novice: footwork.'),
-        if (genius) _part('talents', 'One of a kind: The sword (anything fought with a blade).'),
+        if (genius) _part('talents', sword),
         _part('nature', 'Stubborn, patient.'),
         _part('belongings', 'Carries a cracked jade pendant. 3 spirit stones.'),
         _part('goal', 'Goal: Keep your place on the mountain.', named: ['my goal', 'i want']),
       ],
+      'sheet': _sheet(
+        money: '3 spirit stones',
+        reserves: ['qi'],
+        items: [
+          _item('Cracked jade pendant', 'treasure', about: 'A keepsake, split down the middle.'),
+        ],
+        skills: [_skill('The sword', 'fair'), _skill('Herb lore', 'fair'), _skill('Footwork')],
+        temperament: ['stubborn', 'patient'],
+        talents: [if (talent != null) _talent('The sword', strength, _blade, talent)],
+      ),
       'ladder': {
         'name': 'Cultivation realms',
         'rungs': ['Qi Condensation', 'Foundation Establishment', 'Core Formation', 'Nascent Soul'],
@@ -654,7 +710,8 @@ JsonMap _drafted(JsonMap? starter, String premise) {
       'parts': [
         _part('rank', 'Qi Condensation, early stage.'),
         _part('skills', 'Skilled: logic and numbers. Novice: the sword.'),
-        if (genius) _part('talents', 'Genius: Formations (patterns and their flaws).'),
+        if (genius)
+          _part('talents', '${_strengths[strength]!.$1}: Formations (patterns and their flaws).'),
         _part('nature', 'Calm, curious.'),
         _part(
           'power',
@@ -663,6 +720,16 @@ JsonMap _drafted(JsonMap? starter, String premise) {
         ),
         _part('belongings', 'Carries a dead boy\'s sect token.'),
       ],
+      'sheet': _sheet(
+        reserves: ['qi'],
+        items: [_item('A dead boy\'s sect token', 'document')],
+        skills: [_skill('Logic and numbers', 'skilled'), _skill('The sword')],
+        powers: [_timeStop],
+        temperament: ['calm', 'curious'],
+        talents: [
+          if (talent != null) _talent('Formations', strength, 'patterns and their flaws', talent),
+        ],
+      ),
       'ladder': {
         'name': 'Cultivation realms',
         'rungs': ['Qi Condensation', 'Foundation Establishment', 'Core Formation'],
@@ -714,11 +781,28 @@ JsonMap _drafted(JsonMap? starter, String premise) {
       'parts': [
         _part('rank', 'Squire.'),
         _part('skills', 'Skilled: the sword. Fair: riding, mending tack.'),
-        if (genius) _part('talents', 'One of a kind: The sword (anything fought with a blade).'),
-        _part('nature', 'Loyal, proud. Slow to ask for help.'),
+        if (genius) _part('talents', sword),
+        _part('traits', 'Flaws: slow to ask for help.'),
+        _part('nature', 'Loyal, proud.'),
         _part('belongings', 'Carries a dead man\'s sword. Owns a borrowed horse. 4 copper marks.'),
         _part('goal', 'Goal: Earn your knighthood.', named: ['my goal', 'i want']),
       ],
+      'sheet': _sheet(
+        money: '4 copper marks',
+        reserves: ['aura'],
+        items: [
+          _item('A dead man\'s sword', 'weapon', about: 'Your master\'s, still in its sheath.'),
+          _item('A borrowed horse', 'vehicle', carried: false),
+        ],
+        skills: [
+          _skill('The sword', 'skilled'),
+          _skill('Riding', 'fair'),
+          _skill('Mending tack', 'fair'),
+        ],
+        temperament: ['loyal', 'proud'],
+        traits: [_trait('Slow to ask for help', 'flaw')],
+        talents: [if (talent != null) _talent('The sword', strength, _blade, talent)],
+      ),
       'ladder': {
         'name': 'Aura ranks',
         'rungs': ['Squire', 'Knight', 'Aura master', 'Sword saint'],
@@ -769,6 +853,19 @@ JsonMap _drafted(JsonMap? starter, String premise) {
         _part('belongings', 'Carries his father\'s lighter and a pistol. 40,000 lire.'),
         _part('connections', 'Three loyal soldiers.', named: ['soldiers', 'loyal']),
       ],
+      'sheet': _sheet(
+        money: '40,000 lire',
+        items: [
+          _item('His father\'s lighter', 'other', about: 'Brass, worn smooth at the corners.'),
+          _item('A pistol', 'weapon'),
+        ],
+        skills: [
+          _skill('Pistols', 'skilled'),
+          _skill('Knives', 'skilled'),
+          _skill('Reading a room', 'fair'),
+        ],
+        temperament: ['steady', 'hot-tempered'],
+      ),
       'ladder': null,
       'hidden': {'people': 5, 'events': 1, 'questions': 1},
       'rules': [
@@ -799,10 +896,18 @@ JsonMap _drafted(JsonMap? starter, String premise) {
       },
       'parts': [
         _part('skills', 'Fair: getting out of trouble. Novice: staying out of it.'),
-        if (genius) _part('talents', 'One of a kind: The sword (anything fought with a blade).'),
-        _part('nature', 'Restless, stubborn. Owes a favour to the wrong person.'),
+        if (genius) _part('talents', sword),
+        _part('traits', 'Flaws: owes a favour to the wrong person.'),
+        _part('nature', 'Restless, stubborn.'),
         _part('belongings', 'Carries one thing they would die before losing.'),
       ],
+      'sheet': _sheet(
+        items: [_item('One thing they would die before losing', 'other')],
+        skills: [_skill('Getting out of trouble', 'fair'), _skill('Staying out of it')],
+        temperament: ['restless', 'stubborn'],
+        traits: [_trait('Owes a favour to the wrong person', 'flaw')],
+        talents: [if (talent != null) _talent('The sword', strength, _blade, talent)],
+      ),
       'ladder': null,
       'hidden': {'people': 3, 'events': 2, 'questions': 2},
       'rules': [
@@ -818,6 +923,7 @@ JsonMap _drafted(JsonMap? starter, String premise) {
     'tone': drafted['tone'],
     'character': drafted['character'],
     'ladder': drafted['ladder'],
+    'sheet': drafted['sheet'],
     '_world': drafted['world'],
     '_character': drafted['parts'],
     '_hidden': drafted['hidden'],
@@ -830,6 +936,116 @@ JsonMap _drafted(JsonMap? starter, String premise) {
     },
   };
 }
+
+const _blade = 'anything fought with a blade';
+
+const _levels = {'novice': ('Novice', 1), 'fair': ('Fair', 2), 'skilled': ('Skilled', 3)};
+
+JsonMap _skill(String name, [String level = 'novice']) => {
+  'name': name,
+  'level': level,
+  'level_label': _levels[level]!.$1,
+  'dice': _levels[level]!.$2,
+  'notes': '',
+};
+
+JsonMap _item(String name, String kind, {String about = '', bool carried = true}) => {
+  'name': name,
+  'kind': kind,
+  'kind_label': kind == 'other' ? '' : '${kind[0].toUpperCase()}${kind.substring(1)}',
+  'description': about,
+  'history': '',
+  'quantity': 1,
+  'carried': carried,
+};
+
+JsonMap _trait(String name, String kind) => {
+  'name': name,
+  'kind': kind,
+  'kind_label': '${kind[0].toUpperCase()}${kind.substring(1)}',
+  'description': '',
+};
+
+const _strengths = {
+  'slow': ('Weakness', 'At half the pace'),
+  'knack': ('A knack', 'Twice as fast'),
+  'genius': ('Genius', 'Four times as fast'),
+  'one_of_a_kind': ('One of a kind', 'Eight times as fast'),
+};
+
+/// A talent (A4), with the player's own words it was read from ([said], G2).
+JsonMap _talent(String name, String strength, String covers, String said) => {
+  'name': name,
+  'strength': strength,
+  'strength_label': _strengths[strength]!.$1,
+  'pace_label': _strengths[strength]!.$2,
+  'covers': covers,
+  'said': said,
+};
+
+JsonMap _power(String name, String does, {List<String> limits = const [], bool secret = false}) => {
+  'name': name,
+  'description': does,
+  'limits': limits,
+  'cost': '',
+  'ready': true,
+  'ready_label': 'Ready',
+  'secret': secret,
+};
+
+final _timeStop = _power(
+  'Time stop',
+  'The world holds still for three heartbeats.',
+  limits: ['Needs a breath to recharge.'],
+  secret: true,
+);
+
+/// The power a gift of each strength comes as, next to its line of the summary (`_giftLine`).
+JsonMap? _giftPower(String gift) => switch (gift) {
+  'small' => _power('A small edge', 'An edge that helps in a narrow way.'),
+  'rare' => _power('A rare talent', 'One the world has seen only a handful of times.'),
+  'overpowered' => _power(
+    'Time stop',
+    'The world holds still for three heartbeats.',
+    limits: ['Needs a breath to recharge.'],
+  ),
+  _ => null,
+};
+
+/// The character's sheet in the parts the Character page shows (docs/API.md, `Draft.sheet`).
+JsonMap _sheet({
+  String? money,
+  List<String> reserves = const [],
+  List<JsonMap> items = const [],
+  List<JsonMap> skills = const [],
+  List<JsonMap> powers = const [],
+  List<JsonMap> traits = const [],
+  List<String> temperament = const [],
+  List<JsonMap> talents = const [],
+}) => {
+  'about': <String>[],
+  'description': '',
+  'condition': {
+    'health': 'unhurt',
+    'health_label': 'Unhurt',
+    'wounds': <JsonMap>[],
+    'states': <JsonMap>[],
+    'reserves': [
+      for (final name in reserves) {'name': name, 'level': 100},
+    ],
+  },
+  'paths': <JsonMap>[],
+  'money_label': money,
+  'items': [...items],
+  'skills': [...skills],
+  'powers': [...powers],
+  'techniques': <JsonMap>[],
+  'traits': [...traits],
+  'temperament': [...temperament],
+  'talents': [...talents],
+  'talent_notes': <String>[],
+  'grew': <JsonMap>[],
+};
 
 String _firstSentence(String premise) {
   final text = premise.replaceAll(RegExp(r'\[[^\]]*\]'), '').trim();
